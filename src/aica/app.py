@@ -20,7 +20,7 @@ from .plugins.loader import discover
 
 
 def build_assistant(config: Config, *, headless: bool = True,
-                    confirm=None) -> Orchestrator:
+                    confirm=None, planner=None) -> Orchestrator:
     bus = EventBus()
     registry = ToolRegistry()
 
@@ -47,7 +47,7 @@ def build_assistant(config: Config, *, headless: bool = True,
         except ValueError:
             pass  # duplicate tool name -> skip, keep loading the rest
 
-    planner = build_default_planner(config)
+    planner = planner or build_default_planner(config)
     kill = KillSwitch()
     if not headless:
         kill.bind_hotkey()

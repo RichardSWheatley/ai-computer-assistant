@@ -1,9 +1,13 @@
 """Model routing across two operating modes + a heavy/light classifier.
 
 Modes (see docs/MODES.md):
-  CLOUD_DEFAULT (default) — heavy reasoning routes to Claude; quick mechanical
-      steps stay on the local model for speed.
-  LOCAL_ONLY              — cloud is hard-disabled. The cloud provider is never
+  AUTO (default) — hardware-driven. Heavy reasoning goes to the best LOCAL model
+      when one exists (i.e. when VRAM is available), and to Claude only when no
+      capable local model is present. Routine mechanical steps stay on the small
+      local model for speed. So: local LLM is the default when you have VRAM;
+      Claude is the default when you don't. Cloud is also used to escalate when
+      the local model gets stuck.
+  LOCAL_ONLY     — cloud is hard-disabled. The cloud provider is never
       constructed, so nothing can leave the machine. Privacy guarantee.
 
 The privacy guarantee is enforced structurally: in LOCAL_ONLY the router refuses
@@ -24,17 +28,21 @@ from .mock import MockLLM
 
 
 class OperatingMode(str, Enum):
-    CLOUD_DEFAULT = "cloud-default"  # heavy lifting -> cloud, routine -> local
-    LOCAL_ONLY = "local-only"        # never leave the machine
+    AUTO = "auto"              # hardware-driven: local when VRAM, Claude when none
+    LOCAL_ONLY = "local-only"  # never leave the machine
 
     @classmethod
     def parse(cls, value) -> "OperatingMode":
         if isinstance(value, cls):
             return value
+        s = str(value)
+        # Back-compat aliases for the earlier naming.
+        if s in ("cloud-default", "local-first", "default"):
+            return cls.AUTO
         try:
-            return cls(str(value))
+            return cls(s)
         except ValueError:
-            return cls.CLOUD_DEFAULT
+            return cls.AUTO
 
 
 # --- heavy vs light classification ----------------------------------------
@@ -74,8 +82,10 @@ class HeuristicClassifier(Classifier):
 
 @dataclass
 class RoutingPolicy:
-    mode: OperatingMode = OperatingMode.CLOUD_DEFAULT
+    mode: OperatingMode = OperatingMode.AUTO
     redact_before_cloud: bool = True
+    # Escalate a stuck local model to the cloud after this many failed steps.
+    escalate_after_failures: int = 2
 
 
 class LLMRouter(LLMProvider):
@@ -101,6 +111,24 @@ class LLMRouter(LLMProvider):
     def mode(self) -> OperatingMode:
         return self.policy.mode
 
+    def _stuck(self, history: list[dict]) -> bool:
+        n = self.policy.escalate_after_failures
+        recent = history[-n:]
+        return len(recent) >= n and all(not h.get("ok") for h in recent)
+
+    def _route_cloud(self, goal, state, tools, history) -> ToolCall:
+        self.last_route = "cloud"
+        payload = _redact(state) if self.policy.redact_before_cloud else state
+        return self.cloud.plan(goal, payload, tools, history)
+
+    def _route_large(self, goal, state, tools, history) -> ToolCall:
+        self.last_route = "local-large"
+        return self.large.plan(goal, state, tools, history)
+
+    def _route_small(self, goal, state, tools, history) -> ToolCall:
+        self.last_route = "local-small"
+        return self.small.plan(goal, state, tools, history)
+
     def plan(self, goal: str, state: ScreenState,
              tools: list[ToolSchema], history: list[dict]) -> ToolCall:
         heavy = self.classifier.is_heavy(goal, state, history)
@@ -109,21 +137,18 @@ class LLMRouter(LLMProvider):
         # model if present, else the small one.
         if self.mode is OperatingMode.LOCAL_ONLY:
             if heavy and self.large is not None:
-                self.last_route = "local-large"
-                return self.large.plan(goal, state, tools, history)
-            self.last_route = "local-small"
-            return self.small.plan(goal, state, tools, history)
+                return self._route_large(goal, state, tools, history)
+            return self._route_small(goal, state, tools, history)
 
-        # CLOUD_DEFAULT: heavy lifting -> cloud (with redaction), routine -> local.
-        if heavy and self.cloud is not None:
-            self.last_route = "cloud"
-            payload_state = _redact(state) if self.policy.redact_before_cloud else state
-            return self.cloud.plan(goal, payload_state, tools, history)
-        if heavy and self.large is not None:
-            self.last_route = "local-large"
-            return self.large.plan(goal, state, tools, history)
-        self.last_route = "local-small"
-        return self.small.plan(goal, state, tools, history)
+        # AUTO (hardware-driven). For heavy steps, prefer the best LOCAL model
+        # when one exists (VRAM present); fall back to Claude when there is no
+        # local large model, or to escalate a stuck local model.
+        if heavy:
+            if self.cloud is not None and (self.large is None or self._stuck(history)):
+                return self._route_cloud(goal, state, tools, history)
+            if self.large is not None:
+                return self._route_large(goal, state, tools, history)
+        return self._route_small(goal, state, tools, history)
 
 
 def _redact(state: ScreenState) -> ScreenState:
@@ -142,7 +167,7 @@ def build_default_planner(config) -> LLMProvider:
     Honors config.mode. In LOCAL_ONLY the cloud provider is never constructed.
     Lazily imports backends and falls back to mock when unavailable.
     """
-    mode = OperatingMode.parse(getattr(config, "mode", OperatingMode.CLOUD_DEFAULT))
+    mode = OperatingMode.parse(getattr(config, "mode", OperatingMode.AUTO))
     small = large = cloud = None
 
     try:  # pragma: no cover - optional deps + running daemon

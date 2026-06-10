@@ -17,9 +17,9 @@ from .hardware import Hardware, detect_hardware, recommend_model
 class Config:
     use_local_llm: bool = False
     use_cloud: bool = True
-    # Operating mode: "cloud-default" (heavy lifting -> Claude) or "local-only"
-    # (nothing leaves the machine). Default is cloud-default.
-    mode: str = "cloud-default"
+    # Operating mode: "auto" (hardware-driven: local LLM when VRAM exists, Claude
+    # when none) or "local-only" (nothing leaves the machine). Default is auto.
+    mode: str = "auto"
     small_model: str = "llama3.2:3b"
     large_model: str | None = None
     cloud_model: str = "claude-opus-4-8"

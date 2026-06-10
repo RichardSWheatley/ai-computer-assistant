@@ -1,77 +1,90 @@
 # Operating Modes
 
-Two modes trade privacy against power. **Cloud-default is the default**;
-**local-only** is a hard privacy guarantee.
+Two modes. **`auto` is the default and is hardware-driven**; **`local-only`** is a
+hard privacy guarantee.
 
-| | `cloud-default` (default) | `local-only` |
+| | `auto` (default) | `local-only` |
 |---|---|---|
-| Heavy reasoning | **Claude** (cloud) | larger **local** model |
-| Routine / mechanical steps | local model | local model |
-| Data leaving the machine | redacted, for heavy steps only | **never** |
-| Enforcement | router prefers cloud for heavy steps | cloud provider **not constructed** |
+| Heavy reasoning, **VRAM present** | **local LLM** (the best local model) | local LLM |
+| Heavy reasoning, **no VRAM** | **Claude** (cloud) | small local model (no cloud) |
+| Routine / mechanical steps | small local model | small local model |
+| Data leaving the machine | only heavy steps, only when no capable local model (redacted) | **never** |
+| Enforcement | router prefers local; cloud only as fallback/escalation | cloud provider **not constructed** |
+
+## The rule, in one line
+
+> **Local LLM is the default when you have VRAM; Claude is the default when you
+> don't.** A capable local model only exists when there's a GPU to run it, so the
+> router simply prefers the best local model and falls back to Claude when there
+> isn't one.
 
 ## How routing works
 
-Every planning step is classified **heavy** vs **light** (`HeuristicClassifier`):
+Each planning step is classified **heavy** vs **light** (`HeuristicClassifier`):
 
 - **Heavy** — deep reasoning: analyze, design, debug, refactor, plan, summarize,
   write/generate, long goals, or when the agent is stuck (recent steps failed).
 - **Light** — mechanical: click, type, open, navigate.
 
-Then:
+Then, in `auto` mode:
 
-- **cloud-default:** heavy → Claude (after redaction) · light → local model.
-  This sends the *thinking* to the cloud while keeping fast UI steps local.
-- **local-only:** heavy → larger local model · light → small local model.
-  The cloud branch does not exist.
+- **Heavy** → the **local large model** if one exists (VRAM present); otherwise
+  **Claude**. A stuck local model (repeated failures) also escalates to Claude.
+- **Light** → the small local model, for speed.
 
-`router.last_route` records which path each step took (`cloud` /
-`local-large` / `local-small`) for logging and the HUD.
+`router.last_route` records which path each step took (`local-large` /
+`local-small` / `cloud`) for logging and the HUD.
 
 ## The privacy guarantee is structural
 
-`local-only` is not just a flag that's checked at call time — the router
-**refuses to even hold a cloud provider** in that mode:
+`local-only` is not just a flag checked at call time — the router **refuses to
+even hold a cloud provider** in that mode:
 
 ```python
 if mode is OperatingMode.LOCAL_ONLY and cloud is not None:
     raise ValueError("LOCAL_ONLY mode must not be given a cloud provider")
 ```
 
-And `build_default_planner` never constructs/imports the Claude provider when
-the mode is local-only. So there is no reachable code path to the network — the
+`build_default_planner` never constructs/imports the Claude provider when the
+mode is local-only. So there is no reachable code path to the network — the
 guarantee holds by construction, not by discipline.
 
-## Redaction (cloud-default)
+## Redaction (when cloud is used)
 
-Before any heavy step goes to the cloud, the router redacts the payload
-(`_redact`): the **raw screenshot is dropped** and only the text summary +
-element metadata go out. This is the single, testable choke point — extend it
-to mask secrets/PII in element text as needed.
+Before any step goes to the cloud, the router redacts the payload (`_redact`):
+the **raw screenshot is dropped** and only the text summary + element metadata go
+out. This is the single, testable choke point — extend it to mask secrets/PII in
+element text as needed.
 
-## How to select a mode
+## The planners
+
+Both planners implement the same single-step contract (`plan()` returns one
+`ToolCall`) via real tool-calling, so they're interchangeable:
+
+- **`OllamaPlanner`** (local) — Ollama tool-calling, GPU-accelerated, fully
+  on-device. The default heavy engine when VRAM exists.
+- **`ClaudePlanner`** (cloud) — Anthropic `claude-opus-4-8` with adaptive
+  thinking and tool-use. The default heavy engine when there's no VRAM. The
+  router redacts the screen state before calling it.
+
+## Selecting a mode
 
 ```bash
-# Default — cloud for heavy lifting
-aica run "refactor this module"
-
-# Local-only for a single run (privacy)
-aica run "summarize this contract" --local-only
-
-# Force local-only everywhere
-export AICA_LOCAL_ONLY=1
+aica run "refactor this module"               # auto: local if VRAM, Claude if not
+aica run "summarize this contract" --local-only   # privacy, one run
+export AICA_LOCAL_ONLY=1                        # force local everywhere
 ```
 
-Or in a config file:
+or in a config file:
 
 ```toml
 [aica]
-mode = "local-only"   # or "cloud-default"
+mode = "local-only"   # or "auto"
 ```
 
 ## Graceful degradation
 
-In `cloud-default`, if no `ANTHROPIC_API_KEY` / `anthropic` package is present,
-the cloud provider simply isn't built and heavy steps fall back to the best
-available **local** model. The assistant always runs; it never hard-fails for
-lack of cloud access.
+If `auto` would use the cloud but no `ANTHROPIC_API_KEY` / `anthropic` package is
+present, the cloud provider isn't built and heavy steps fall back to the best
+available local model (or the small one). The assistant always runs; it never
+hard-fails for lack of cloud access.
