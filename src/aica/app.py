@@ -7,6 +7,8 @@ plugins, and builds the routed planner.
 
 from __future__ import annotations
 
+from . import platform_support
+from .action.desktop import DesktopController
 from .action.input import InputController
 from .action.killswitch import KillSwitch
 from .config import Config
@@ -14,6 +16,7 @@ from .core.events import EventBus
 from .core.orchestrator import Orchestrator
 from .core.registry import ToolRegistry
 from .llm.router import build_default_planner
+from .perception.desktop import DesktopPerception
 from .perception.mock import MockPerception
 from .plugins.computer_use import ComputerUsePlugin
 from .plugins.loader import discover
@@ -24,21 +27,31 @@ def build_assistant(config: Config, *, headless: bool = True,
     bus = EventBus()
     registry = ToolRegistry()
 
-    # Eyes + hands: either a native worker process (polyglot boundary) or the
-    # in-process Python backends. The orchestrator can't tell the difference.
-    worker_client = None
+    # Eyes + hands. Three cases:
+    #   1. native worker process (polyglot boundary),
+    #   2. a real desktop (Windows/Mac): DesktopPerception + live input,
+    #   3. headless/dev: mock perception + simulated input.
+    # The orchestrator can't tell which is in play.
+    locator = None
     if config.use_native_worker:
         from .workers.client import WorkerClient
         from .workers.proxy import WorkerInputController, WorkerPerception
         worker_client = WorkerClient(config.worker_command).start()
         input_controller = WorkerInputController(worker_client)
+        desktop = DesktopController(dry_run=config.dry_run)
         perception = WorkerPerception(worker_client)
     else:
         input_controller = InputController(dry_run=config.dry_run)
-        perception = MockPerception()  # -> DesktopPerception on a real desktop
+        desktop = DesktopController(dry_run=config.dry_run)
+        if not headless and platform_support.is_supported():
+            dp = DesktopPerception()
+            perception = dp
+            locator = dp.locate            # element-targeted clicks
+        else:
+            perception = MockPerception()  # headless/dev
 
-    # Built-in computer-use plugin (the 'hands').
-    registry.register_plugin(ComputerUsePlugin(input_controller))
+    # Built-in computer-use plugin (the 'hands' + reach).
+    registry.register_plugin(ComputerUsePlugin(input_controller, desktop, locator))
 
     # Discovered drop-in plugins.
     for lp in discover(config.plugins_dir):

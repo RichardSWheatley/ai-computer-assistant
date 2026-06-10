@@ -1,39 +1,55 @@
-"""Real desktop perception: screenshot + accessibility tree + OCR fusion.
+"""Real desktop perception: accessibility tree (+ screenshot) -> ScreenState.
 
-Cheap-first policy (see docs/PERFORMANCE.md): read the accessibility tree first
-(instant, no model), fall back to vision/OCR only when the UI isn't accessible.
-Heavy deps are imported lazily so this module loads on any platform.
+Cheap-first policy (docs/PERFORMANCE.md): read the accessibility tree first
+(instant, no model); capture pixels for the record but only lean on vision/OCR
+when the tree is empty (vision/OCR is a future plug-in point here).
+
+`fuse()` is pure and unit-tested; the OS-specific capture/a11y are injected so
+the perception object is testable with fakes.
 """
 
 from __future__ import annotations
 
 from ..core.interfaces import Element, Perception, ScreenState
+from .a11y import A11yBackend, get_a11y_backend
+from .capture import capture_screen
+
+
+def fuse(a11y: list[Element], ocr: list[Element] | None = None) -> list[Element]:
+    """Merge a11y + OCR elements, deduping by (label, rough position)."""
+    out: list[Element] = []
+    seen: set[tuple[str, int, int]] = set()
+    for e in list(a11y) + list(ocr or []):
+        key = (e.label.strip().lower(), e.x // 20, e.y // 20)
+        if key in seen:
+            continue
+        seen.add(key)
+        out.append(e)
+    return out
 
 
 class DesktopPerception(Perception):
-    """Skeleton. Wire up `mss` (capture), UI Automation (a11y), and OCR here."""
-
-    def __init__(self, screenshot_dir: str = ".aica/screens") -> None:
-        self.screenshot_dir = screenshot_dir
-
-    def _capture(self) -> str | None:
-        try:  # pragma: no cover - needs a display + optional deps
-            import os
-            import mss  # type: ignore
-            os.makedirs(self.screenshot_dir, exist_ok=True)
-            path = os.path.join(self.screenshot_dir, "frame.png")
-            with mss.mss() as sct:
-                sct.shot(output=path)
-            return path
-        except Exception:
-            return None
-
-    def _a11y_elements(self) -> list[Element]:  # pragma: no cover
-        # TODO: Windows UI Automation via pywinauto/uiautomation.
-        return []
+    def __init__(self, a11y: A11yBackend | None = None, capture=capture_screen,
+                 ocr=None) -> None:
+        self.a11y = a11y or get_a11y_backend()
+        self._capture = capture
+        self._ocr = ocr  # optional callable(path) -> list[Element]
 
     def observe(self) -> ScreenState:
-        path = self._capture()
-        elements = self._a11y_elements()
-        summary = "desktop" if path else "desktop (no capture backend installed)"
+        shot = self._capture() if self._capture else None
+        path = shot[0] if shot else None
+
+        elements = self.a11y.elements()
+        if not elements and self._ocr and path:
+            elements = self._ocr(path)  # fall back to vision/OCR only when needed
+
+        elements = fuse(elements, None)
+        summary = (f"{len(elements)} elements"
+                   + (f", {shot[1][0]}x{shot[1][1]} screen" if shot else "")) \
+            if elements or shot else "desktop (no capture/a11y backend available)"
         return ScreenState(summary=summary, elements=elements, screenshot_path=path)
+
+    def locate(self, label: str) -> tuple[int, int] | None:
+        """Resolve a label to click coordinates via the accessibility tree."""
+        el = self.a11y.find(label)
+        return (el.x, el.y) if el else None
