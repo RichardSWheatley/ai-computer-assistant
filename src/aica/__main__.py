@@ -35,6 +35,8 @@ def cmd_doctor(_args) -> int:
     print(f"lean on Claude  : {rec['lean_on_claude']}")
     print(f"note            : {rec['note']}")
     print(f"os note         : {platform_support.notes()}")
+    cfg = load_config()
+    print(f"default mode    : {cfg.mode}  (use `aica run --local-only` for privacy)")
     return 0
 
 
@@ -48,13 +50,16 @@ def cmd_plugins(_args) -> int:
 
 
 def cmd_run(args) -> int:
-    cfg = load_config()
+    cfg = load_config(local_only=args.local_only)
     asst = build_assistant(cfg)
+    route = getattr(asst.planner, "mode", None)
+    print(f"=== Run: {args.goal!r}  [mode: {cfg.mode}] ===")
     result = asst.run(args.goal)
-    print(f"=== Run: {result.goal!r} ===")
     for st in result.steps:
         flag = "ok " if st.ok else "ERR"
         print(f"  [{st.step:02d}] {flag} {st.call.tool:12} -> {st.detail}")
+    if hasattr(asst.planner, "last_route"):
+        print(f"last route      : {asst.planner.last_route}")
     print(f"finished: {result.finished} | {result.message}")
     return 0
 
@@ -67,6 +72,8 @@ def main(argv: list[str] | None = None) -> int:
     sub.add_parser("plugins", help="list registered tools")
     run = sub.add_parser("run", help="run the agent toward a goal")
     run.add_argument("goal", help="natural-language goal")
+    run.add_argument("--local-only", action="store_true",
+                     help="privacy mode: never use the cloud (nothing leaves the machine)")
 
     args = parser.parse_args(argv)
     return {"doctor": cmd_doctor, "plugins": cmd_plugins, "run": cmd_run}[args.cmd](args)
