@@ -45,6 +45,8 @@ See **[docs/QUICKSTART.md](docs/QUICKSTART.md)** to enable real GPU/perception/c
 - **[Top 10 Requirements](docs/TOP-10-REQUIREMENTS.md)** — the ten things we need to build, in priority order.
 - **[Modularity & Plugins](docs/MODULARITY.md)** — how features drop in without touching the core.
 - **[Performance & Hardware](docs/PERFORMANCE.md)** — speed strategy, VRAM/RAM, and recommended hardware.
+- **[Worker Protocol](docs/WORKER-PROTOCOL.md)** — the Python⇄native (Rust) boundary contract.
+- **[Decisions (ADRs)](docs/adr/)** — language choice & polyglot architecture.
 - **[Business Capabilities](docs/BUSINESS-CAPABILITIES.md)** — Teams, Outlook, PowerPoint, and more.
 - **[Roadmap](docs/ROADMAP.md)** — phased delivery plan.
 - **[Tech Stack](docs/TECH-STACK.md)** — concrete library and tooling choices.

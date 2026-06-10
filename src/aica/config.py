@@ -24,6 +24,11 @@ class Config:
     plugins_dir: str = "plugins"
     max_steps: int = 20
     dry_run: bool = True
+    # Polyglot boundary: when True, the eyes/hands run in a separate worker
+    # process. `worker_command` defaults to the Python reference worker; point
+    # it at a compiled Rust binary in production. Same protocol either way.
+    use_native_worker: bool = False
+    worker_command: list[str] | None = None
 
 
 def load_config(path: str | Path | None = None,
