@@ -1,0 +1,8 @@
+# Example drop-in plugin. Copy this folder to scaffold a new feature.
+[plugin]
+name = "hello"
+version = "0.1.0"
+permission_tier = "read_only"
+scopes = []
+isolation = "in_process"
+enabled = true

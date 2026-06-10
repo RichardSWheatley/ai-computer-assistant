@@ -24,8 +24,23 @@ drafting emails, managing chats and meetings, and generating richly-designed
 | 🧠 **Local-first** | Runs on your PC. Local LLM option for privacy; cloud models optional for heavy reasoning. |
 | 🔒 **Safe by design** | Sandboxed actions, confirmation gates for risky operations, full audit log. |
 
+## Status: runnable MVP skeleton
+
+Phase 0 + 1 is scaffolded and runs **headless with zero heavy deps** (mock
+providers), so the agent loop is testable anywhere before you set up a GPU.
+First-pass desktop targets are **Windows and macOS**.
+
+```bash
+pip install -e .
+aica doctor                          # detected GPU/VRAM, backend, model pick
+aica run "type hello into notepad"   # perceive -> plan -> act -> verify
+```
+
+See **[docs/QUICKSTART.md](docs/QUICKSTART.md)** to enable real GPU/perception/control.
+
 ## Documentation
 
+- **[Quickstart](docs/QUICKSTART.md)** — install, run, and enable real backends.
 - **[Architecture](docs/ARCHITECTURE.md)** — system design, components, and data flow.
 - **[Top 10 Requirements](docs/TOP-10-REQUIREMENTS.md)** — the ten things we need to build, in priority order.
 - **[Modularity & Plugins](docs/MODULARITY.md)** — how features drop in without touching the core.

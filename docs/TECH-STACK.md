@@ -1,7 +1,17 @@
 # Tech Stack
 
-Concrete, opinionated library choices. Targets **Windows** first (best for the
-Microsoft 365 + UI Automation story), with a path to macOS/Linux.
+Concrete, opinionated library choices. **First pass targets Windows + macOS**
+(the two desktops where this gets daily use). Linux is best-effort later.
+
+| Concern | Windows | macOS |
+|---|---|---|
+| GPU acceleration | **CUDA** (NVIDIA) | **Metal** (Apple Silicon unified memory) |
+| Accessibility tree | UI Automation (`pywinauto`, `uiautomation`) | Accessibility API / `AXUIElement` (`pyobjc`) |
+| Simulated input | `pyautogui` + `pydirectinput` | `pyautogui` + Quartz |
+| Permissions | input access | grant **Accessibility + Screen Recording** in System Settings → Privacy |
+
+`aica/platform_support.py` selects these per-OS so the rest of the code is
+platform-agnostic. Run `aica doctor` to see what's detected on each machine.
 
 ## Language
 
