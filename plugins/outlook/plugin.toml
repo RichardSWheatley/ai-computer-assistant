@@ -1,0 +1,9 @@
+# Outlook (Microsoft Graph). Opt-in: needs msal + a signed-in account.
+# Enable by setting enabled = true and configuring AICA_GRAPH_* env vars.
+[plugin]
+name = "outlook"
+version = "0.1.0"
+permission_tier = "outward_facing"
+scopes = ["graph.mail.read", "graph.mail.readwrite", "graph.mail.send"]
+isolation = "in_process"
+enabled = false

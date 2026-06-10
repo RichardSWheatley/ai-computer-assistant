@@ -42,6 +42,23 @@ Copy `plugins/hello/` to `plugins/<your-feature>/`, edit `plugin.toml` and
 | Screen capture | `pip install -e ".[perception]"` | `mss` + OCR |
 | Mouse/keyboard control | `pip install -e ".[control]"` | Real simulated input |
 | Windows a11y | `pip install -e ".[windows]"` | UI Automation |
+| Business (Outlook/Teams/PPTX) | `pip install -e ".[business]"` | see below |
+
+### Business plugins (opt-in)
+
+The `outlook`, `teams`, and `powerpoint` plugins live in `plugins/` but ship
+**disabled** (`enabled = false`) because they need extra deps / accounts. To turn
+one on, set `enabled = true` in its `plugin.toml`:
+
+| Plugin | Needs | Notes |
+|---|---|---|
+| `powerpoint` | `python-pptx` | Generates real `.pptx` decks (charts, big-number, sections) |
+| `outlook` | `msal` + a signed-in account (`AICA_GRAPH_*` env) | Drafting is gated; **sending is confirmation-gated** |
+| `teams` | `msal` + a signed-in account | Posting is confirmation-gated |
+
+Outlook/Teams use the **Microsoft Graph API** (delegated OAuth, least-privilege
+scopes), not UI scraping. Outward-facing actions (send mail, post to Teams) are
+the `outward_facing` permission tier — the orchestrator asks before doing them.
 
 > **macOS:** grant **Accessibility** + **Screen Recording** permissions in
 > System Settings → Privacy & Security before perception/control will work.

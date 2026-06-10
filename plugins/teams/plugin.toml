@@ -1,0 +1,8 @@
+# Microsoft Teams (Graph). Opt-in: needs msal + a signed-in account.
+[plugin]
+name = "teams"
+version = "0.1.0"
+permission_tier = "outward_facing"
+scopes = ["graph.channelmessage.send"]
+isolation = "in_process"
+enabled = false

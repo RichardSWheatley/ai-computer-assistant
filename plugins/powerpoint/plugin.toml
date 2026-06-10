@@ -1,0 +1,9 @@
+# PowerPoint deck generation. Opt-in: needs `python-pptx`.
+# Enable by setting enabled = true (and: pip install -e ".[business]").
+[plugin]
+name = "powerpoint"
+version = "0.1.0"
+permission_tier = "local_write"
+scopes = []
+isolation = "in_process"
+enabled = false
