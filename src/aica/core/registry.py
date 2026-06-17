@@ -28,7 +28,9 @@ class ToolRegistry:
         return name in self._schemas
 
     def tier(self, name: str) -> str:
-        return self._schemas[name].permission_tier if name in self._schemas else "read_only"
+        # Fail closed: an unknown tool is treated as maximally restricted so the
+        # gate blocks it rather than letting an unregistered action through.
+        return self._schemas[name].permission_tier if name in self._schemas else "outward_facing"
 
     def dispatch(self, call: ToolCall) -> ToolResult:
         owner = self._owner.get(call.tool)

@@ -24,11 +24,13 @@ never commands.** This is the SQL-injection lesson applied to LLMs.
 | **Outbound DLP** — scan/redact secrets before anything leaves the machine | ✅ | `security/dlp.py` |
 | **Cloud redaction** — raw screenshots never sent to the cloud | ✅ | `llm/router.py` `_redact` |
 | **Kill switch** — global hotkey halts all input | ✅ | `action/killswitch.py` |
-| **Action–provenance binding** — escalate confirmation for a local write right after untrusted content | hook | `SecurityPolicy.needs_confirmation(untrusted_context=True)` |
-| **Quarantined-LLM pattern** — privileged planner never sees raw untrusted content; a quarantined model returns typed, validated data | planned | future |
+| **Quarantine boundary** — the privileged planner only ever sees sanitized, typed, scanned observations; raw untrusted content (incl. tool output) is contained | ✅ | `security/quarantine.py`, `core/orchestrator.py` |
+| **Action–provenance binding** — a local write right after suspicious untrusted content is escalated to require confirmation | ✅ | `SecurityPolicy.needs_confirmation(untrusted_context=…)`, orchestrator |
+| **Fail-closed gating** — unknown/unregistered tools are treated as maximally restricted | ✅ | `core/registry.py` |
+| **Tamper-evident audit log** — hash-chained JSONL; any edit/deletion breaks `verify()` | ✅ | `security/audit.py` |
+| **Quarantined-LLM (model)** — a Q-LLM with no tools summarizes free-text; its output is re-scanned | hook | `Quarantine(q_llm=…)` |
 | **Sandboxing** — code exec / native worker in a restricted container | planned | `workers/` is the boundary |
 | **Secret isolation** — vault; injected by proxy after leaving the sandbox | planned | OS keychain |
-| **Tamper-evident audit log** | planned | append-only JSONL |
 
 ## How an injection attempt fails here
 

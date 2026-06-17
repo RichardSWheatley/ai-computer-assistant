@@ -32,6 +32,8 @@ class Config:
     # it at a compiled Rust binary in production. Same protocol either way.
     use_native_worker: bool = False
     worker_command: list[str] | None = None
+    # Tamper-evident audit log path; None keeps the log in-memory only.
+    audit_path: str | None = None
 
 
 def load_config(path: str | Path | None = None,

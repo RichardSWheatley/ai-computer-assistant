@@ -9,6 +9,8 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 
+from ..security.policy import SecurityPolicy
+from ..security.quarantine import Quarantine
 from . import events
 from .events import EventBus
 from .interfaces import LLMProvider, Perception, ToolCall
@@ -44,8 +46,11 @@ class Orchestrator:
         *,
         bus: EventBus | None = None,
         kill_switch=None,
-        confirm=None,          # callable(ToolCall) -> bool for gated actions
+        confirm=None,          # callable(ToolCall) -> bool; the human yes/no prompt
         max_steps: int = 20,
+        policy: SecurityPolicy | None = None,
+        quarantine: Quarantine | None = None,
+        audit=None,
     ) -> None:
         self.perception = perception
         self.planner = planner
@@ -54,15 +59,27 @@ class Orchestrator:
         self.kill_switch = kill_switch
         self.confirm = confirm
         self.max_steps = max_steps
+        self.policy = policy or SecurityPolicy()
+        self.quarantine = quarantine or Quarantine()
+        self.audit = audit
+        self._suspicious = False  # set when the latest untrusted input looks hostile
+
+    def _needs_confirmation(self, call: ToolCall) -> bool:
+        tier = self.registry.tier(call.tool)
+        return self.policy.needs_confirmation(tier, untrusted_context=self._suspicious)
 
     def _gated(self, call: ToolCall) -> bool:
         """Return True if the action is allowed to proceed."""
-        tier = self.registry.tier(call.tool)
-        if tier == "read_only":
+        if not self._needs_confirmation(call):
             return True
+        # Confirmation is required. Secure default: no human confirmer -> deny.
         if self.confirm is None:
-            return True  # no gate wired up -> allow (dev/headless default)
+            return False
         return bool(self.confirm(call))
+
+    def would_allow(self, call: ToolCall) -> bool:
+        """Public view of the gate (for UIs/tests) under current suspicion state."""
+        return self._gated(call)
 
     def run(self, goal: str) -> RunResult:
         result = RunResult(goal=goal, finished=False)
@@ -74,39 +91,50 @@ class Orchestrator:
                 result.message = "Halted by kill switch."
                 break
 
-            # 1. PERCEIVE
-            state = self.perception.observe()
-            self.bus.publish(events.SCREEN_CHANGED, state)
+            # 1. PERCEIVE -> QUARANTINE. The privileged planner only ever sees
+            # sanitized, typed data; raw untrusted content is contained here.
+            raw_state = self.perception.observe()
+            sanitized = self.quarantine.sanitize_state(raw_state)
+            self._suspicious = sanitized.suspicious
+            safe_state = sanitized.to_state()
+            self.bus.publish(events.SCREEN_CHANGED, safe_state)
 
-            # 2. PLAN
-            call = self.planner.plan(goal, state, self.registry.schemas(), history)
+            # 2. PLAN (on sanitized observation only)
+            call = self.planner.plan(goal, safe_state, self.registry.schemas(), history)
 
             if call.tool == self.DONE_TOOL:
                 result.finished = True
                 result.message = call.reasoning or "Task complete."
-                result.steps.append(StepLog(step, state.summary, call, True, "done"))
+                result.steps.append(StepLog(step, safe_state.summary, call, True, "done"))
                 break
 
-            # gate risky actions
+            # gate risky actions (provenance binding: suspicion escalates the bar)
             if not self._gated(call):
+                reason = ("blocked: action needs confirmation after suspicious "
+                          "content" if self._suspicious else "declined (needs confirmation)")
                 result.steps.append(
-                    StepLog(step, state.summary, call, False, "declined by user"))
-                result.message = "Action declined."
+                    StepLog(step, safe_state.summary, call, False, reason))
+                result.message = reason
                 break
 
             # 3. ACT
             tool_result = self.registry.dispatch(call)
             self.bus.publish(events.ACTION_EXECUTED, (call, tool_result))
 
-            # 4. VERIFY (record; planner re-perceives next iteration)
+            # 4. VERIFY. Tool output is untrusted too -> sanitize before it enters
+            # history, and let it raise suspicion for the next step's gating.
+            clean_out, out_finding = self.quarantine.sanitize_text(
+                str(tool_result.output), source=f"tool:{call.tool}")
+            if out_finding.suspicious:
+                self._suspicious = True
             history.append({
                 "tool": call.tool, "args": call.args,
-                "ok": tool_result.ok, "output": str(tool_result.output)[:500],
+                "ok": tool_result.ok, "output": clean_out[:500],
                 "error": tool_result.error,
             })
             result.steps.append(StepLog(
-                step, state.summary, call, tool_result.ok,
-                tool_result.error or str(tool_result.output)[:200]))
+                step, safe_state.summary, call, tool_result.ok,
+                tool_result.error or clean_out[:200]))
 
             if not tool_result.ok:
                 self.bus.publish(events.ERROR_RAISED, tool_result.error)

@@ -108,9 +108,19 @@ def test_unattended_assistant_blocks_outward_action():
     asst = build_assistant(cfg)
     asst.registry.register_plugin(_SendPlugin())
     from aica.core.interfaces import ToolCall
-    assert asst.confirm(ToolCall(tool="send_it", args={"x": "y"})) is False
+    assert asst.would_allow(ToolCall(tool="send_it", args={"x": "y"})) is False
     # local actions are still allowed unattended
-    assert asst.confirm(ToolCall(tool="click", args={})) is True
+    assert asst.would_allow(ToolCall(tool="click", args={})) is True
+
+
+def test_suspicion_escalates_local_write_confirmation():
+    # Provenance binding: under suspicion, even a local write needs confirmation.
+    cfg = load_config()
+    asst = build_assistant(cfg)
+    from aica.core.interfaces import ToolCall
+    assert asst.would_allow(ToolCall(tool="click", args={})) is True
+    asst._suspicious = True   # simulate just-ingested hostile content
+    assert asst.would_allow(ToolCall(tool="click", args={})) is False
 
 
 def test_local_actions_run_unattended():

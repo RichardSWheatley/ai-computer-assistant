@@ -20,7 +20,9 @@ from .perception.desktop import DesktopPerception
 from .perception.mock import MockPerception
 from .plugins.computer_use import ComputerUsePlugin
 from .plugins.loader import discover
+from .security.audit import AuditLog
 from .security.policy import SecurityPolicy
+from .security.quarantine import Quarantine
 
 
 def build_assistant(config: Config, *, headless: bool = True,
@@ -61,15 +63,18 @@ def build_assistant(config: Config, *, headless: bool = True,
         except ValueError:
             pass  # duplicate tool name -> skip, keep loading the rest
 
-    # Secure by default. If the caller didn't supply an interactive confirmer,
-    # auto-approve local actions but BLOCK outward-facing / destructive ones
-    # (send mail, post to Teams, delete) when unattended. An interactive app
-    # passes its own `confirm` to prompt the user instead.
+    # Secure by default. The orchestrator gates actions via this policy: local
+    # actions run unattended, but outward-facing / destructive ones (send mail,
+    # post, delete) require a human `confirm` — and with none wired, are blocked.
+    # Provenance binding: suspicious untrusted content escalates even local writes.
     policy = (SecurityPolicy.local_only() if config.mode == "local-only"
               else SecurityPolicy())
-    if confirm is None:
-        def confirm(call, _reg=registry, _pol=policy):
-            return not _pol.needs_confirmation(_reg.tier(call.tool))
+
+    # Quarantine: the planner only ever sees sanitized, typed observations.
+    quarantine = Quarantine()
+
+    # Tamper-evident audit log, fed by the event bus.
+    audit = AuditLog(path=config.audit_path).attach(bus)
 
     planner = planner or build_default_planner(config)
     kill = KillSwitch()
@@ -84,4 +89,7 @@ def build_assistant(config: Config, *, headless: bool = True,
         kill_switch=kill,
         confirm=confirm,
         max_steps=config.max_steps,
+        policy=policy,
+        quarantine=quarantine,
+        audit=audit,
     )
