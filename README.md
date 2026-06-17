@@ -41,7 +41,8 @@ See **[docs/QUICKSTART.md](docs/QUICKSTART.md)** to enable real GPU/perception/c
 ## Documentation
 
 - **[Quickstart](docs/QUICKSTART.md)** — install, run, and enable real backends.
-- **[Operating Modes](docs/MODES.md)** — cloud-default vs local-only (privacy).
+- **[Operating Modes](docs/MODES.md)** — auto (hardware-driven) vs local-only.
+- **[Security](docs/SECURITY.md)** — prompt-injection/jailbreak resistance, egress control, DLP.
 - **[Architecture](docs/ARCHITECTURE.md)** — system design, components, and data flow.
 - **[Top 10 Requirements](docs/TOP-10-REQUIREMENTS.md)** — the ten things we need to build, in priority order.
 - **[Modularity & Plugins](docs/MODULARITY.md)** — how features drop in without touching the core.

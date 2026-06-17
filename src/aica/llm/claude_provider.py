@@ -20,6 +20,7 @@ from __future__ import annotations
 import os
 
 from ..core.interfaces import LLMProvider, ScreenState, ToolCall, ToolSchema
+from .prompt import TRUST_DIRECTIVE, build_user_message
 from .schema import object_schema
 
 MODEL = "claude-opus-4-8"
@@ -31,7 +32,7 @@ _SYSTEM = (
     "already taken. Choose exactly ONE tool call that makes the most progress "
     "toward the goal. Call task_complete when the goal is achieved or no further "
     "action is sensible. Prefer acting on listed elements; do not invent "
-    "coordinates for elements you cannot see."
+    "coordinates for elements you cannot see.\n\n" + TRUST_DIRECTIVE
 )
 
 
@@ -79,21 +80,6 @@ class ClaudePlanner(LLMProvider):
             raise RuntimeError("anthropic package not installed") from exc
         self._client = anthropic.Anthropic(api_key=key)
 
-    def _user_message(self, goal: str, state: ScreenState, history: list[dict]) -> str:
-        lines = [f"GOAL: {goal}", "", f"SCREEN: {state.summary}"]
-        if state.elements:
-            lines.append("ELEMENTS:")
-            for e in state.elements:
-                lines.append(f"  - {e.role} {e.label!r} at ({e.x},{e.y})")
-        if history:
-            lines.append("")
-            lines.append("HISTORY (most recent last):")
-            for h in history[-10:]:
-                status = "ok" if h.get("ok") else f"ERROR: {h.get('error')}"
-                lines.append(f"  - {h.get('tool')}({h.get('args')}) -> {status}")
-        lines += ["", "Choose the single next tool call."]
-        return "\n".join(lines)
-
     def plan(self, goal: str, state: ScreenState,
              tools: list[ToolSchema], history: list[dict]) -> ToolCall:
         anthropic_tools = [to_anthropic_tool(t) for t in tools] + [_DONE_TOOL]
@@ -105,7 +91,7 @@ class ClaudePlanner(LLMProvider):
             thinking={"type": "adaptive"},
             output_config={"effort": self.effort},
             messages=[{"role": "user",
-                       "content": self._user_message(goal, state, history)}],
+                       "content": build_user_message(goal, state, history)}],
         )
 
         if getattr(message, "stop_reason", None) == "refusal":

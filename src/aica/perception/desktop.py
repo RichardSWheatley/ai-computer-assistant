@@ -11,15 +11,21 @@ the perception object is testable with fakes.
 from __future__ import annotations
 
 from ..core.interfaces import Element, Perception, ScreenState
+from ..security.injection import neutralize
 from .a11y import A11yBackend, get_a11y_backend
 from .capture import capture_screen
 
 
 def fuse(a11y: list[Element], ocr: list[Element] | None = None) -> list[Element]:
-    """Merge a11y + OCR elements, deduping by (label, rough position)."""
+    """Merge a11y + OCR elements, deduping by (label, rough position).
+
+    Element labels are untrusted input, so invisible/bidi characters used to
+    hide injected instructions are stripped at ingestion.
+    """
     out: list[Element] = []
     seen: set[tuple[str, int, int]] = set()
     for e in list(a11y) + list(ocr or []):
+        e = Element(label=neutralize(e.label), role=e.role, x=e.x, y=e.y, source=e.source)
         key = (e.label.strip().lower(), e.x // 20, e.y // 20)
         if key in seen:
             continue

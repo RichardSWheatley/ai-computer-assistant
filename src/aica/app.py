@@ -20,6 +20,7 @@ from .perception.desktop import DesktopPerception
 from .perception.mock import MockPerception
 from .plugins.computer_use import ComputerUsePlugin
 from .plugins.loader import discover
+from .security.policy import SecurityPolicy
 
 
 def build_assistant(config: Config, *, headless: bool = True,
@@ -59,6 +60,16 @@ def build_assistant(config: Config, *, headless: bool = True,
             registry.register_plugin(lp.instance)
         except ValueError:
             pass  # duplicate tool name -> skip, keep loading the rest
+
+    # Secure by default. If the caller didn't supply an interactive confirmer,
+    # auto-approve local actions but BLOCK outward-facing / destructive ones
+    # (send mail, post to Teams, delete) when unattended. An interactive app
+    # passes its own `confirm` to prompt the user instead.
+    policy = (SecurityPolicy.local_only() if config.mode == "local-only"
+              else SecurityPolicy())
+    if confirm is None:
+        def confirm(call, _reg=registry, _pol=policy):
+            return not _pol.needs_confirmation(_reg.tier(call.tool))
 
     planner = planner or build_default_planner(config)
     kill = KillSwitch()

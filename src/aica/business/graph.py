@@ -22,9 +22,11 @@ class GraphError(RuntimeError):
 
 
 class GraphClient:
-    def __init__(self, token: str, session=None, base_url: str = GRAPH_BASE) -> None:
+    def __init__(self, token: str, session=None, base_url: str = GRAPH_BASE,
+                 egress=None) -> None:
         self.token = token
         self.base_url = base_url.rstrip("/")
+        self.egress = egress  # optional security.egress.EgressPolicy
         if session is not None:
             self._session = session
         else:  # pragma: no cover - needs the requests package
@@ -65,14 +67,19 @@ class GraphClient:
                 "Content-Type": "application/json"}
 
     def _get(self, path: str) -> dict:
-        r = self._session.get(self.base_url + path, headers=self._headers())
+        url = self.base_url + path
+        if self.egress is not None:
+            self.egress.check(url)
+        r = self._session.get(url, headers=self._headers())
         if r.status_code >= 400:
             raise GraphError(f"GET {path} -> {r.status_code}")
         return r.json()
 
     def _post(self, path: str, body: dict | None = None) -> dict:
-        r = self._session.post(self.base_url + path, headers=self._headers(),
-                               json=body or {})
+        url = self.base_url + path
+        if self.egress is not None:
+            self.egress.check(url)
+        r = self._session.post(url, headers=self._headers(), json=body or {})
         if r.status_code >= 400:
             raise GraphError(f"POST {path} -> {r.status_code}")
         return r.json() if (r.text if hasattr(r, "text") else True) else {}
