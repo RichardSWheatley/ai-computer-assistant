@@ -15,6 +15,7 @@ cloud = ["anthropic"]                 # Claude escalation
 perception = ["mss", "pillow", "rapidocr-onnxruntime"]
 business = ["python-pptx", "python-docx", "openpyxl", "msal", "requests"]
 secrets = ["keyring"]
+voice = ["faster-whisper", "sounddevice", "pyttsx3"]
 control = ["pyautogui", "pynput", "pyperclip", "pygetwindow"]
 windows = ["pywinauto", "uiautomation"]
 dev = ["pytest"]

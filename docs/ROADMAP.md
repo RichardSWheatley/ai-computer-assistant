@@ -28,7 +28,9 @@ office docs) are opt-in.
 | Secret vault (OS keychain + `vault:` refs) | ✅ shipped | `feature/secret-vault` |
 | Interactive confirmation (`aica run --confirm`) | ✅ shipped | `feature/control-ui` |
 | Word (.docx) + Excel (.xlsx) generation | ✅ shipped | `feature/office-docs` |
-| Workflows engine + persistent memory/RAG | ✅ shipped | `feature/workflows` (tip) |
+| Workflows engine + persistent memory/RAG | ✅ shipped | `feature/workflows` |
+| Weekend path: no-key `aica doc` CLI, `--live`, no-GPU routing | ✅ shipped | `feature/weekend-quickstart` |
+| Voice I/O: mic→Whisper→task→TTS speaker (`aica talk`) | ✅ shipped | `feature/voice-io` (tip) |
 
 ## What's next (remaining backlog)
 

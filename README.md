@@ -19,6 +19,7 @@ drafting emails, managing chats and meetings, and generating richly-designed
 |---|---|
 | 👁️ **Screen vision** | Captures the screen and understands UI elements via a vision model + accessibility tree. |
 | 🖱️ **Computer control** | Moves/clicks the mouse and types via simulated input. Opens and switches between apps. |
+| 🎙️ **Voice in/out** | Talk to it (local Whisper) and it talks back (offline TTS) via `aica talk`. |
 | 🧑‍💻 **Programmer mode** | Reads/writes code, runs commands, debugs, reviews diffs, drives the IDE and terminal. |
 | 🏢 **Business mode** | Teams messaging, Outlook email + calendar, and PowerPoint deck generation with strong graphics. |
 | 🧠 **Local-first** | Runs on your PC. Local LLM option for privacy; cloud models optional for heavy reasoning. |

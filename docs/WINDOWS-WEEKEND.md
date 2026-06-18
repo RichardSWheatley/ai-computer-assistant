@@ -76,6 +76,25 @@ python -m aica run "open Notepad and type a hello note" --live --confirm
   Reading the screen via UI Automation may need a little tuning per app — see
   `docs/SECURITY.md` and `docs/PERFORMANCE.md`.
 
+---
+
+## Track C — Talk to it (voice in + voice out)
+
+Speak commands; the assistant runs them and speaks back. Listening is local
+(Whisper, CPU — no GPU); speaking is offline (Windows SAPI via pyttsx3).
+
+```powershell
+pip install -e ".[voice]"
+python -m aica talk                       # safe simulation
+python -m aica talk --live --confirm      # actually drives the screen
+```
+
+- It greets you, records ~5 seconds per turn (`--seconds N` to change),
+  transcribes, runs the task, and speaks a summary.
+- Say **"stop listening"** (or Ctrl+C) to end.
+- First run downloads the Whisper model (`--model tiny` is fastest; `base` is the
+  default; `small` is more accurate). `sounddevice` needs a working mic.
+
 ### 4. (Optional) Business apps — Outlook / Teams
 
 These are opt-in. Put your token in the vault (never in a prompt), then enable

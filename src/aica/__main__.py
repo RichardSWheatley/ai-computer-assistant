@@ -90,6 +90,32 @@ def cmd_doc(args) -> int:
     return 0
 
 
+def cmd_talk(args) -> int:
+    cfg = load_config(local_only=args.local_only)
+    if args.live:
+        cfg.dry_run = False
+    confirm = None
+    if args.confirm:
+        from .ui.console import make_console_confirmer
+        confirm = make_console_confirmer()
+    asst = build_assistant(cfg, confirm=confirm, headless=not args.live)
+    try:
+        from .voice.loop import VoiceLoop, make_orchestrator_handler
+        from .voice.mic import MicRecorder
+        from .voice.stt import WhisperSTT
+        from .voice.tts import Pyttsx3TTS
+    except Exception as exc:  # pragma: no cover
+        print(f"voice deps missing: {exc}\n  pip install -e \".[voice]\"")
+        return 1
+    loop = VoiceLoop(MicRecorder(seconds=args.seconds), WhisperSTT(model=args.model),
+                     Pyttsx3TTS(), make_orchestrator_handler(asst))
+    mode_note = "LIVE (real input)" if args.live else "simulation (safe)"
+    print(f"=== Talk to AICA  [mode: {cfg.mode} | {mode_note}] ===")
+    print("Speak after the greeting. Say 'stop listening' or Ctrl+C to end.")
+    loop.run()
+    return 0
+
+
 def cmd_workflow(args) -> int:
     from .workflows.engine import BUILTINS, WorkflowEngine
     if args.name not in BUILTINS:
@@ -137,9 +163,20 @@ def main(argv: list[str] | None = None) -> int:
     wf.add_argument("--local-only", action="store_true")
     wf.add_argument("--confirm", action="store_true")
 
+    talk = sub.add_parser("talk", help="voice mode: speak to the assistant, it speaks back")
+    talk.add_argument("--live", action="store_true",
+                      help="drive the real screen (default is a safe simulation)")
+    talk.add_argument("--confirm", action="store_true",
+                      help="prompt for approval on high-risk actions")
+    talk.add_argument("--local-only", action="store_true")
+    talk.add_argument("--seconds", type=float, default=5.0,
+                      help="seconds to record per turn (default 5)")
+    talk.add_argument("--model", default="base",
+                      help="Whisper model size: tiny|base|small|medium (default base)")
+
     args = parser.parse_args(argv)
     return {"doctor": cmd_doctor, "plugins": cmd_plugins, "run": cmd_run,
-            "doc": cmd_doc, "workflow": cmd_workflow}[args.cmd](args)
+            "doc": cmd_doc, "workflow": cmd_workflow, "talk": cmd_talk}[args.cmd](args)
 
 
 if __name__ == "__main__":
