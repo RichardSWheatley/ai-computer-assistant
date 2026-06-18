@@ -23,7 +23,11 @@ class GraphError(RuntimeError):
 
 class GraphClient:
     def __init__(self, token: str, session=None, base_url: str = GRAPH_BASE,
-                 egress=None) -> None:
+                 egress=None, vault=None) -> None:
+        # `token` may be a 'vault:NAME' reference; resolved here so the raw
+        # secret never lives in config or prompts.
+        if vault is not None:
+            token = vault.resolve(token)
         self.token = token
         self.base_url = base_url.rstrip("/")
         self.egress = egress  # optional security.egress.EgressPolicy
