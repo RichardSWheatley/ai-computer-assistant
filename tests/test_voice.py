@@ -2,9 +2,10 @@
 
 from dataclasses import dataclass, field
 
-from aica.voice.loop import VoiceLoop, make_orchestrator_handler
-from aica.voice.mic import FakeRecorder
+from aica.voice.loop import VoiceLoop, build_voice_loop, make_orchestrator_handler
+from aica.voice.mic import FakeRecorder, MicRecorder, PushToTalkRecorder
 from aica.voice.stt import FakeSTT
+from aica.voice.trigger import FakeTrigger
 from aica.voice.tts import FakeTTS
 
 
@@ -52,6 +53,44 @@ def test_stop_phrase_ends_without_running():
     heard, said = loop.converse_once()
     assert loop.is_stop(heard) and said == "Goodbye."
     assert ran["n"] == 0
+
+
+# --- push-to-talk trigger --------------------------------------------------
+
+def test_trigger_gates_each_turn():
+    runs = {"n": 0}
+
+    def handler(text):
+        runs["n"] += 1
+        return "ok"
+
+    # Proceed once, then quit at the prompt.
+    loop = VoiceLoop(FakeRecorder(), FakeSTT("do something"), FakeTTS(),
+                     handler, trigger=FakeTrigger([True, False]))
+    loop.run()
+    assert runs["n"] == 1                 # exactly one gated turn ran
+    assert loop.trigger.calls == 2        # asked, ran, asked again -> quit
+
+
+def test_trigger_quit_immediately_runs_no_turns():
+    runs = {"n": 0}
+    loop = VoiceLoop(FakeRecorder(), FakeSTT("anything"), FakeTTS(),
+                     lambda t: runs.__setitem__("n", runs["n"] + 1) or "x",
+                     trigger=FakeTrigger([False]))
+    loop.run()
+    assert runs["n"] == 0
+
+
+def test_build_voice_loop_selects_backends():
+    asst = _FakeAssistant(_Run(finished=True))
+    ptt = build_voice_loop(asst, push_to_talk=True)
+    assert isinstance(ptt.recorder, PushToTalkRecorder)
+    assert ptt.trigger is not None       # press-Enter-to-talk gate wired in
+
+    cont = build_voice_loop(asst, push_to_talk=False, seconds=3.0)
+    assert isinstance(cont.recorder, MicRecorder)
+    assert cont.recorder.seconds == 3.0
+    assert cont.trigger is None          # continuous listening, no gate
 
 
 # --- orchestrator handler --------------------------------------------------

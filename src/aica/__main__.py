@@ -100,18 +100,16 @@ def cmd_talk(args) -> int:
         confirm = make_console_confirmer()
     asst = build_assistant(cfg, confirm=confirm, headless=not args.live)
     try:
-        from .voice.loop import VoiceLoop, make_orchestrator_handler
-        from .voice.mic import MicRecorder
-        from .voice.stt import WhisperSTT
-        from .voice.tts import Pyttsx3TTS
+        from .voice.loop import build_voice_loop
     except Exception as exc:  # pragma: no cover
         print(f"voice deps missing: {exc}\n  pip install -e \".[voice]\"")
         return 1
-    loop = VoiceLoop(MicRecorder(seconds=args.seconds), WhisperSTT(model=args.model),
-                     Pyttsx3TTS(), make_orchestrator_handler(asst))
+    loop = build_voice_loop(asst, push_to_talk=args.push_to_talk,
+                            seconds=args.seconds, model=args.model)
     mode_note = "LIVE (real input)" if args.live else "simulation (safe)"
-    print(f"=== Talk to AICA  [mode: {cfg.mode} | {mode_note}] ===")
-    print("Speak after the greeting. Say 'stop listening' or Ctrl+C to end.")
+    listen = "push-to-talk (Enter)" if args.push_to_talk else f"continuous ({args.seconds}s turns)"
+    print(f"=== Talk to AICA  [mode: {cfg.mode} | {mode_note} | {listen}] ===")
+    print("Say 'stop listening' or press Ctrl+C to end.")
     loop.run()
     return 0
 
@@ -169,8 +167,10 @@ def main(argv: list[str] | None = None) -> int:
     talk.add_argument("--confirm", action="store_true",
                       help="prompt for approval on high-risk actions")
     talk.add_argument("--local-only", action="store_true")
+    talk.add_argument("--push-to-talk", action="store_true",
+                      help="press Enter to start each turn (vs continuous listening)")
     talk.add_argument("--seconds", type=float, default=5.0,
-                      help="seconds to record per turn (default 5)")
+                      help="seconds to record per turn in continuous mode (default 5)")
     talk.add_argument("--model", default="base",
                       help="Whisper model size: tiny|base|small|medium (default base)")
 

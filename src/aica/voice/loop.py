@@ -13,6 +13,7 @@ from typing import Callable
 
 from .mic import Recorder
 from .stt import SpeechToText
+from .trigger import Trigger
 from .tts import TextToSpeech
 
 # A handler turns a transcribed request into a spoken response.
@@ -39,11 +40,12 @@ def make_orchestrator_handler(assistant) -> Handler:
 
 class VoiceLoop:
     def __init__(self, recorder: Recorder, stt: SpeechToText, tts: TextToSpeech,
-                 handler: Handler) -> None:
+                 handler: Handler, trigger: Trigger | None = None) -> None:
         self.recorder = recorder
         self.stt = stt
         self.tts = tts
         self.handler = handler
+        self.trigger = trigger  # push-to-talk / wake-word gate; None = continuous
 
     def converse_once(self) -> tuple[str, str]:
         """One turn: record, transcribe, handle, speak. Returns (heard, said)."""
@@ -61,12 +63,32 @@ class VoiceLoop:
     def is_stop(self, heard: str) -> bool:
         return heard.lower().strip(" .!?") in _STOP_PHRASES
 
-    def run(self, greeting: str = "I'm listening.") -> None:  # pragma: no cover
+    def run(self, greeting: str = "I'm listening.") -> None:
         self.tts.speak(greeting)
         try:
             while True:
+                if self.trigger is not None and not self.trigger.wait():
+                    break  # user chose to quit at the push-to-talk prompt
                 heard, _ = self.converse_once()
                 if heard and self.is_stop(heard):
                     break
-        except KeyboardInterrupt:
+        except KeyboardInterrupt:  # pragma: no cover
             self.tts.speak("Stopping.")
+
+
+def build_voice_loop(assistant, *, push_to_talk: bool = False,
+                     seconds: float = 5.0, model: str = "base") -> "VoiceLoop":
+    """Assemble a VoiceLoop with the real backends, lazily."""
+    from .stt import WhisperSTT
+    from .tts import Pyttsx3TTS
+
+    tts = Pyttsx3TTS()
+    handler = make_orchestrator_handler(assistant)
+    if push_to_talk:
+        from .mic import PushToTalkRecorder
+        from .trigger import EnterKeyTrigger
+        return VoiceLoop(PushToTalkRecorder(), WhisperSTT(model=model), tts,
+                         handler, trigger=EnterKeyTrigger())
+    from .mic import MicRecorder
+    return VoiceLoop(MicRecorder(seconds=seconds), WhisperSTT(model=model),
+                     tts, handler)

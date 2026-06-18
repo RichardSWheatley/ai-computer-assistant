@@ -30,7 +30,9 @@ office docs) are opt-in.
 | Word (.docx) + Excel (.xlsx) generation | ✅ shipped | `feature/office-docs` |
 | Workflows engine + persistent memory/RAG | ✅ shipped | `feature/workflows` |
 | Weekend path: no-key `aica doc` CLI, `--live`, no-GPU routing | ✅ shipped | `feature/weekend-quickstart` |
-| Voice I/O: mic→Whisper→task→TTS speaker (`aica talk`) | ✅ shipped | `feature/voice-io` (tip) |
+| Voice I/O: mic→Whisper→task→TTS speaker (`aica talk`) | ✅ shipped | `feature/voice-io` |
+| Push-to-talk (press Enter to talk) | ✅ shipped | `feature/voice-io` (tip) |
+| Wake-word ("Hey AICA") always-on trigger | ⏳ next | — |
 
 ## What's next (remaining backlog)
 

@@ -85,12 +85,16 @@ Speak commands; the assistant runs them and speaks back. Listening is local
 
 ```powershell
 pip install -e ".[voice]"
-python -m aica talk                       # safe simulation
-python -m aica talk --live --confirm      # actually drives the screen
+python -m aica talk --push-to-talk                    # press Enter to talk (recommended)
+python -m aica talk --push-to-talk --live --confirm   # actually drives the screen
+python -m aica talk                                    # continuous: ~5s turns, no button
 ```
 
-- It greets you, records ~5 seconds per turn (`--seconds N` to change),
-  transcribes, runs the task, and speaks a summary.
+- **Push-to-talk** (`--push-to-talk`): press **Enter** to start a turn, speak,
+  press **Enter again to stop**. No fixed time limit, no accidental triggers.
+  Type `q` at the prompt to quit.
+- **Continuous** (default): records ~5 seconds per turn (`--seconds N` to change).
+- Either way it transcribes, runs the task, and speaks a summary.
 - Say **"stop listening"** (or Ctrl+C) to end.
 - First run downloads the Whisper model (`--model tiny` is fastest; `base` is the
   default; `small` is more accurate). `sounddevice` needs a working mic.
