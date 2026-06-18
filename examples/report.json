@@ -1,0 +1,12 @@
+{
+  "title": "Weekend Status Report",
+  "subtitle": "Prepared by AICA",
+  "sections": [
+    {"heading": "Summary",
+     "paragraphs": ["The assistant is up and running on Windows without a GPU."],
+     "bullets": ["Document generation working", "Cloud brain configured", "Computer-use in testing"]},
+    {"heading": "Metrics",
+     "table": {"headers": ["Metric", "Last week", "This week"],
+               "rows": [["Decks built", "0", "3"], ["Reports built", "0", "2"]]}}
+  ]
+}

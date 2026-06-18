@@ -51,13 +51,16 @@ def cmd_plugins(_args) -> int:
 
 def cmd_run(args) -> int:
     cfg = load_config(local_only=args.local_only)
+    if args.live:
+        cfg.dry_run = False          # actually move the mouse / type for real
     confirm = None
     if args.confirm:
         from .ui.console import make_console_confirmer
         confirm = make_console_confirmer()
-    asst = build_assistant(cfg, confirm=confirm)
+    asst = build_assistant(cfg, confirm=confirm, headless=not args.live)
+    mode_note = "LIVE (real input)" if args.live else "simulation (safe)"
     gate = "interactive" if args.confirm else "secure-default (block unattended)"
-    print(f"=== Run: {args.goal!r}  [mode: {cfg.mode} | approvals: {gate}] ===")
+    print(f"=== Run: {args.goal!r}  [mode: {cfg.mode} | {mode_note} | approvals: {gate}] ===")
     result = asst.run(args.goal)
     for st in result.steps:
         flag = "ok " if st.ok else "ERR"
@@ -65,6 +68,25 @@ def cmd_run(args) -> int:
     if hasattr(asst.planner, "last_route"):
         print(f"last route      : {asst.planner.last_route}")
     print(f"finished: {result.finished} | {result.message}")
+    return 0
+
+
+def cmd_doc(args) -> int:
+    import json
+    spec = json.loads(open(args.spec).read())
+    if args.kind == "deck":
+        from .business.pptx_builder import build_deck
+        out = args.out or "deck.pptx"
+        path = build_deck(spec, out)
+    elif args.kind == "report":
+        from .business.docx_builder import build_report
+        out = args.out or "report.docx"
+        path = build_report(spec, out)
+    else:  # sheet
+        from .business.xlsx_builder import build_workbook
+        out = args.out or "workbook.xlsx"
+        path = build_workbook(spec, out)
+    print(f"wrote {path}")
     return 0
 
 
@@ -101,6 +123,15 @@ def main(argv: list[str] | None = None) -> int:
                      help="privacy mode: never use the cloud (nothing leaves the machine)")
     run.add_argument("--confirm", action="store_true",
                      help="prompt for approval on high-risk actions instead of blocking them")
+    run.add_argument("--live", action="store_true",
+                     help="drive the real screen/mouse/keyboard (default is a safe simulation)")
+
+    doc = sub.add_parser("doc", help="generate a document from a JSON spec (no GPU/key needed)")
+    doc.add_argument("kind", choices=["deck", "report", "sheet"],
+                     help="deck=.pptx, report=.docx, sheet=.xlsx")
+    doc.add_argument("spec", help="path to a JSON spec file")
+    doc.add_argument("-o", "--out", help="output path (default chosen by kind)")
+
     wf = sub.add_parser("workflow", help="run a saved multi-step workflow")
     wf.add_argument("name", help="workflow name (e.g. daily_brief, meeting_prep)")
     wf.add_argument("--local-only", action="store_true")
@@ -108,7 +139,7 @@ def main(argv: list[str] | None = None) -> int:
 
     args = parser.parse_args(argv)
     return {"doctor": cmd_doctor, "plugins": cmd_plugins, "run": cmd_run,
-            "workflow": cmd_workflow}[args.cmd](args)
+            "doc": cmd_doc, "workflow": cmd_workflow}[args.cmd](args)
 
 
 if __name__ == "__main__":

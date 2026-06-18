@@ -188,5 +188,11 @@ def build_default_planner(config) -> LLMProvider:
         except Exception:
             cloud = None
 
+    # No local model available (e.g. no GPU and no Ollama) but cloud is? Then
+    # Claude handles routine steps too — otherwise the routine path would fall
+    # back to the do-nothing MockLLM. This is the no-GPU default.
+    if small is None and cloud is not None:
+        small = cloud
+
     policy = RoutingPolicy(mode=mode)
     return LLMRouter(small=small, large=large, cloud=cloud, policy=policy)

@@ -1,0 +1,9 @@
+{
+  "sheets": [
+    {"name": "Revenue",
+     "headers": ["Quarter", "Revenue", "Customers"],
+     "rows": [["Q1", 10, 120], ["Q2", 14, 340], ["Q3", 19, 880]],
+     "chart": {"kind": "bar", "title": "Revenue by quarter",
+               "categories_col": 1, "values_col": 2}}
+  ]
+}

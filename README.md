@@ -40,6 +40,7 @@ See **[docs/QUICKSTART.md](docs/QUICKSTART.md)** to enable real GPU/perception/c
 
 ## Documentation
 
+- **[Weekend Quickstart (Windows, no GPU)](docs/WINDOWS-WEEKEND.md)** — get running this weekend.
 - **[Quickstart](docs/QUICKSTART.md)** — install, run, and enable real backends.
 - **[Operating Modes](docs/MODES.md)** — auto (hardware-driven) vs local-only.
 - **[Security](docs/SECURITY.md)** — prompt-injection/jailbreak resistance, egress control, DLP.
