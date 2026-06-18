@@ -51,9 +51,13 @@ def cmd_plugins(_args) -> int:
 
 def cmd_run(args) -> int:
     cfg = load_config(local_only=args.local_only)
-    asst = build_assistant(cfg)
-    route = getattr(asst.planner, "mode", None)
-    print(f"=== Run: {args.goal!r}  [mode: {cfg.mode}] ===")
+    confirm = None
+    if args.confirm:
+        from .ui.console import make_console_confirmer
+        confirm = make_console_confirmer()
+    asst = build_assistant(cfg, confirm=confirm)
+    gate = "interactive" if args.confirm else "secure-default (block unattended)"
+    print(f"=== Run: {args.goal!r}  [mode: {cfg.mode} | approvals: {gate}] ===")
     result = asst.run(args.goal)
     for st in result.steps:
         flag = "ok " if st.ok else "ERR"
@@ -74,6 +78,8 @@ def main(argv: list[str] | None = None) -> int:
     run.add_argument("goal", help="natural-language goal")
     run.add_argument("--local-only", action="store_true",
                      help="privacy mode: never use the cloud (nothing leaves the machine)")
+    run.add_argument("--confirm", action="store_true",
+                     help="prompt for approval on high-risk actions instead of blocking them")
 
     args = parser.parse_args(argv)
     return {"doctor": cmd_doctor, "plugins": cmd_plugins, "run": cmd_run}[args.cmd](args)
