@@ -14,6 +14,7 @@ local-llm = ["ollama"]                # local model serving
 cloud = ["anthropic"]                 # Claude escalation
 perception = ["mss", "pillow", "rapidocr-onnxruntime"]
 business = ["python-pptx", "python-docx", "openpyxl", "msal", "requests"]
+secrets = ["keyring"]
 control = ["pyautogui", "pynput", "pyperclip", "pygetwindow"]
 windows = ["pywinauto", "uiautomation"]
 dev = ["pytest"]

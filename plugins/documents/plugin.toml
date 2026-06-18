@@ -1,0 +1,8 @@
+# Word + Excel generation. Opt-in: needs python-docx + openpyxl.
+[plugin]
+name = "documents"
+version = "0.1.0"
+permission_tier = "local_write"
+scopes = []
+isolation = "in_process"
+enabled = false
