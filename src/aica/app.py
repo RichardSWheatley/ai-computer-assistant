@@ -73,7 +73,15 @@ def build_assistant(config: Config, *, headless: bool = True,
               else SecurityPolicy())
 
     # Quarantine: the planner only ever sees sanitized, typed observations.
-    quarantine = Quarantine()
+    # Optionally route untrusted free-text through a no-tools quarantined LLM.
+    q_llm = None
+    if config.use_quarantine_llm and config.use_local_llm:
+        try:  # pragma: no cover - needs a local model
+            from .llm.quarantined import QuarantinedLLM, make_ollama_backend
+            q_llm = QuarantinedLLM(make_ollama_backend(model=config.small_model))
+        except Exception:
+            q_llm = None
+    quarantine = Quarantine(q_llm=q_llm)
 
     # Tamper-evident audit log, fed by the event bus.
     audit = AuditLog(path=config.audit_path).attach(bus)

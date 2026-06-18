@@ -34,6 +34,9 @@ class Config:
     worker_command: list[str] | None = None
     # Tamper-evident audit log path; None keeps the log in-memory only.
     audit_path: str | None = None
+    # Route untrusted free-text through a no-tools quarantined LLM before the
+    # privileged planner sees it. Needs a local model; off by default.
+    use_quarantine_llm: bool = False
 
 
 def load_config(path: str | Path | None = None,
