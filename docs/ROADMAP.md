@@ -15,23 +15,34 @@ start here to move the project forward.
 | Business: Graph (Outlook/Teams/Calendar) + PowerPoint | ✅ shipped (opt-in) | `feature/business-microsoft365` |
 | Security: trust/quarantine, injection defense, egress, DLP, audit | ✅ shipped | `feature/security-and-hardening` (tip) |
 
-All of the above is on `feature/security-and-hardening` (the cumulative tip).
-**70 tests pass.** Runs headless via mock backends; real backends are opt-in.
+The latest cumulative tip is `feature/workflows`. **97 tests pass.** Runs
+headless via mock backends; real backends (GPU model, desktop control, M365,
+office docs) are opt-in.
 
-## What's next (prioritized backlog — pick the top item)
+## Recently completed (security hardening + features)
 
-1. **Sandbox the native worker / code execution** — restricted container: no
-   secret access, read-only FS where possible, egress-filtered. → `feature/worker-sandboxing`
-2. **Quarantined-LLM model split** — wire a no-tools Q-LLM behind the existing
-   `Quarantine(q_llm=…)` hook so untrusted free-text is model-summarized and
-   re-scanned before the privileged planner sees it. → `feature/quarantine-llm`
-3. **Secret vault + proxy injection** — OS keychain; credentials injected after
-   a request leaves the sandbox (never in prompts/screenshots). → `feature/secret-vault`
-4. **Interactive confirmation UI / overlay HUD** — real human approval for the
-   gated outward/destructive actions; "what I'll do next" preview. → `feature/control-ui`
-5. **Word/Excel generation** alongside PPTX. → `feature/office-docs`
-6. **Composed workflows** ("prep me for the 9am" → calendar + mail + Teams + deck)
-   and a memory/RAG store. → `feature/workflows`
+| Item | Status | Branch |
+|---|---|---|
+| Worker sandbox (scrubbed env, cwd, rlimits, no-network) | ✅ shipped | `feature/worker-sandboxing` |
+| Quarantined-LLM split (no-tools digest, re-scanned) | ✅ shipped | `feature/quarantine-llm` |
+| Secret vault (OS keychain + `vault:` refs) | ✅ shipped | `feature/secret-vault` |
+| Interactive confirmation (`aica run --confirm`) | ✅ shipped | `feature/control-ui` |
+| Word (.docx) + Excel (.xlsx) generation | ✅ shipped | `feature/office-docs` |
+| Workflows engine + persistent memory/RAG | ✅ shipped | `feature/workflows` (tip) |
+
+## What's next (remaining backlog)
+
+1. **Programmer mode** — sandboxed shell, git, test runner, codebase RAG so it
+   can fix bugs in your repo. → `feature/programmer-mode`
+2. **Overlay HUD (GUI)** — a desktop window: chat, live "what I'll do next"
+   preview, approve/deny buttons, kill switch. (CLI approval exists today.)
+   → `feature/overlay-hud`
+3. **AI imagery for decks** — generated hero/background images in PPTX.
+   → `feature/deck-imagery`
+4. **Real on-device tuning** — exercise the Windows/macOS a11y traversals and the
+   Claude/Ollama planners against a real GPU box; calibrate. → on your hardware
+5. **Rust worker binary** — implement the worker protocol natively for the hot
+   capture/input path + single-binary distribution. → `feature/rust-worker`
 
 ## Phase view (original plan, for reference)
 

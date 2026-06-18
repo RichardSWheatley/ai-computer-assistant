@@ -68,6 +68,27 @@ def cmd_run(args) -> int:
     return 0
 
 
+def cmd_workflow(args) -> int:
+    from .workflows.engine import BUILTINS, WorkflowEngine
+    if args.name not in BUILTINS:
+        print(f"unknown workflow: {args.name}")
+        print("available:", ", ".join(BUILTINS))
+        return 1
+    cfg = load_config(local_only=args.local_only)
+    confirm = None
+    if args.confirm:
+        from .ui.console import make_console_confirmer
+        confirm = make_console_confirmer()
+    asst = build_assistant(cfg, confirm=confirm)
+    print(f"=== Workflow: {args.name} ===")
+    res = WorkflowEngine(asst).run_named(args.name)
+    for i, step in enumerate(res.step_results, 1):
+        print(f"  step {i}: finished={getattr(step, 'finished', '?')} "
+              f"| {getattr(step, 'message', '')}")
+    print(f"completed: {res.completed} | {res.message}")
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="aica",
                                      description="Local AI computer assistant")
@@ -80,9 +101,14 @@ def main(argv: list[str] | None = None) -> int:
                      help="privacy mode: never use the cloud (nothing leaves the machine)")
     run.add_argument("--confirm", action="store_true",
                      help="prompt for approval on high-risk actions instead of blocking them")
+    wf = sub.add_parser("workflow", help="run a saved multi-step workflow")
+    wf.add_argument("name", help="workflow name (e.g. daily_brief, meeting_prep)")
+    wf.add_argument("--local-only", action="store_true")
+    wf.add_argument("--confirm", action="store_true")
 
     args = parser.parse_args(argv)
-    return {"doctor": cmd_doctor, "plugins": cmd_plugins, "run": cmd_run}[args.cmd](args)
+    return {"doctor": cmd_doctor, "plugins": cmd_plugins, "run": cmd_run,
+            "workflow": cmd_workflow}[args.cmd](args)
 
 
 if __name__ == "__main__":
