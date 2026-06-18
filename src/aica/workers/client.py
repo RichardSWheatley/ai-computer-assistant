@@ -20,10 +20,13 @@ class WorkerError(RuntimeError):
 
 
 class WorkerClient:
-    def __init__(self, command: list[str] | None = None) -> None:
+    def __init__(self, command: list[str] | None = None, sandbox=None) -> None:
         # Default: run the Python reference worker in-tree.
         self.command = command or [sys.executable, "-m",
                                    "aica.workers.reference_worker"]
+        # Optional security.sandbox.SandboxPolicy — scrubs env, sets cwd + rlimits
+        # so the worker never sees secrets and can't exceed resource bounds.
+        self.sandbox = sandbox
         self._proc: subprocess.Popen | None = None
         self._ids = count(1)
 
@@ -31,9 +34,13 @@ class WorkerClient:
     def start(self) -> "WorkerClient":
         if self._proc is not None:
             return self
+        extra: dict = {}
+        if self.sandbox is not None:
+            from ..security.sandbox import spawn_kwargs
+            extra = spawn_kwargs(self.sandbox)
         self._proc = subprocess.Popen(
             self.command, stdin=subprocess.PIPE, stdout=subprocess.PIPE,
-            bufsize=0,
+            bufsize=0, **extra,
         )
         return self
 

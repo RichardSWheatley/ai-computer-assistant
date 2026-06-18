@@ -37,9 +37,11 @@ def build_assistant(config: Config, *, headless: bool = True,
     # The orchestrator can't tell which is in play.
     locator = None
     if config.use_native_worker:
+        from .security.sandbox import SandboxPolicy
         from .workers.client import WorkerClient
         from .workers.proxy import WorkerInputController, WorkerPerception
-        worker_client = WorkerClient(config.worker_command).start()
+        worker_client = WorkerClient(config.worker_command,
+                                     sandbox=SandboxPolicy()).start()
         input_controller = WorkerInputController(worker_client)
         desktop = DesktopController(dry_run=config.dry_run)
         perception = WorkerPerception(worker_client)
