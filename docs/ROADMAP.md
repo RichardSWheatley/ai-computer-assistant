@@ -1,54 +1,52 @@
-# Roadmap
+# Roadmap & Status
 
 A phased plan that delivers something runnable early, then layers on power.
-Each phase is shippable on its own.
+This file is the **single source of truth for what's done and what's next** —
+start here to move the project forward.
 
-## Phase 0 — Foundations (skeleton)
-- Repo, packaging, config, secret vault, logging/audit scaffolding.
-- Orchestrator loop stub + tool registry (#1, #5).
-- Plug in a local LLM with tool-calling (#2).
-- **Kill switch** from day one (#10, minimal).
-- ✅ *Outcome:* the agent can take a goal and call a trivial tool.
+## Status snapshot (what's built)
 
-## Phase 1 — Computer use (MVP)
-- Screen capture + a11y tree + OCR → element grounding (#3).
-- Mouse/keyboard/window/app control as tools (#4).
-- Perceive → Plan → Act → **Verify** working end to end.
-- ✅ *Outcome:* "open Notepad and type a haiku" works reliably and safely.
+| Area | Status | Branch |
+|---|---|---|
+| Modular agent core, plugin system, VRAM-aware config | ✅ shipped | `feature/core-and-modularity` |
+| Polyglot worker boundary (Python⇄native RPC) | ✅ shipped | `feature/polyglot-worker` |
+| Operating modes + Claude/Ollama planners + hardware routing | ✅ shipped | `feature/llm-modes-and-planners` |
+| Local desktop control (capture, a11y, input, click-by-label) | ✅ shipped | `feature/local-desktop-control` |
+| Business: Graph (Outlook/Teams/Calendar) + PowerPoint | ✅ shipped (opt-in) | `feature/business-microsoft365` |
+| Security: trust/quarantine, injection defense, egress, DLP, audit | ✅ shipped | `feature/security-and-hardening` (tip) |
 
-## Phase 2 — Programmer mode
-- Sandboxed shell, git, file read/edit, test runner (#6).
-- Codebase RAG so it knows your project (#9, first slice).
-- IDE/terminal control.
-- ✅ *Outcome:* "find and fix this bug, run the tests" works.
+All of the above is on `feature/security-and-hardening` (the cumulative tip).
+**70 tests pass.** Runs headless via mock backends; real backends are opt-in.
 
-## Phase 3 — Business: Outlook + Teams + Calendar
-- Microsoft Graph auth (OAuth/MSAL) + scopes (#7).
-- Read/triage/draft email with confirm-before-send.
-- Teams read/post/summarize; calendar scheduling.
-- ✅ *Outcome:* "summarize my inbox and draft replies" works.
+## What's next (prioritized backlog — pick the top item)
 
-## Phase 4 — Document & presentation generation
-- PPTX builder + layout engine + graphics/chart/diagram pipeline (#8).
-- AI imagery for hero slides/backgrounds.
-- Word/Excel generation.
-- ✅ *Outcome:* "build a Q3 deck from this spreadsheet" produces a polished `.pptx`.
+1. **Sandbox the native worker / code execution** — restricted container: no
+   secret access, read-only FS where possible, egress-filtered. → `feature/worker-sandboxing`
+2. **Quarantined-LLM model split** — wire a no-tools Q-LLM behind the existing
+   `Quarantine(q_llm=…)` hook so untrusted free-text is model-summarized and
+   re-scanned before the privileged planner sees it. → `feature/quarantine-llm`
+3. **Secret vault + proxy injection** — OS keychain; credentials injected after
+   a request leaves the sandbox (never in prompts/screenshots). → `feature/secret-vault`
+4. **Interactive confirmation UI / overlay HUD** — real human approval for the
+   gated outward/destructive actions; "what I'll do next" preview. → `feature/control-ui`
+5. **Word/Excel generation** alongside PPTX. → `feature/office-docs`
+6. **Composed workflows** ("prep me for the 9am" → calendar + mail + Teams + deck)
+   and a memory/RAG store. → `feature/workflows`
 
-## Phase 5 — Polish, safety & UX
-- Overlay HUD: chat, "what I'll do next" preview, approvals (#10).
-- Permission tiers, full audit UI, redaction-aware cloud routing.
-- Optional voice in/out.
-- Memory of personal style/preferences across tasks (#9, full).
-- ✅ *Outcome:* a safe, transparent, daily-driver assistant.
+## Phase view (original plan, for reference)
 
-## Phase 6 — Workflows & extensibility
-- Saved multi-step workflows ("prep me for the 9am", "monthly report").
-- Plugin SDK so anyone can add new app/skill integrations.
-- ✅ *Outcome:* one command chains email + Teams + docs + deck.
+- **Phase 0–1 — Foundations + Computer use:** ✅ done.
+- **Phase 3–4 — Business + documents:** ✅ first cut done (Outlook/Teams/PPTX).
+- **Phase 2 — Programmer mode** (sandboxed shell, git, test runner, codebase RAG): ⬜ next.
+- **Phase 5 — Polish, safety & UX** (HUD, voice, preferences memory): ⬜ partial (security done; UI pending).
+- **Phase 6 — Workflows & plugin SDK:** ⬜ pending.
 
----
+## Branching & workflow
 
-### Suggested first milestone to build
-**Phase 0 + Phase 1** = a safe agent that sees the screen and operates the
-computer. It's the hardest, most differentiating piece and everything else
-builds on it. Recommend starting there.
+- **No `claude/` branches.** Use descriptive `feature/<area>` branches.
+- Work is currently stacked on `feature/security-and-hardening` (the full
+  project). Branch new work as `feature/<name>` from the tip, named for what it
+  delivers.
+- Commit per logical change; keep `pytest` green (`pip install -e ".[dev]" && pytest -q`).
+- Open a PR per feature branch when ready (none open yet).
+
