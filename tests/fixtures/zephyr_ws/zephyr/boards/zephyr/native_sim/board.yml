@@ -1,0 +1,3 @@
+board:
+  name: native_sim
+  vendor: zephyr

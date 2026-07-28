@@ -1,0 +1,8 @@
+identifier: apollo510_evb/apollo510
+name: Ambiq Apollo510 EVB
+arch: arm
+supported:
+  - gpio
+  - uart
+  - i2c
+  - led

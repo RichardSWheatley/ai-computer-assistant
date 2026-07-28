@@ -114,6 +114,46 @@ def cmd_talk(args) -> int:
     return 0
 
 
+def _workspace_from(args) -> str | None:
+    from .config import load_rita_config
+
+    return args.workspace or load_rita_config().workspace
+
+
+def cmd_sync(args) -> int:
+    from .config import load_rita_config, save_rita_config
+    from .firmware.sync import sync_workspace
+
+    ws = _workspace_from(args)
+    if not ws:
+        print("no workspace: pass --workspace or set it in ~/.rita/config")
+        return 1
+    try:
+        res = sync_workspace(ws, hw_map=args.hardware_map)
+    except ValueError as exc:
+        print(f"sync failed: {exc}")
+        return 1
+    if args.workspace:  # remember it for next time
+        cfg = load_rita_config()
+        cfg.workspace = str(args.workspace)
+        if args.hardware_map:
+            cfg.hardware_map = str(args.hardware_map)
+        save_rita_config(cfg)
+    print(f"synced {res.boards} boards -> {res.boards_path}")
+    print(f"indexed {res.entries} suites -> {res.index_path}")
+    return 0
+
+
+def cmd_mcp_serve(args) -> int:
+    from .mcpserver.server import serve
+
+    ws = _workspace_from(args)
+    if not ws:
+        print("no workspace: pass --workspace or set it in ~/.rita/config")
+        return 1
+    return serve(ws)
+
+
 def cmd_workflow(args) -> int:
     from .workflows.engine import BUILTINS, WorkflowEngine
     if args.name not in BUILTINS:
@@ -174,9 +214,18 @@ def main(argv: list[str] | None = None) -> int:
     talk.add_argument("--model", default="base",
                       help="Whisper model size: tiny|base|small|medium (default base)")
 
+    sync = sub.add_parser("sync", help="index the Zephyr workspace into ~/.rita "
+                                       "(boards.json + verification index)")
+    sync.add_argument("--workspace", help="Zephyr workspace root (persisted to config)")
+    sync.add_argument("--hardware-map", help="twister map.yaml for connected boards")
+
+    mcp = sub.add_parser("mcp-serve", help="serve the workspace MCP server over stdio")
+    mcp.add_argument("--workspace", help="Zephyr workspace root (default from config)")
+
     args = parser.parse_args(argv)
     return {"doctor": cmd_doctor, "plugins": cmd_plugins, "run": cmd_run,
-            "doc": cmd_doc, "workflow": cmd_workflow, "talk": cmd_talk}[args.cmd](args)
+            "doc": cmd_doc, "workflow": cmd_workflow, "talk": cmd_talk,
+            "sync": cmd_sync, "mcp-serve": cmd_mcp_serve}[args.cmd](args)
 
 
 if __name__ == "__main__":

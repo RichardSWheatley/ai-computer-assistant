@@ -1,0 +1,5 @@
+- connected: true
+  platform: apollo510_evb/apollo510
+  product: J-Link
+  runner: jlink
+  serial: /dev/ttyACM0

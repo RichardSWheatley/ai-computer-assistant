@@ -1,6 +1,6 @@
 [project]
 name = "aica"
-version = "0.2.0"
+version = "0.3.0"
 description = "A local-first, modular AI computer assistant (sees the screen, controls the PC, helps you code and do business work)."
 readme = "README.md"
 requires-python = ">=3.11"
@@ -19,6 +19,8 @@ voice = ["faster-whisper", "sounddevice", "pyttsx3"]
 control = ["pyautogui", "pynput", "pyperclip", "pygetwindow"]
 windows = ["pywinauto", "uiautomation"]
 dev = ["pytest"]
+firmware = ["pyyaml"]                 # full YAML for workspace metadata (subset parser is built in)
+mcp = ["mcp"]                         # the workspace MCP server (rita mcp-serve)
 
 [project.scripts]
 aica = "aica.__main__:main"

@@ -1,0 +1,5 @@
+tests:
+  kernel.semaphore:
+    tags: kernel semaphore
+    platform_allow: native_sim
+    harness: ztest

@@ -1,0 +1,7 @@
+identifier: native_sim
+name: Native simulator
+arch: posix
+supported:
+  - gpio
+  - uart
+  - adc

@@ -1,0 +1,9 @@
+sample:
+  name: ADC sequence
+  description: Read analog inputs with the ADC driver.
+tests:
+  sample.drivers.adc:
+    tags: adc
+    platform_allow:
+      - nrf52840dk/nrf52840
+    harness: console

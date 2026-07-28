@@ -1,0 +1,8 @@
+sample:
+  name: Button
+  description: Handle a button press via GPIO interrupt.
+tests:
+  sample.basic.button:
+    tags: button gpio
+    harness: button
+    filter: dt_alias_exists("sw0")

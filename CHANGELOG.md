@@ -3,6 +3,31 @@
 All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/); versions follow semver.
 
+## [0.3.0] - 2026-07-28
+
+### Added
+- **Fix 2 — verification resolution** (`aica.firmware`): static index of
+  `samples/**/sample.yaml` + `tests/**/testcase.yaml` (platform_allow,
+  filter, harness, depends_on, tags) built at `sync`, saved to
+  `~/.rita/verification-index.json`. Pure data, no LLM. Board-compat
+  filtering + term ranking in `find()`.
+- `boards.json` generation from `boards/**/board.yml` + twister platform
+  yamls, merged with the twister hardware map; derived spoken aliases feed
+  the Fix 1 router after the first sync.
+- Fit judge (`judge_fit`): Claude judges fit ONLY — one bounded call over
+  the index's top matches; cannot introduce non-candidates.
+- Test writer (`write_ztest`): no match -> Claude authors a ztest with a
+  validated `testcase.yaml` so twister gates it like everything else.
+- `resolve_verification`: the find-or-write pipeline entry.
+- **Workspace MCP server** (`aica.mcpserver`, `mcp-serve` CLI): stdio server
+  exposing find_verification / board_info / list_boards / sample_lookup /
+  read_workspace_file / grep_workspace — read-only, workspace-rooted,
+  traversal-guarded. `mcp` SDK is an optional extra.
+- Vendored YAML-subset parser (`yamlmini`) with pyyaml fallback
+  (`.[firmware]` extra) to keep zero required deps.
+- `sync` CLI command; fixture Zephyr workspace for hermetic tests.
+- Spec: `docs/specs/verification-resolution.md`.
+
 ## [0.2.0] - 2026-07-28
 
 ### Added

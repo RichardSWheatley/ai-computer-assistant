@@ -1,0 +1,3 @@
+board:
+  name: apollo510_evb
+  vendor: ambiq

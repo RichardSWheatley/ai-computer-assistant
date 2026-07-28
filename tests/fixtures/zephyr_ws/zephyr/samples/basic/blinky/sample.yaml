@@ -1,0 +1,12 @@
+sample:
+  name: Blinky
+  description: Blink an LED forever using the GPIO API.
+tests:
+  sample.basic.blinky:
+    tags:
+      - LED
+      - gpio
+    depends_on: gpio
+    harness: led
+    integration_platforms:
+      - frdm_k64f
