@@ -30,6 +30,7 @@ class Supervisor:
                  registry: ModuleRegistry | None = None,
                  workdir: str | Path | None = None) -> None:
         self.cfg = rita_cfg or load_rita_config(config_path)
+        self.config_path = config_path
         self.manager = TaskManager()
         self.registry = registry or ModuleRegistry()
         self.speaker = PausableSpeaker(tts) if tts is not None else None
@@ -61,8 +62,11 @@ class Supervisor:
         if self._claude is not None:
             return self._claude
         from .firmware.claude import ClaudeWorkerCli
+        from .home import mcp_config_path
 
-        return ClaudeWorkerCli(self.cfg.workspace)
+        mcp = mcp_config_path()
+        return ClaudeWorkerCli(self.cfg.workspace,
+                               mcp_config=mcp if mcp.exists() else None)
 
     def _make_index(self):
         if self._index is not None:

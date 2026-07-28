@@ -10,5 +10,6 @@ One spec per directive fix, written before its tests and implementation:
 | `pause-stop.md` | Fix 4 — PAUSE / RESUME / STOP | **done** |
 | `output-channels.md` | Fix 5 — speech vs screen split | **done** |
 | `supervisor-modules.md` | Fix 6 — thin supervisor + versioned modules | **done** |
+| `gui-shell.md` | The native GUI app (presenter + Qt window) | **done** |
 
 Update the status column as each lands.

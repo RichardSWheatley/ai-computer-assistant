@@ -61,6 +61,10 @@ def config_path() -> Path:
     return _sub("config")
 
 
+def mcp_config_path() -> Path:
+    return _sub("mcp.json")
+
+
 def modules_dir() -> Path:
     return _sub("modules")
 

@@ -3,6 +3,31 @@
 All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/); versions follow semver.
 
+## [0.10.0] - 2026-07-28
+
+### Added
+- **The GUI** (`rita.gui`, `rita-app`, `python -m rita.gui`): a native
+  PySide6/Qt app — dark modern theme, sidebar (Chat / Workspace / Modules /
+  Settings), chat transcript (speech channel) + monospace screen pane
+  (code/diffs/logs, per Fix 5), prompt bar (typed commands may be quoted;
+  no wake word needed when typing), and the **persistent PAUSE and
+  RESUME/STOP buttons** from the Fix 4 spec. Pointing RITA at the Zephyr
+  folder, syncing, module install, and settings (assistant name, budgets)
+  all happen inside the GUI. First run lands on the Workspace page.
+- All GUI behavior lives in a headless `GuiPresenter` (fully tested without
+  a display; the Qt view is a thin binding, itself smoke-tested offscreen):
+  quote stripping, typed routing, channel separation, pause/stop
+  semantics, unprompted task-completion announcements, workspace sync.
+- `RouterShell.handle_typed`: typed input routes without a wake word (a
+  leading "Rita," still strips off).
+- **MCP wiring completed**: `sync` now writes `~/.rita/mcp.json`
+  (interpreter-anchored `rita mcp-serve` invocation) and the supervisor
+  hands it to the claude-worker — `claude -p` actually reaches the
+  workspace MCP server now.
+- Sync accepts either the workspace root or the `zephyr/` folder itself.
+- New optional extra `gui = ["PySide6-Essentials"]`; `TaskManager.tasks()`.
+- Spec: `docs/specs/gui-shell.md`.
+
 ## [0.9.0] - 2026-07-28
 
 ### Added

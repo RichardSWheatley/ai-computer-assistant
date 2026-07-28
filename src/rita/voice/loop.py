@@ -84,6 +84,18 @@ class RouterShell:
 
         return self.dispatch(route(utt, self.vocab, self.cfg.assistant_name))
 
+    def handle_typed(self, text: str) -> str:
+        """Typed input (the GUI prompt): no wake word required. A leading
+        greeting/name still strips off so quoted spoken-style commands
+        ("Rita, build blinky") route the same as voice."""
+        utt = Utterance.from_text(text)
+        decision = self.gate.feed(utt)
+        if decision.woke:
+            if decision.residual is None:
+                return "Yes?"
+            utt = decision.residual
+        return self.dispatch(route(utt, self.vocab, self.cfg.assistant_name))
+
     def dispatch(self, d: Dispatch) -> str:
         if d.kind == "rename":
             self.cfg.assistant_name = d.argument.capitalize()

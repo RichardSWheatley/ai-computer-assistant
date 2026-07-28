@@ -3,6 +3,20 @@
 Compromises, proxies, and deferred decisions — with the reason and what would
 remove them. Newest first. (Required by the working rules in `CLAUDE.md`.)
 
+## 2026-07-28 — GUI shell (Phase A)
+
+- **PySide6 (Qt 6) over web-view frameworks** — the requirement is a
+  native-looking app, not a browser; Qt renders native widgets, styles
+  cleanly via QSS, and packages with PyInstaller for the installer phase.
+  `PySide6-Essentials` keeps the dependency slim.
+- **Presenter-first architecture**: every GUI behavior is a plain-Python
+  `GuiPresenter` tested headless; the Qt layer only binds signals. The Qt
+  window itself is verified with `QT_QPA_PLATFORM=offscreen` in CI —
+  pixel-level polish still needs a sighted pass on the target machine.
+- **Voice in the GUI is config-gated but not yet threaded into the Qt
+  loop** (the presenter speaks via PausableSpeaker when a TTS is wired);
+  full in-window mic capture lands with the packaged voice component.
+
 ## 2026-07-28 — Workspace facts (post-rename)
 
 - **The packaged boards seed is bootstrap vocabulary only.** It exists so

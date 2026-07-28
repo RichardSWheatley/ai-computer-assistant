@@ -150,6 +150,10 @@ class TaskManager:
                               completed_stages=tuple(r.completed_stages),
                               result=r.result, error=r.error)
 
+    def tasks(self) -> list[str]:
+        with self._cond:
+            return list(self._records)
+
     def latest_active(self) -> str | None:
         with self._cond:
             for r in reversed(list(self._records.values())):
