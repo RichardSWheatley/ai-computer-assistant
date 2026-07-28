@@ -1,0 +1,16 @@
+{
+  "environment": {"zephyr_version": "v4.1.0", "toolchain": "zephyr"},
+  "testsuites": [
+    {
+      "name": "sample.basic.blinky",
+      "platform": "native_sim",
+      "status": "failed",
+      "reason": "Testsuite failed",
+      "log": "Assertion failed at src/main.c:34: expected led state 1, got 0\nFAIL - blink_once",
+      "testcases": [
+        {"identifier": "sample.basic.blinky.blink_once", "status": "failed",
+         "reason": "assertion"}
+      ]
+    }
+  ]
+}

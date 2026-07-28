@@ -1,0 +1,13 @@
+{
+  "environment": {"zephyr_version": "v4.1.0", "toolchain": "zephyr"},
+  "testsuites": [
+    {
+      "name": "sample.basic.blinky",
+      "platform": "native_sim",
+      "status": "error",
+      "reason": "Build failure",
+      "log": "src/main.c:12:5: error: 'led0' undeclared (first use in this function)\ncollect2: error: ld returned 1 exit status",
+      "testcases": []
+    }
+  ]
+}

@@ -3,6 +3,28 @@
 All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/); versions follow semver.
 
+## [0.4.0] - 2026-07-28
+
+### Added
+- **Fix 3 — the iterate loop belongs to the orchestrator**
+  (`aica.firmware.pipeline.IteratePipeline`): RESOLVE -> BUILD -> SIM_TEST
+  -> DEVICE with bounded patch budgets (`max_patch_cycles`) at every stage;
+  a sim patch re-enters at BUILD; exhaustion is a reported outcome, never
+  hidden. Sim-first always; the DEVICE stage is blocked on the bench
+  milestone and never faked green; hardware maps are generated, never
+  hardcoded.
+- `parse_twister_json` (`twister_results.py`): twister.json is the only
+  gate truth — never scraped stdout. Failures become `FailureArtifact`s
+  (kind, reason, log excerpt, file hints).
+- `ZephyrRunner` seam: `WestCli` real subprocess impl (runs where Zephyr is
+  installed) + scripted `FakeWest` over fixture twister.json files.
+- `ClaudeWorker` seam: `ClaudeWorkerCli` (`claude -p` + workspace
+  `--mcp-config`, bounded timeout) + recording `FakeClaude`. `patch()`
+  requires a concrete failure artifact — enforced, tested.
+- `handle_work_dispatch`: Fix 1 work dispatches now drive the pipeline.
+- Fixture twister results (pass / build-fail / test-fail).
+- Spec: `docs/specs/iterate-loop.md`.
+
 ## [0.3.0] - 2026-07-28
 
 ### Added

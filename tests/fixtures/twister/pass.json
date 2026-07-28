@@ -1,0 +1,14 @@
+{
+  "environment": {"zephyr_version": "v4.1.0", "toolchain": "zephyr"},
+  "testsuites": [
+    {
+      "name": "sample.basic.blinky",
+      "platform": "native_sim",
+      "status": "passed",
+      "execution_time": "1.23",
+      "testcases": [
+        {"identifier": "sample.basic.blinky", "status": "passed"}
+      ]
+    }
+  ]
+}

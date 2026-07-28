@@ -3,6 +3,19 @@
 Compromises, proxies, and deferred decisions — with the reason and what would
 remove them. Newest first. (Required by the working rules in `CLAUDE.md`.)
 
+## 2026-07-28 — Phase 3 (Fix 3)
+
+- **A sim-test patch re-enters at BUILD** (the directive's "goto 2") even
+  though twister rebuilds internally: a patch can break the compile, and a
+  `west build` catches that in seconds without burning a twister cycle.
+- **`WestCli` ignores twister's exit code on purpose** — `twister.json` is
+  parsed as the gate result either way, per the never-scrape-stdout rule.
+- **Real `west`/`claude -p` paths are `pragma: no cover`** here: this
+  container has no Zephyr toolchain or claude CLI. The seams (`FakeWest`,
+  `FakeClaude`) exercise the identical parsing/loop logic; the subprocess
+  implementations run on the target machine. First bench milestone
+  (docs/BENCH-PLAN.md, still to be scheduled) validates them for real.
+
 ## 2026-07-28 — Phase 2 (Fix 2)
 
 - **twister `filter:` expressions are recorded, not evaluated.** Evaluating
