@@ -193,8 +193,8 @@ class IteratePipeline:
                 if not unit_skip_noted:
                     self._record(report, StageResult(
                         "UNIT_TEST", "skipped",
-                        "Unity/host compiler unavailable — install Unity "
-                        "(Modules page) and a host C compiler"))
+                        "Unity not installed — install it from the Modules "
+                        "page (the compiler comes from PATH or your Zephyr SDK)"))
                     unit_skip_noted = True
             else:
                 from .functions import list_functions, untested_functions

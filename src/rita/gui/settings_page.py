@@ -36,6 +36,10 @@ class SettingsPage(QWidget):
             "Deep mode: analyze (Oracle LLM + Unity heads) instead of scan")
         self.cerberus_deep.setChecked(cfg.cerberus_deep)
         form.addRow("", self.cerberus_deep)
+        self.host_cc_edit = QLineEdit(cfg.host_cc or "")
+        self.host_cc_edit.setPlaceholderText(
+            "unit-test compiler — empty = host PATH, else your Zephyr SDK's gcc")
+        form.addRow("C compiler", self.host_cc_edit)
         self.voice = QCheckBox("Enable voice (wake word + speech)")
         form.addRow("", self.voice)
         note = QLabel("The device tier stays off until the bench milestone — "
@@ -54,6 +58,7 @@ class SettingsPage(QWidget):
         sup.cfg.max_patch_cycles = self.budget.value()
         sup.cfg.cerberus_command = self.cerberus_edit.text().strip() or None
         sup.cfg.cerberus_deep = self.cerberus_deep.isChecked()
+        sup.cfg.host_cc = self.host_cc_edit.text().strip() or None
         save_rita_config(sup.cfg, sup.config_path)
         from ..routing.wake import WakeGate
 

@@ -141,6 +141,85 @@ class TestHostUnity:
         assert "compiler" in result.reason.lower()
 
 
+# --- Compiler discovery: host PATH first, then the Zephyr SDK ----------------
+
+class TestCompilerDiscovery:
+    def make_sdk(self, tmp_path, *, gcc=True, llvm=False) -> Path:
+        sdk = tmp_path / "zephyr-sdk-0.17.0"
+        (sdk / "sdk_version").parent.mkdir(parents=True, exist_ok=True)
+        (sdk / "sdk_version").write_text("0.17.0")
+        if gcc:
+            gcc_bin = sdk / "x86_64-zephyr-elf" / "bin"
+            gcc_bin.mkdir(parents=True)
+            wrapper = gcc_bin / "x86_64-zephyr-elf-gcc"
+            wrapper.write_text('#!/bin/sh\nexec /usr/bin/cc "$@"\n')
+            wrapper.chmod(0o755)
+        if llvm:
+            llvm_bin = sdk / "llvm" / "bin"
+            llvm_bin.mkdir(parents=True)
+            clang = llvm_bin / "clang"
+            clang.write_text('#!/bin/sh\nexec /usr/bin/cc "$@"\n')
+            clang.chmod(0o755)
+        return sdk
+
+    def test_host_path_compiler_preferred(self, tmp_path, monkeypatch):
+        from rita.firmware.unity import find_compiler
+        sdk = self.make_sdk(tmp_path)
+        monkeypatch.setenv("ZEPHYR_SDK_INSTALL_DIR", str(sdk))
+        info = find_compiler(None)
+        assert info.source == "host"                 # cc on PATH wins
+
+    def test_sdk_gcc_found_when_no_host_compiler(self, tmp_path, monkeypatch):
+        from rita.firmware import unity
+        sdk = self.make_sdk(tmp_path)
+        monkeypatch.setenv("ZEPHYR_SDK_INSTALL_DIR", str(sdk))
+        monkeypatch.setattr(unity.shutil, "which", lambda _n: None)
+        info = unity.find_compiler(None)
+        assert info is not None
+        assert info.source == "sdk"
+        assert "x86_64-zephyr-elf-gcc" in info.path
+
+    def test_sdk_llvm_bundle_detected(self, tmp_path, monkeypatch):
+        from rita.firmware import unity
+        sdk = self.make_sdk(tmp_path, gcc=False, llvm=True)
+        monkeypatch.setenv("ZEPHYR_SDK_INSTALL_DIR", str(sdk))
+        monkeypatch.setattr(unity.shutil, "which", lambda _n: None)
+        info = unity.find_compiler(None)
+        assert info.source == "sdk"
+        assert "clang" in info.path
+
+    def test_explicit_wins_over_everything(self, tmp_path, monkeypatch):
+        from rita.firmware.unity import find_compiler
+        info = find_compiler("/usr/bin/gcc")
+        assert info.source == "explicit"
+        assert info.path == "/usr/bin/gcc"
+
+    def test_nothing_anywhere_names_both_places(self, tmp_path, monkeypatch):
+        from rita.firmware import unity
+        monkeypatch.delenv("ZEPHYR_SDK_INSTALL_DIR", raising=False)
+        monkeypatch.setenv("HOME", str(tmp_path))
+        monkeypatch.setenv("USERPROFILE", str(tmp_path))
+        monkeypatch.setattr(unity.shutil, "which", lambda _n: None)
+        app = make_app(tmp_path)
+        result = unity.HostUnity(unity_src=MINI_UNITY).run(
+            app / "src", app / "tests" / "unit")
+        assert result.unavailable
+        assert "path" in result.reason.lower()
+        assert "sdk" in result.reason.lower()
+
+    def test_end_to_end_through_the_sdk_compiler(self, tmp_path, monkeypatch):
+        # No PATH compilers; the SDK's gcc compiles + runs the unit tests.
+        from rita.firmware import unity
+        sdk = self.make_sdk(tmp_path)
+        monkeypatch.setenv("ZEPHYR_SDK_INSTALL_DIR", str(sdk))
+        monkeypatch.setattr(unity.shutil, "which", lambda _n: None)
+        app = make_app(tmp_path)
+        result = unity.HostUnity(unity_src=MINI_UNITY).run(
+            app / "src", app / "tests" / "unit")
+        assert result.ok is True
+        assert result.passed == 5
+
+
 # --- Unity acquisition -------------------------------------------------------
 
 @pytest.fixture()

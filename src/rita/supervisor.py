@@ -89,7 +89,9 @@ class Supervisor:
         from .firmware.unity import HostUnity, detect_unity
 
         unity = detect_unity()
-        return HostUnity(unity_src=unity) if unity is not None else None
+        if unity is None:
+            return None
+        return HostUnity(unity_src=unity, cc=self.cfg.host_cc)
 
     def _make_index(self):
         if self._index is not None:

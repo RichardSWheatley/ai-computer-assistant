@@ -14,10 +14,13 @@ remove them. Newest first. (Required by the working rules in `CLAUDE.md`.)
   macro-generated definitions) could evade it — CERBERUS and compilation
   still see everything, and the scan can only under-count, never
   fake-cover.
-- **Windows needs a host C compiler for the unit tier** (MinGW gcc);
-  absent compiler → the stage reports skipped with the reason, never
-  silently green. Bundling a compiler with the installer is a possible
-  future component.
+- **The unit-tier compiler comes from PATH or the Zephyr SDK** (the SDK
+  ships gcc by default; LLVM optional) — no MinGW requirement. Caveat
+  kept honest: SDK toolchains are cross compilers, so SDK-built test
+  binaries link `-static` and a binary the host can't execute produces a
+  concrete failure naming the fix (native gcc/clang) rather than an
+  assumption in either direction. A native PATH compiler is preferred
+  when present because its output always runs.
 - The knowledge-pack citation test now accepts any http source (SEI CERT
   and ThrowTheSwitch joined docs.zephyrproject.org as cited sources).
 

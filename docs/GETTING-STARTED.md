@@ -11,7 +11,7 @@ developers.
 |---|---|---|
 | Windows 10/11 (64-bit) | first-supported OS (macOS/Linux later) | — |
 | A working Zephyr workspace | RITA operates **on** it; it learns your boards, samples, and Zephyr version from this folder | `west build` already works for you in it |
-| Zephyr SDK installed | real-board builds | RITA's status bar shows "SDK \<version\>" when found |
+| Zephyr SDK installed | real-board builds **and** the unit-tier C compiler (the SDK ships gcc by default) | RITA's status bar shows "SDK \<version\>" when found |
 | Claude Code CLI, logged in | RITA's coding agent (`claude -p`) for scaffolding, test-writing, and patches | RITA's status bar shows "claude ✓" |
 
 Without the `claude` CLI, RITA still routes, syncs, indexes, and answers
@@ -120,8 +120,10 @@ its input and output parameters** — valid values, boundaries, and invalid
 values the function must reject (the coding contract requires every
 function to restrict or validate its parameters before executing). These
 are host-run **Unity** tests (the framework is cloned at install, like
-CERBERUS; a host C compiler such as MinGW gcc is needed on Windows), and
-a deterministic scan fails the stage naming any function without tests.
+CERBERUS). The compiler comes from your PATH when one is there, otherwise
+**from your Zephyr SDK** — the SDK ships gcc by default (its LLVM bundle
+is detected too), so no extra install is needed. A deterministic scan
+fails the stage naming any function without tests.
 Only when CERBERUS and the unit tier are both green does the **final
 test** run: the relevant Zephyr samples/tests under twister.
 

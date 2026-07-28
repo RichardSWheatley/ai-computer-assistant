@@ -82,13 +82,40 @@ def install_unity(dest: str | Path | None = None,
     return InstallResult(ok=True, path=str(d), detail=f"Unity {action} at {d}")
 
 
-def _find_cc(explicit: str | None) -> str | None:
+@dataclass(frozen=True)
+class CompilerInfo:
+    path: str
+    source: str   # "explicit" | "host" | "sdk"
+
+
+def find_compiler(explicit: str | None) -> CompilerInfo | None:
+    """The unit tier's C compiler, in order: explicit override; a native
+    host compiler on PATH; the Zephyr SDK's toolchain (gcc by default,
+    the LLVM bundle when that variant is installed). The SDK ships a
+    compiler out of the box, so an SDK machine needs nothing extra."""
     if explicit:
-        return explicit if Path(explicit).exists() or shutil.which(explicit) else None
+        if Path(explicit).exists() or shutil.which(explicit):
+            return CompilerInfo(path=explicit, source="explicit")
+        return None
     for cand in ("cc", "gcc", "clang"):
         if shutil.which(cand):
-            return cand
+            return CompilerInfo(path=cand, source="host")
+    from .workspace import read_sdk_info
+
+    sdk = read_sdk_info()
+    if sdk:
+        root = Path(sdk["path"])
+        for rel in ("x86_64-zephyr-elf/bin/x86_64-zephyr-elf-gcc",
+                    "x86_64-zephyr-elf/bin/x86_64-zephyr-elf-gcc.exe",
+                    "llvm/bin/clang", "llvm/bin/clang.exe"):
+            cand = root / rel
+            if cand.is_file():
+                return CompilerInfo(path=str(cand), source="sdk")
     return None
+
+
+_NO_COMPILER_REASON = ("no C compiler found: none on PATH (cc/gcc/clang) and "
+                       "no Zephyr SDK toolchain detected")
 
 
 class HostUnity:
@@ -103,10 +130,12 @@ class HostUnity:
 
     def run(self, src_dir: str | Path, test_dir: str | Path) -> UnitResult:
         src_dir, test_dir = Path(src_dir), Path(test_dir)
-        cc = _find_cc(self.cc)
-        if cc is None:
+        compiler = find_compiler(self.cc)
+        if compiler is None:
             return UnitResult(ok=False, unavailable=True,
-                              reason=f"no host C compiler found ({self.cc or 'cc/gcc/clang'})")
+                              reason=(f"compiler {self.cc!r} not found"
+                                      if self.cc else _NO_COMPILER_REASON))
+        cc = compiler.path
         test_files = sorted(test_dir.rglob("*.c")) if test_dir.is_dir() else []
         if not test_files:
             return UnitResult(ok=False, unavailable=True,
@@ -123,6 +152,8 @@ class HostUnity:
                 argv = [cc, "-I", str(self.unity_src), "-I", str(src_dir),
                         str(self.unity_src / "unity.c"), str(test_file),
                         *map(str, sources), "-o", str(exe)]
+                if compiler.source == "sdk":
+                    argv.append("-static")   # cross toolchain: self-contained
                 comp = subprocess.run(argv, capture_output=True, text=True,
                                       timeout=self.timeout)
                 if comp.returncode != 0:
@@ -132,8 +163,19 @@ class HostUnity:
                         log_excerpt=(comp.stderr or comp.stdout)[-4000:],
                         file_hints=(test_file.name,)))
                     continue
-                run = subprocess.run([str(exe)], capture_output=True,
-                                     text=True, timeout=self.timeout)
+                try:
+                    run = subprocess.run([str(exe)], capture_output=True,
+                                         text=True, timeout=self.timeout)
+                except OSError as exc:   # e.g. cross-built binary on this host
+                    hint = ("the Zephyr SDK cross-compiler produced a binary "
+                            "this host cannot execute; install a native host "
+                            "C compiler (gcc/clang)"
+                            if compiler.source == "sdk" else str(exc))
+                    failures.append(FailureArtifact(
+                        kind="unit", suite=test_file.name, platform="host",
+                        reason="unit test binary failed to execute",
+                        log_excerpt=hint, file_hints=(test_file.name,)))
+                    continue
                 out = run.stdout or ""
                 m = _SUMMARY_RE.search(out)
                 if m:

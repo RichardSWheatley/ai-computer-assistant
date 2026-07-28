@@ -41,5 +41,7 @@ variants. Output lines are `file:line:test:PASS|FAIL: message` with a
 `N Tests M Failures K Ignored` summary — machine-parseable.
 
 Compile on the host: `cc -I<unity/src> -I<src> unity.c test_x.c <sources
-except main.c> -o test_x && ./test_x`. Name every test `test_<function>_…`
-so per-function coverage is checkable mechanically.
+except main.c> -o test_x && ./test_x`. The compiler is the host's when one
+is on PATH, else the Zephyr SDK's toolchain (the SDK ships gcc by default;
+LLVM is the non-default bundle). Name every test `test_<function>_…` so
+per-function coverage is checkable mechanically.

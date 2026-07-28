@@ -3,6 +3,17 @@
 All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/); versions follow semver.
 
+## [0.15.1] - 2026-07-28
+
+### Changed
+- **Unit-tier compiler discovery uses the Zephyr SDK** (it ships gcc by
+  default; the LLVM bundle is detected as the non-default variant):
+  order is explicit `host_cc` override (new config + Settings field) →
+  host PATH compiler → SDK toolchain. No MinGW requirement — an
+  SDK machine needs nothing extra. SDK builds link `-static`; if a
+  cross-built binary can't execute on the host, the failure says so
+  concretely instead of guessing either way.
+
 ## [0.15.0] - 2026-07-28
 
 ### Changed

@@ -59,6 +59,9 @@ class RitaConfig:
     # Deep mode: `analyze` (Oracle LLM + Unity heads) instead of the
     # deterministic keyless `scan`. Claude's seat inside CERBERUS.
     cerberus_deep: bool = False
+    # Unit-tier compiler override. Unset -> host PATH compiler, else the
+    # Zephyr SDK's toolchain (it ships gcc by default; LLVM detected too).
+    host_cc: str | None = None
     max_patch_cycles: int = 3
     # Device tier stays off until the bench milestone proves flash/serial/harness.
     device_tier_enabled: bool = False
