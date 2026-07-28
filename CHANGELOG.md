@@ -3,6 +3,24 @@
 All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/); versions follow semver.
 
+## [0.5.0] - 2026-07-28
+
+### Added
+- **Fix 4 — PAUSE / RESUME / STOP** (`aica.core.tasks`): `TaskManager` +
+  `TaskControl.checkpoint` state machine. PAUSE suspends at the next safe
+  checkpoint (hardware operations stay atomic — checkpoints exist only
+  between pipeline stages); RESUME continues exactly where execution
+  blocked, so a task paused after BUILD resumes into twister **without
+  rebuilding**. STOP cancels at a safe boundary and reports partial
+  results; the manager survives and keeps accepting tasks. Crashes are
+  FAILED, not fatal.
+- `PausableSpeaker` (`aica.voice.tts`): sentence-chunked speech with
+  instant pause (engine stop + kept position), resume-from-position, and
+  queue-flushing stop.
+- `make_control_handler`: the router's control words (pause / resume /
+  stop) drive the manager and speaker.
+- Spec: `docs/specs/pause-stop.md`.
+
 ## [0.4.0] - 2026-07-28
 
 ### Added

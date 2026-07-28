@@ -3,6 +3,17 @@
 Compromises, proxies, and deferred decisions — with the reason and what would
 remove them. Newest first. (Required by the working rules in `CLAUDE.md`.)
 
+## 2026-07-28 — Phase 4 (Fix 4)
+
+- **A chunk aborted mid-speech replays in full on RESUME** (position is the
+  chunk index, not a character offset). Chunks are single sentences, so the
+  repetition is at most one sentence — simpler and more robust than
+  intra-utterance offsets, which pyttsx3 cannot honor anyway.
+- **The <300 ms PAUSE guarantee is architectural** (chunk boundaries +
+  immediate engine stop), proven deterministically with a blocking fake.
+  Real pyttsx3 stop latency on the target OS gets measured at first bench;
+  if it misbehaves, the fallback is shorter chunks.
+
 ## 2026-07-28 — Phase 3 (Fix 3)
 
 - **A sim-test patch re-enters at BUILD** (the directive's "goto 2") even
