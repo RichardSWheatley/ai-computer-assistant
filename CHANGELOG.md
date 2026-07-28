@@ -3,6 +3,27 @@
 All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/); versions follow semver.
 
+## [0.14.0] - 2026-07-28
+
+### Added
+- **The real CERBERUS wired in** (github.com/RichardSWheatley/cerberus,
+  "G.U.A.R.D."): acquisition is part of RITA's install —
+  `rita cerberus install` clones it to `~/.rita/cerberus` (installer
+  component runs it post-install; GUI Modules page has an Install/update
+  button; needs git). The supervisor auto-detects the clone and wires the
+  gate with zero config; an explicit `cerberus_command` still overrides.
+- Adapter pinned to the CERBERUS contract: `python -m cerberus.cli scan`
+  from the clone (argv + cwd support in `CerberusCli`); **exit 0 =
+  approve, 1 = request changes, 2 = block** — both non-zero verdicts gate,
+  named in the artifact reason. Default = Head 1 `scan` (94 deterministic
+  MISRA/CERT checks, keyless — matching the no-LLM-judges rule);
+  `cerberus_deep` opts into `analyze` (Oracle LLM — Claude's seat inside
+  CERBERUS — + Unity heads) using CERBERUS's own env credentials.
+- The cerberus RPC module falls back to the detected clone when no
+  command is configured.
+- Tested offline: real `git clone` of a local fixture repo, real
+  subprocess verdicts both ways, end-to-end acquired-gate check.
+
 ## [0.13.0] - 2026-07-28
 
 ### Added

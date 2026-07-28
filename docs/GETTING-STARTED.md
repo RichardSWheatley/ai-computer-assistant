@@ -29,8 +29,10 @@ artifact, or ask for a release build). Run it and pick your components:
 - **Workspace MCP** — the local MCP server the coding agent uses to see
   your workspace (recommended: keep it).
 - **Modules** — zephyr-runner (build/test/flash), claude-worker,
-  scaffold, plus cerberus/joulescope placeholders (honest stubs until
-  their tool/hardware is present).
+  scaffold, **CERBERUS** (the static gate — the installer clones
+  github.com/RichardSWheatley/cerberus onto your machine; needs git on
+  PATH), and a joulescope placeholder (honest stub until the bench
+  milestone).
 
 The installer registers your selected modules under
 `%USERPROFILE%\.rita\` and puts **RITA** in the Start menu. Uninstalling
@@ -101,16 +103,28 @@ cancels at a safe boundary and reports what completed.
 | `%USERPROFILE%\.rita\work\task-N\` | each task's build output — `twister.json` in there is the gate verdict |
 | `<workspace>\applications\` | applications RITA scaffolds for you (configurable in Settings) |
 
-## 6. What's deliberately not on yet
+## 6. The CERBERUS static gate
+
+Every piece of code Claude produces passes CERBERUS before it may build,
+and every patch re-passes it. The default is CERBERUS's Head 1 — 94
+deterministic MISRA C:2012 / CERT C checks, free, **no API key needed**.
+If the installer's CERBERUS component didn't run (no git at install
+time), use **Modules → Install / update CERBERUS** in the app. Settings
+offers deep mode (`analyze`: the Oracle LLM head — Claude working inside
+CERBERUS — plus Unity test generation), which uses your Anthropic key via
+CERBERUS's own environment variables. Without CERBERUS installed the
+static stage reports itself as skipped — visibly, never silently.
+
+## 7. What's deliberately not on yet
 
 The **device tier** (real flashing, on-board twister, power measurement)
 is blocked until the bench milestone: twister `hello_world` with
 `--device-testing` passing on the real EVB, validating flash + serial +
 harness in one shot. Until then RITA reports the device step as blocked —
-it is never faked green. Cerberus and Joulescope modules are honest stubs
-for the same reason.
+it is never faked green. The Joulescope module stays an honest stub for
+the same reason.
 
-## 7. Troubleshooting
+## 8. Troubleshooting
 
 - **Status bar says "claude CLI missing"** — install/log in to Claude
   Code; RITA finds it on PATH.

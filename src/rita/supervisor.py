@@ -69,12 +69,19 @@ class Supervisor:
                                mcp_config=mcp if mcp.exists() else None)
 
     def _make_static_checker(self):
-        """The CERBERUS gate, when configured. None = STATIC reports skipped."""
-        if not self.cfg.cerberus_command:
-            return None
-        from .firmware.static_check import CerberusCli
+        """The CERBERUS gate: explicit command wins, else the acquired
+        ~/.rita/cerberus clone (Head 1 scan — deterministic, keyless), else
+        None and the STATIC stage reports skipped."""
+        if self.cfg.cerberus_command:
+            from .firmware.static_check import CerberusCli
 
-        return CerberusCli(self.cfg.cerberus_command)
+            return CerberusCli(self.cfg.cerberus_command)
+        from .firmware.cerberus_setup import default_checker, detect_cerberus
+
+        clone = detect_cerberus()
+        if clone is not None:
+            return default_checker(clone, deep=self.cfg.cerberus_deep)
+        return None
 
     def _make_index(self):
         if self._index is not None:

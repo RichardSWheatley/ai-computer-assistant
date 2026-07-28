@@ -111,6 +111,20 @@ def cmd_talk(args) -> int:
     return 0
 
 
+def cmd_cerberus(args) -> int:
+    from .firmware.cerberus_setup import CERBERUS_REPO_URL, install_cerberus
+
+    if args.action == "install":
+        res = install_cerberus(url=args.url or CERBERUS_REPO_URL)
+        print(res.detail)
+        return 0 if res.ok else 1
+    from .firmware.cerberus_setup import detect_cerberus
+    clone = detect_cerberus()
+    print(f"CERBERUS: {clone}" if clone else
+          "CERBERUS: not installed (rita cerberus install)")
+    return 0
+
+
 def cmd_module_run(args) -> int:
     """Host one capability module over stdio (what manifests point at).
 
@@ -267,11 +281,18 @@ def main(argv: list[str] | None = None) -> int:
                           help="host one capability module over stdio")
     mrun.add_argument("name", help="module name (e.g. zephyr-runner)")
 
+    cerb = sub.add_parser("cerberus",
+                          help="install or inspect the CERBERUS static gate")
+    cerb.add_argument("action", nargs="?", default="status",
+                      choices=["status", "install"])
+    cerb.add_argument("--url", help="override the CERBERUS repo URL")
+
     args = parser.parse_args(argv)
     return {"doctor": cmd_doctor, "plugins": cmd_plugins, "run": cmd_run,
             "doc": cmd_doc, "workflow": cmd_workflow, "talk": cmd_talk,
             "sync": cmd_sync, "mcp-serve": cmd_mcp_serve,
-            "modules": cmd_modules, "module-run": cmd_module_run}[args.cmd](args)
+            "modules": cmd_modules, "module-run": cmd_module_run,
+            "cerberus": cmd_cerberus}[args.cmd](args)
 
 
 if __name__ == "__main__":

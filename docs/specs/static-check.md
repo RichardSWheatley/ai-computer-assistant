@@ -21,6 +21,29 @@ roles stay narrow: it codes (scaffold, tests, patches) and plays whatever
 part it has *inside* CERBERUS; it never grades its own work — CERBERUS,
 the compiler, and twister do.
 
+## The real CERBERUS (pinned contract)
+
+CERBERUS is **github.com/RichardSWheatley/cerberus** ("G.U.A.R.D.", Python
+≥3.9): Head 1 *Sentinel* — 94 deterministic MISRA C:2012 / CERT C checks,
+pure stdlib, **no API key**; Head 2 *Oracle* — LLM deep analysis (Claude's
+seat inside CERBERUS, `CERBERUS_LLM_PROVIDER=anthropic` default); Head 3
+*Executioner* — Unity test generation (`setup_unity.sh`).
+
+- **Acquisition is part of RITA's install**: the repo is cloned to
+  `~/.rita/cerberus` by the installer's CERBERUS component, the GUI's
+  Install button (Modules page), or `rita cerberus install`. Needs git.
+- **Invocation** (from the clone; it is not pip-installed):
+  `python -m cerberus.cli scan <target>` — RITA's default gate,
+  deterministic and keyless, matching the no-LLM-judges rule.
+  `analyze --unity-dir <path>` is the opt-in deep mode
+  (`RitaConfig.cerberus_deep`); its LLM credentials are CERBERUS's own env
+  (`CERBERUS_LLM_*` / `ANTHROPIC_API_KEY`), passed through untouched.
+- **Verdicts by exit code**: 0 = approve; 1 = request changes; 2 = block.
+  Both non-zero verdicts gate (findings → Claude patches), with the
+  verdict named in the artifact reason.
+- Auto-detection order: explicit `cerberus_command` override → detected
+  clone → skipped (visible, never silently green).
+
 ## Design
 
 - `rita.firmware.static_check.StaticChecker` protocol:

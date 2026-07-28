@@ -32,7 +32,7 @@ Name: "mcpserve"; Description: "Workspace MCP server (claude-worker integration)
 Name: "mod_runner"; Description: "Module: zephyr-runner (build/twister/flash)"; Types: full
 Name: "mod_claude"; Description: "Module: claude-worker (the coding agent)"; Types: full
 Name: "mod_scaffold"; Description: "Module: scaffold (application authoring)"; Types: full
-Name: "mod_cerberus"; Description: "Module: cerberus (stub until the tool is present)"; Types: full
+Name: "mod_cerberus"; Description: "Module: CERBERUS static gate (clones github.com/RichardSWheatley/cerberus; needs git)"; Types: full
 Name: "mod_joulescope"; Description: "Module: joulescope (stub until bench milestone)"; Types: full
 
 [Files]
@@ -50,6 +50,8 @@ Name: "desktopicon"; Description: "Create a &desktop icon"; GroupDescription: "A
 ; (the registry's native install mechanism). Only the selected components.
 Filename: "{app}\rita.exe"; Parameters: "modules install --only {code:SelectedModules}"; \
     Flags: runhidden; StatusMsg: "Registering capability modules..."
+Filename: "{app}\rita.exe"; Parameters: "cerberus install"; Components: mod_cerberus; \
+    Flags: runhidden; StatusMsg: "Downloading CERBERUS (static gate)..."
 Filename: "{app}\RitaApp.exe"; Description: "Launch RITA"; Flags: postinstall nowait skipifsilent
 
 [UninstallDelete]

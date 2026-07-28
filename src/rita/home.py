@@ -65,6 +65,10 @@ def mcp_config_path() -> Path:
     return _sub("mcp.json")
 
 
+def cerberus_dir() -> Path:
+    return _sub("cerberus")
+
+
 def modules_dir() -> Path:
     return _sub("modules")
 

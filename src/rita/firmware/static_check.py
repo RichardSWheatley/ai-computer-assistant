@@ -37,28 +37,45 @@ class StaticChecker(Protocol):
 
 
 def _artifact(target: Path, *, message: str, file: str | None = None,
-              line=None, severity: str = "error") -> FailureArtifact:
+              line=None, severity: str = "error",
+              verdict: str | None = None) -> FailureArtifact:
     location = f"{file}:{line}" if file and line is not None else (file or "")
     log = f"{location}: {severity}: {message}" if location else message
     return FailureArtifact(
         kind="static", suite=target.name, platform="static-analysis",
-        reason=f"CERBERUS: {severity}", log_excerpt=log[:4000],
+        reason=f"CERBERUS: {verdict or severity}", log_excerpt=log[:4000],
         file_hints=(file,) if file else ())
 
 
-class CerberusCli:
-    """Run the configured CERBERUS command over a target directory."""
+# CERBERUS G.U.A.R.D. verdicts (github.com/RichardSWheatley/cerberus):
+# exit 0 = approve, 1 = request changes, 2 = block. Both non-zero gate.
+_VERDICTS = {1: "request changes", 2: "block"}
 
-    def __init__(self, command: str, timeout: float = 600.0) -> None:
-        self.command = command
+
+class CerberusCli:
+    """Run the CERBERUS command over a target directory.
+
+    Accepts a command string (custom tools) or an argv list (the pinned
+    `python -m cerberus.cli scan` invocation, which needs cwd=<clone> since
+    the repo isn't pip-installed). Environment passes through, so deep mode
+    reads its own CERBERUS_LLM_* / ANTHROPIC_API_KEY settings.
+    """
+
+    def __init__(self, command: str | list[str], cwd: str | None = None,
+                 timeout: float = 600.0) -> None:
+        self.command = command if isinstance(command, str) else ""
+        self.argv = (shlex.split(command) if isinstance(command, str)
+                     else list(command))
+        self.cwd = cwd
         self.timeout = timeout
 
     def check(self, target: Path) -> StaticResult:
-        argv = [*shlex.split(self.command), str(target)]
+        argv = [*self.argv, str(Path(target).resolve())]
         proc = subprocess.run(argv, capture_output=True, text=True,
-                              timeout=self.timeout)
+                              timeout=self.timeout, cwd=self.cwd)
         if proc.returncode == 0:
             return StaticResult(ok=True)
+        verdict = _VERDICTS.get(proc.returncode, "findings")
         out = (proc.stdout or "").strip()
         findings: list[FailureArtifact] = []
         try:
@@ -67,13 +84,13 @@ class CerberusCli:
                 findings.append(_artifact(
                     target, message=str(f.get("message", "finding")),
                     file=f.get("file"), line=f.get("line"),
-                    severity=str(f.get("severity", "error"))))
+                    severity=str(f.get("severity", verdict)), verdict=verdict))
         except (json.JSONDecodeError, AttributeError):
             pass
         if not findings:  # non-JSON tools still yield a concrete artifact
             raw = out or (proc.stderr or "").strip() \
                 or f"exit code {proc.returncode} with no output"
-            findings.append(_artifact(target, message=raw))
+            findings.append(_artifact(target, message=raw, verdict=verdict))
         return StaticResult(ok=False, findings=tuple(findings))
 
 

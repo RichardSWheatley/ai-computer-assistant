@@ -30,8 +30,12 @@ class SettingsPage(QWidget):
         form.addRow("Patch cycles per stage", self.budget)
         self.cerberus_edit = QLineEdit(cfg.cerberus_command or "")
         self.cerberus_edit.setPlaceholderText(
-            "CERBERUS command (static gate) — leave empty to skip the stage")
-        form.addRow("CERBERUS", self.cerberus_edit)
+            "custom CERBERUS command — empty = use the installed clone")
+        form.addRow("CERBERUS override", self.cerberus_edit)
+        self.cerberus_deep = QCheckBox(
+            "Deep mode: analyze (Oracle LLM + Unity heads) instead of scan")
+        self.cerberus_deep.setChecked(cfg.cerberus_deep)
+        form.addRow("", self.cerberus_deep)
         self.voice = QCheckBox("Enable voice (wake word + speech)")
         form.addRow("", self.voice)
         note = QLabel("The device tier stays off until the bench milestone — "
@@ -49,6 +53,7 @@ class SettingsPage(QWidget):
         sup.cfg.assistant_name = self.name_edit.text().strip() or "Rita"
         sup.cfg.max_patch_cycles = self.budget.value()
         sup.cfg.cerberus_command = self.cerberus_edit.text().strip() or None
+        sup.cfg.cerberus_deep = self.cerberus_deep.isChecked()
         save_rita_config(sup.cfg, sup.config_path)
         from ..routing.wake import WakeGate
 

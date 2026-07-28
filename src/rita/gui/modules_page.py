@@ -1,14 +1,19 @@
-"""Modules page: the registry, visible — versions, current pointers."""
+"""Modules page: the registry, visible — versions, pointers, CERBERUS."""
 
 from __future__ import annotations
 
-from PySide6.QtWidgets import (QLabel, QListWidget, QPushButton, QVBoxLayout,
-                               QWidget)
+import threading
+
+from PySide6.QtCore import Signal
+from PySide6.QtWidgets import (QFrame, QHBoxLayout, QLabel, QListWidget,
+                               QPushButton, QVBoxLayout, QWidget)
 
 from .presenter import GuiPresenter
 
 
 class ModulesPage(QWidget):
+    sig_cerberus = Signal(str)
+
     def __init__(self, presenter: GuiPresenter) -> None:
         super().__init__()
         self.presenter = presenter
@@ -25,6 +30,24 @@ class ModulesPage(QWidget):
         install = QPushButton("Install bundled modules", objectName="primary")
         install.clicked.connect(self._install)
         v.addWidget(install)
+
+        # CERBERUS — the static gate; the repo is part of RITA's install.
+        card = QFrame(objectName="card")
+        cv = QVBoxLayout(card)
+        cv.addWidget(QLabel("CERBERUS static gate"))
+        self.cerberus_status = QLabel("", objectName="dim")
+        self.cerberus_status.setWordWrap(True)
+        cv.addWidget(self.cerberus_status)
+        row = QHBoxLayout()
+        self.cerberus_btn = QPushButton("Install / update CERBERUS",
+                                        objectName="primary")
+        self.cerberus_btn.clicked.connect(self._install_cerberus)
+        row.addWidget(self.cerberus_btn)
+        row.addStretch(1)
+        cv.addLayout(row)
+        v.addWidget(card)
+        self.sig_cerberus.connect(self.cerberus_status.setText)
+        self._refresh_cerberus()
         self.refresh()
 
     def refresh(self) -> None:
@@ -45,3 +68,31 @@ class ModulesPage(QWidget):
 
         dev_install()
         self.refresh()
+
+    def _refresh_cerberus(self) -> None:
+        from ..firmware.cerberus_setup import detect_cerberus
+
+        clone = detect_cerberus()
+        if clone:
+            self.cerberus_status.setText(
+                f"Installed at {clone} — Head 1 (94 MISRA/CERT checks) gates "
+                f"every piece of generated code, no API key needed.")
+        else:
+            self.cerberus_status.setText(
+                "Not installed. Installing clones "
+                "github.com/RichardSWheatley/cerberus into ~/.rita (needs git).")
+
+    def _install_cerberus(self) -> None:
+        from ..firmware.cerberus_setup import install_cerberus
+
+        self.cerberus_btn.setEnabled(False)
+        self.sig_cerberus.emit("Installing CERBERUS…")
+
+        def run() -> None:
+            try:
+                res = install_cerberus()
+                self.sig_cerberus.emit(res.detail)
+            finally:
+                self.cerberus_btn.setEnabled(True)
+
+        threading.Thread(target=run, daemon=True).start()

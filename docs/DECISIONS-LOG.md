@@ -3,6 +3,20 @@
 Compromises, proxies, and deferred decisions — with the reason and what would
 remove them. Newest first. (Required by the working rules in `CLAUDE.md`.)
 
+## 2026-07-28 — Real CERBERUS wiring
+
+- **Default gate = `scan` (Head 1), not `analyze`.** Head 1 is
+  deterministic and keyless — the RITA-philosophy fit; the Oracle LLM +
+  Unity heads are opt-in (`cerberus_deep`) because they add cost, latency,
+  and an LLM judgment layer the user should choose deliberately.
+- **Exit codes are the authoritative contract** (0/1/2 per the CERBERUS
+  README); JSON summary filenames are undocumented upstream, so stdout
+  JSON is parsed opportunistically and raw text still yields a concrete
+  artifact. Tighten when upstream documents the summary file.
+- **Acquisition is `git clone --depth 1` into ~/.rita/cerberus**, updated
+  by ff-only pull. Missing git is an honest failure surfaced in the
+  installer log and retryable from the GUI.
+
 ## 2026-07-28 — CERBERUS gate
 
 - **The adapter's exact CERBERUS interface is provisional.** The tool is

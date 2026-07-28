@@ -26,27 +26,43 @@ def start(params, emit):
         from ..config import load_rita_config
 
         command = load_rita_config().cerberus_command
-    if not command:
+    if command:
+        _STATE["checker_args"] = {"command": command}
+        return {"ok": True, "command": command}
+    # No explicit command: the acquired ~/.rita/cerberus clone, if present.
+    from ..firmware.cerberus_setup import detect_cerberus
+
+    clone = detect_cerberus()
+    if clone is None:
         return dict(_NOT_CONFIGURED)
-    _STATE["command"] = command
-    return {"ok": True, "command": command}
+    _STATE["checker_args"] = {"clone": str(clone)}
+    return {"ok": True, "command": f"cerberus.cli scan (from {clone})"}
+
+
+def _checker():
+    args = _STATE["checker_args"]
+    if "command" in args:
+        from ..firmware.static_check import CerberusCli
+
+        return CerberusCli(args["command"])
+    from ..firmware.cerberus_setup import default_checker
+
+    return default_checker(args["clone"])
 
 
 def check(params, emit):
-    if "command" not in _STATE:
+    if "checker_args" not in _STATE:
         return dict(_NOT_CONFIGURED)
-    from ..firmware.static_check import CerberusCli
-
-    result = CerberusCli(_STATE["command"]).check(Path(params["target"]))
+    result = _checker().check(Path(params["target"]))
     emit("progress", {"stage": "static", "ok": result.ok})
     return {"ok": result.ok,
             "findings": [asdict(f) for f in result.findings]}
 
 
 def status(params, emit):
-    if "command" not in _STATE:
+    if "checker_args" not in _STATE:
         return dict(_NOT_CONFIGURED)
-    return {"ok": True, "command": _STATE["command"]}
+    return {"ok": True, **_STATE["checker_args"]}
 
 
 if __name__ == "__main__":  # pragma: no cover - exercised as a child process

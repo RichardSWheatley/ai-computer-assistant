@@ -1,6 +1,6 @@
 [project]
 name = "rita"
-version = "0.13.0"
+version = "0.14.0"
 description = "RITA — Routing, Iteration, Testing, Automation: a deterministic orchestrator with a speech front end for Zephyr firmware work."
 readme = "README.md"
 requires-python = ">=3.11"
