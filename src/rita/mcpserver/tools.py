@@ -42,6 +42,14 @@ class WorkspaceTools:
 
     # --- tools --------------------------------------------------------------
 
+    def workspace_info(self) -> dict:
+        from ..firmware.workspace import read_workspace_info
+
+        info = read_workspace_info(self.workspace)
+        info["boards"] = len(self.boards)
+        info["indexed_suites"] = len(self.index.entries)
+        return info
+
     def find_verification(self, board: str, query: str, limit: int = 10) -> list[dict]:
         terms = query.replace(",", " ").split()
         return [asdict(e) for e in self.index.find(board, terms, limit=limit)]

@@ -3,6 +3,15 @@
 Compromises, proxies, and deferred decisions — with the reason and what would
 remove them. Newest first. (Required by the working rules in `CLAUDE.md`.)
 
+## 2026-07-28 — Workspace facts (post-rename)
+
+- **The packaged boards seed is bootstrap vocabulary only.** It exists so
+  the router can match board names before the first `rita sync`; every
+  fact RITA *states* (board metadata, Zephyr version) comes from the
+  synced workspace data, and the synced `boards.json` supersedes the seed
+  for routing too. A missing fact (no `zephyr/VERSION`) is reported as
+  missing, never guessed.
+
 ## 2026-07-28 — Phase 7 (rename)
 
 - **Keyring service name stays `aica`** — renaming it would orphan every

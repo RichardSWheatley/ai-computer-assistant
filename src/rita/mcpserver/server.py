@@ -32,6 +32,12 @@ def build_server(workspace: str | Path):  # pragma: no cover - exercised via SDK
     srv = FastMCP(SERVER_NAME)
 
     @srv.tool()
+    def workspace_info() -> str:
+        """Facts about this Zephyr install: version (from zephyr/VERSION),
+        workspace path, board and suite counts."""
+        return json.dumps(tools.workspace_info())
+
+    @srv.tool()
     def find_verification(board: str, query: str, limit: int = 10) -> str:
         """Ranked samples/tests from the verification index that could verify
         an intent on a board. Query = peripheral/subsystem terms."""

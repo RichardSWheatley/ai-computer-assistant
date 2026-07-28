@@ -3,6 +3,20 @@
 All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/); versions follow semver.
 
+## [0.9.0] - 2026-07-28
+
+### Added
+- **Zephyr facts come from the actual install** (`rita.firmware.workspace`):
+  the version is parsed from the checkout's `zephyr/VERSION` file
+  (EXTRAVERSION honored; a missing file is reported, never guessed) and
+  recorded in `boards.json` alongside a sync timestamp.
+- MCP tool `workspace_info`: version, workspace path, board and indexed-
+  suite counts served to the claude-worker.
+- Chat answers workspace questions deterministically from synced data:
+  "tell me about the apollo510" describes the real board (vendor, arch,
+  twister platform, supported peripherals, connected port); "what zephyr
+  version" answers from the install. No LLM, no invention.
+
 ## [0.8.0] - 2026-07-28
 
 ### Changed

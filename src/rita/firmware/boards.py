@@ -55,6 +55,10 @@ def _load_hw_map(hw_map: str | Path | None) -> dict[str, dict]:
 
 def build_boards_json(workspace: str | Path,
                       hw_map: str | Path | None = None) -> dict:
+    from datetime import datetime, timezone
+
+    from .workspace import read_workspace_info
+
     ws = Path(workspace)
     connected = _load_hw_map(hw_map)
     boards: dict[str, dict] = {}
@@ -90,4 +94,7 @@ def build_boards_json(workspace: str | Path,
         if hw:
             entry["connected"] = hw
         boards[name] = entry
-    return {"workspace": str(ws), "boards": boards}
+    return {"workspace": str(ws),
+            "zephyr_version": read_workspace_info(ws)["zephyr_version"],
+            "generated_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
+            "boards": boards}

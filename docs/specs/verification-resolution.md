@@ -37,7 +37,9 @@ Generated into `~/.rita/boards.json` by scanning
 map (`map.yaml`) for connected-port data:
 
 ```json
-{"generated_at": "...", "workspace": "/path", "boards": {
+{"generated_at": "...", "workspace": "/path",
+ "zephyr_version": "4.1.0",   // from the checkout's zephyr/VERSION — read, never assumed
+ "boards": {
   "apollo510_evb": {"name": "apollo510_evb",
     "aliases": ["apollo510", "apollo 510"],
     "vendor": "ambiq", "arch": "arm",

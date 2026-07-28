@@ -42,6 +42,7 @@ class Supervisor:
             workdir = rita_home() / "work"
         self.workdir = Path(workdir)
         self._task_seq = 0
+        self._facts: dict = {}   # lazy workspace-fact cache (cleared on sync)
         self.shell = RouterShell(
             vocab or Vocabulary.load(), config_path=config_path,
             work=self.handle_work, chat=self.handle_chat,
@@ -99,7 +100,54 @@ class Supervisor:
         return (f"Started {verb} for {board}. Say pause or stop any time; "
                 f"I'll report when the gates finish.")
 
+    def _boards_data(self) -> dict:
+        """Synced boards.json when present, else scanned from the workspace —
+        Zephyr facts always come from the actual install, never baked in."""
+        if "boards_data" not in self._facts:
+            import json
+
+            from .home import boards_json_path
+
+            p = boards_json_path()
+            if p.exists():
+                self._facts["boards_data"] = json.loads(p.read_text())
+            elif self.cfg.workspace:
+                from .firmware.boards import build_boards_json
+
+                self._facts["boards_data"] = build_boards_json(self.cfg.workspace)
+            else:
+                self._facts["boards_data"] = {"boards": {}}
+        return self._facts["boards_data"]
+
     def handle_chat(self, text: str) -> str:
+        data = self._boards_data()
+        norm = text.lower()
+
+        # Questions about a known board answer from its real metadata.
+        board = self.shell.vocab.find_board(norm)
+        if board and board in data.get("boards", {}):
+            b = data["boards"][board]
+            supported = ", ".join(b.get("supported", [])[:8]) or "unknown peripherals"
+            conn = b.get("connected")
+            attached = (f" It is connected on {conn['serial']}." if conn and
+                        conn.get("serial") else "")
+            return (f"{board} is a {b.get('vendor', 'unknown-vendor')} "
+                    f"{b.get('arch', '?')} board, twister platform "
+                    f"{b.get('twister_platform', board)}, supporting "
+                    f"{supported}.{attached}")
+
+        # Zephyr version questions answer from the install's VERSION file.
+        if "zephyr" in norm and "version" in norm:
+            version = data.get("zephyr_version")
+            if version is None and self.cfg.workspace:
+                from .firmware.workspace import read_workspace_info
+
+                version = read_workspace_info(self.cfg.workspace)["zephyr_version"]
+            if version:
+                return f"This workspace is on Zephyr {version}."
+            return ("I can't find a zephyr/VERSION file in the workspace, "
+                    "so I won't guess the version.")
+
         return ("We can chat, but nothing in that matched a work command. "
                 "Name a board or sample to put me to work.")
 
