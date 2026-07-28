@@ -3,6 +3,14 @@
 Compromises, proxies, and deferred decisions — with the reason and what would
 remove them. Newest first. (Required by the working rules in `CLAUDE.md`.)
 
+## 2026-07-28 — Phase 5 (Fix 5)
+
+- **The speech strip is deliberately over-aggressive** (drops any token
+  with a code-file extension, any mostly-symbol line). A false positive
+  costs a slightly clipped sentence; a false negative reads code aloud —
+  the spec calls that a test failure, so the bias is one-directional by
+  design.
+
 ## 2026-07-28 — Phase 4 (Fix 4)
 
 - **A chunk aborted mid-speech replays in full on RESUME** (position is the

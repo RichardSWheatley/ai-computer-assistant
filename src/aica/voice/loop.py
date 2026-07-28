@@ -108,7 +108,8 @@ class RouterShell:
 class VoiceLoop:
     def __init__(self, recorder: Recorder, stt: SpeechToText, tts: TextToSpeech,
                  handler: Handler, trigger: Trigger | None = None,
-                 utterance_handler: Callable[[Utterance], str] | None = None) -> None:
+                 utterance_handler: Callable[[Utterance], str] | None = None,
+                 on_screen: Callable[[str], None] | None = None) -> None:
         self.recorder = recorder
         self.stt = stt
         self.tts = tts
@@ -117,6 +118,17 @@ class VoiceLoop:
         # When set, turns flow as timed Utterances (wake grammar needs word
         # timings); `handler` is ignored for those turns.
         self.utterance_handler = utterance_handler
+        # Screen-channel sink (Fix 5): receives the FULL response; the TTS
+        # path only ever gets the deterministically stripped speech channel.
+        self.on_screen = on_screen
+
+    def _speak_reply(self, said: str) -> None:
+        from ..ui.channels import split_response
+
+        reply = split_response(said)
+        if self.on_screen is not None:
+            self.on_screen(reply.screen)
+        self.tts.speak(reply.speech)
 
     def converse_once(self) -> tuple[str, str]:
         """One turn: record, transcribe, handle, speak. Returns (heard, said)."""
@@ -131,7 +143,7 @@ class VoiceLoop:
                 return heard, "Goodbye."
             said = self.utterance_handler(utt)
             if said:  # empty reply = utterance ignored (e.g. not awake)
-                self.tts.speak(said)
+                self._speak_reply(said)
             return heard, said
         heard = (self.stt.transcribe(wav) or "").strip()
         if not heard:
@@ -140,7 +152,7 @@ class VoiceLoop:
             self.tts.speak("Goodbye.")
             return heard, "Goodbye."
         said = self.handler(heard)
-        self.tts.speak(said)
+        self._speak_reply(said)
         return heard, said
 
     def is_stop(self, heard: str) -> bool:

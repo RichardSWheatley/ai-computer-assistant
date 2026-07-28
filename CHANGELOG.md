@@ -3,6 +3,20 @@
 All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/); versions follow semver.
 
+## [0.6.0] - 2026-07-28
+
+### Added
+- **Fix 5 — two output channels** (`aica.ui.channels.split_response`):
+  every response splits into speech (≤2 conversational sentences) and
+  screen (the full artifact, byte-for-byte). The shell strips fenced code,
+  diffs, inline code, URLs, paths, and symbol-heavy lines from the TTS path
+  unconditionally — the deterministic strip is the guarantee, whatever the
+  model returns. Code-only responses speak a fallback sentence.
+- `VoiceLoop` enforces the split on both handler paths and hands the screen
+  channel to an `on_screen` sink; `PausableSpeaker.say` is non-blocking so
+  the first sentence plays while the rest streams.
+- Spec: `docs/specs/output-channels.md`.
+
 ## [0.5.0] - 2026-07-28
 
 ### Added

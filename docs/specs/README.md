@@ -8,7 +8,7 @@ One spec per directive fix, written before its tests and implementation:
 | `verification-resolution.md` | Fix 2 — find-or-write verification + workspace MCP | **done** |
 | `iterate-loop.md` | Fix 3 — orchestrator-owned build/test loop | **done** |
 | `pause-stop.md` | Fix 4 — PAUSE / RESUME / STOP | **done** |
-| `output-channels.md` | Fix 5 — speech vs screen split | pending |
+| `output-channels.md` | Fix 5 — speech vs screen split | **done** |
 | `supervisor-modules.md` | Fix 6 — thin supervisor + versioned modules | pending |
 
 Update the status column as each lands.
