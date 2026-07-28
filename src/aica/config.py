@@ -39,6 +39,54 @@ class Config:
     use_quarantine_llm: bool = False
 
 
+@dataclass
+class RitaConfig:
+    """Persisted assistant settings at ~/.rita/config (TOML).
+
+    Separate from the hardware-derived `Config`: these are the user's durable
+    choices — the assistant's spoken name (data, not code), the Zephyr
+    workspace it operates on, and the iterate-loop budgets.
+    """
+
+    assistant_name: str = "Rita"
+    workspace: str | None = None       # Zephyr workspace root on this machine
+    hardware_map: str | None = None    # twister map.yaml (device tier)
+    max_patch_cycles: int = 3
+    # Device tier stays off until the bench milestone proves flash/serial/harness.
+    device_tier_enabled: bool = False
+
+
+def load_rita_config(path: str | Path | None = None) -> RitaConfig:
+    from .home import config_path
+
+    p = Path(path) if path else config_path()
+    cfg = RitaConfig()
+    if p.exists():
+        data = tomllib.loads(p.read_text())
+        for k, v in data.get("rita", data).items():
+            if hasattr(cfg, k):
+                setattr(cfg, k, v)
+    return cfg
+
+
+def save_rita_config(cfg: RitaConfig, path: str | Path | None = None) -> None:
+    from .home import config_path
+
+    p = Path(path) if path else config_path()
+    p.parent.mkdir(parents=True, exist_ok=True)
+    lines = ["[rita]"]
+    for k, v in vars(cfg).items():
+        if v is None:
+            continue
+        if isinstance(v, bool):
+            lines.append(f"{k} = {'true' if v else 'false'}")
+        elif isinstance(v, (int, float)):
+            lines.append(f"{k} = {v}")
+        else:
+            lines.append(f'{k} = "{v}"')
+    p.write_text("\n".join(lines) + "\n")
+
+
 def load_config(path: str | Path | None = None,
                 hw: Hardware | None = None,
                 local_only: bool | None = None) -> Config:

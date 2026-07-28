@@ -20,11 +20,17 @@ class Recorder(Protocol):
         ...
 
 
+def _default_audio_dir() -> str:
+    from ..home import audio_dir
+
+    return str(audio_dir())
+
+
 class MicRecorder:
-    def __init__(self, seconds: float = 5.0, out_dir: str = ".aica/audio",
+    def __init__(self, seconds: float = 5.0, out_dir: str | None = None,
                  sample_rate: int = SAMPLE_RATE) -> None:
         self.seconds = seconds
-        self.out_dir = out_dir
+        self.out_dir = out_dir or _default_audio_dir()
         self.sample_rate = sample_rate
 
     def record(self) -> str:  # pragma: no cover - needs a microphone
@@ -49,9 +55,9 @@ class PushToTalkRecorder:
     """Press-to-talk: starts recording on record(), stops when you press Enter.
     No fixed window, so utterances can be any length."""
 
-    def __init__(self, out_dir: str = ".aica/audio",
+    def __init__(self, out_dir: str | None = None,
                  sample_rate: int = SAMPLE_RATE) -> None:
-        self.out_dir = out_dir
+        self.out_dir = out_dir or _default_audio_dir()
         self.sample_rate = sample_rate
 
     def record(self) -> str:  # pragma: no cover - needs a microphone

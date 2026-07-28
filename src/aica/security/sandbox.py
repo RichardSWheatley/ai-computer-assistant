@@ -33,10 +33,16 @@ _SECRET_RE = re.compile(
     r"ANTHROPIC|AICA_GRAPH|AWS_|AZURE_|GCP_|OPENAI)", re.IGNORECASE)
 
 
+def _default_sandbox_dir() -> str:
+    from ..home import sandbox_dir
+
+    return str(sandbox_dir())
+
+
 @dataclass
 class SandboxPolicy:
     allow_env: set[str] = field(default_factory=lambda: set(_DEFAULT_ALLOW_ENV))
-    workdir: str = ".aica/sandbox"
+    workdir: str = field(default_factory=_default_sandbox_dir)
     cpu_seconds: int = 30
     memory_mb: int = 1024
     file_size_mb: int = 64

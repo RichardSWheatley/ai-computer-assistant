@@ -10,12 +10,16 @@ from __future__ import annotations
 import os
 
 
-def capture_screen(out_dir: str = ".aica/screens") -> tuple[str, tuple[int, int]] | None:
+def capture_screen(out_dir: str | None = None) -> tuple[str, tuple[int, int]] | None:
     try:  # pragma: no cover - needs a display + optional dep
         import mss  # type: ignore
         import mss.tools  # type: ignore
     except Exception:
         return None
+    if out_dir is None:  # pragma: no cover - resolved lazily with a display
+        from ..home import screens_dir
+
+        out_dir = str(screens_dir())
     try:  # pragma: no cover - needs a display
         os.makedirs(out_dir, exist_ok=True)
         path = os.path.join(out_dir, "frame.png")
