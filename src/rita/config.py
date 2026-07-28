@@ -51,6 +51,7 @@ class RitaConfig:
     assistant_name: str = "Rita"
     workspace: str | None = None       # Zephyr workspace root on this machine
     hardware_map: str | None = None    # twister map.yaml (device tier)
+    applications_dir: str | None = None  # scaffold target; default <workspace>/applications
     max_patch_cycles: int = 3
     # Device tier stays off until the bench milestone proves flash/serial/harness.
     device_tier_enabled: bool = False

@@ -1,0 +1,65 @@
+{
+  "_comment": "Curated Zephyr conventions researched 2026-07-28 from docs.zephyrproject.org (latest). Facts about the user's install come only from the workspace; this pack is how-Zephyr-works knowledge.",
+  "topics": {
+    "building-apps": {
+      "title": "Building Zephyr applications",
+      "keywords": ["build", "application", "app", "cmake", "cmakelists", "prj", "conf", "find_package", "project", "create", "write"],
+      "source": "https://docs.zephyrproject.org/latest/develop/application/index.html",
+      "summary": "Apps need CMakeLists.txt (find_package(Zephyr) before project()), prj.conf, and src/main.c; build with west build -b <board> from or pointing at the app directory."
+    },
+    "app-locations": {
+      "title": "Where applications live",
+      "keywords": ["location", "where", "applications", "workspace", "folder", "directory", "layout", "scaffold"],
+      "source": "https://docs.zephyrproject.org/latest/develop/application/index.html",
+      "summary": "User applications belong inside the west workspace beside zephyr/, conventionally <workspace>/applications/<app>; RITA scaffolds there (applications_dir config)."
+    },
+    "west-commands": {
+      "title": "west build / flash conventions",
+      "keywords": ["west", "build", "board", "pristine", "sysbuild", "qualifier", "builddir", "cmake"],
+      "source": "https://docs.zephyrproject.org/latest/develop/west/build-flash-debug.html",
+      "summary": "west build -b <board/soc/variant> [-d dir] [-p]; -t run for emulators; CMake args after --; west flash [--runner jlink] rebuilds by default."
+    },
+    "twister": {
+      "title": "Twister, the test gate",
+      "keywords": ["twister", "test", "testcase", "sample", "yaml", "platform_allow", "harness", "device-testing", "hardware-map", "gate"],
+      "source": "https://docs.zephyrproject.org/latest/develop/twister/index.html",
+      "summary": "west twister -T <suite> -p <platform>; device runs need --device-testing --hardware-map (generated, never hardcoded); twister.json in the outdir is the machine-readable verdict."
+    },
+    "ztest": {
+      "title": "ztest test authoring",
+      "keywords": ["ztest", "zassert", "suite", "unit", "assert", "test", "authoring"],
+      "source": "https://docs.zephyrproject.org/latest/develop/test/ztest.html",
+      "summary": "ZTEST_SUITE + ZTEST macros with zassert_* assertions; CONFIG_ZTEST=y in prj.conf; a testcase.yaml registers the suite so twister runs it."
+    },
+    "devicetree-overlays": {
+      "title": "Devicetree overlays",
+      "keywords": ["devicetree", "overlay", "dts", "alias", "chosen", "node", "binding", "status", "okay"],
+      "source": "https://docs.zephyrproject.org/latest/build/dts/howtos.html",
+      "summary": "Overlays (boards/<BOARD>.overlay or app.overlay, discovered in a fixed order) enable peripherals and add bus devices; the merged result is build/zephyr/zephyr.dts."
+    },
+    "mspi": {
+      "title": "MSPI multi-bit SPI bus",
+      "keywords": ["mspi", "spi", "octal", "quad", "hex", "sdr", "ddr", "xip", "transceive", "mspi0", "mspi1"],
+      "source": "https://docs.zephyrproject.org/latest/hardware/peripherals/mspi.html",
+      "summary": "MSPI drives single-to-hex-wide SDR/DDR devices (mspi_dev_config, mspi_transceive, XIP via CONFIG_MSPI_MEMMAP); in-tree samples under samples/drivers/mspi/ (async, flash, timing_scan, throughput)."
+    },
+    "psram": {
+      "title": "PSRAM over MSPI",
+      "keywords": ["psram", "ram", "memc", "aps6404l", "memory", "xip", "hex", "external"],
+      "source": "https://docs.zephyrproject.org/latest/hardware/peripherals/mspi.html",
+      "summary": "PSRAM attaches as an MSPI device driven by a memc driver (e.g. memc_mspi_aps6404l); overlay sets mspi-io-mode (quad/octal/hex) and frequency, prj.conf enables CONFIG_MSPI + memc + MEMMAP for XIP."
+    },
+    "flash-and-debug": {
+      "title": "Flashing and debugging",
+      "keywords": ["flash", "debug", "runner", "jlink", "openocd", "gdb", "rtt", "probe", "serial"],
+      "source": "https://docs.zephyrproject.org/latest/develop/west/build-flash-debug.html",
+      "summary": "west flash --runner <tool> for one board; batch device work goes through twister's generated hardware map; RTT/stateful serial belongs to the pytest harness."
+    },
+    "sdk": {
+      "title": "The Zephyr SDK",
+      "keywords": ["sdk", "toolchain", "compiler", "gcc", "install", "zephyr_sdk_install_dir"],
+      "source": "https://docs.zephyrproject.org/latest/develop/toolchains/zephyr_sdk.html",
+      "summary": "Toolchains live in zephyr-sdk-<version> dirs (HOME, /opt, %PROGRAMFILES%); discovery: ZEPHYR_SDK_INSTALL_DIR, CMake registry, standard paths; sdk_version file names the exact version."
+    }
+  }
+}

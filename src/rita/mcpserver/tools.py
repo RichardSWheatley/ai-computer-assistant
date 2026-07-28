@@ -50,6 +50,16 @@ class WorkspaceTools:
         info["indexed_suites"] = len(self.index.entries)
         return info
 
+    def list_topics(self) -> list[dict]:
+        from ..firmware import knowledge
+
+        return knowledge.list_topics()
+
+    def zephyr_howto(self, topic: str) -> str | None:
+        from ..firmware import knowledge
+
+        return knowledge.get_topic(topic)
+
     def find_verification(self, board: str, query: str, limit: int = 10) -> list[dict]:
         terms = query.replace(",", " ").split()
         return [asdict(e) for e in self.index.find(board, terms, limit=limit)]

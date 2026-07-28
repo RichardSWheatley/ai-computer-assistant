@@ -3,6 +3,36 @@
 All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/); versions follow semver.
 
+## [0.11.0] - 2026-07-28
+
+### Added
+- **Zephyr knowledge pack** (`rita.firmware.knowledge` +
+  `firmware/data/knowledge/`): ten curated topics researched from
+  docs.zephyrproject.org (building apps, app locations, west commands,
+  twister, ztest, devicetree overlays, **MSPI**, **PSRAM over MSPI**,
+  flash/debug, SDK), each citing its source and research date. Retrieval
+  is deterministic keyword matching — no LLM. Facts about the user's
+  install still come only from the workspace.
+- MCP tools `zephyr_howto(topic)` + `list_topics` — the claude-worker's
+  source for conventions; chat answers "how do I…" questions from topic
+  summaries.
+- Scaffold/test-writer prompts are enriched with matched topic notes
+  (bounded), so e.g. an MSPI/PSRAM request carries the mspi + psram
+  recipes.
+- **RITA knows where to build**: `RitaConfig.applications_dir` (default
+  `<workspace>/applications`); scaffolded apps land there under a slug of
+  the request — beside `zephyr/`, never in it.
+- Routing: `mspi`, `psram`, `qspi`, `ospi`, `flash`, `dma` peripherals and
+  `example`/`sample`/`test` artifacts; "build me an example …" (artifact,
+  no existing sample named) upgrades deterministically to scaffold — the
+  flagship utterance "build me an example for MSPI that communicates with
+  a PSRAM on MSPI0 in hex mode" routes to scaffold with mspi/psram terms.
+- **SDK awareness from the actual install**: `read_sdk_info`
+  (`ZEPHYR_SDK_INSTALL_DIR`, standard locations, `sdk_version` file; absent
+  = reported, not guessed) in `workspace_info`, boards facts, and the GUI
+  status bar.
+- Spec: `docs/specs/zephyr-knowledge.md`.
+
 ## [0.10.0] - 2026-07-28
 
 ### Added

@@ -170,9 +170,10 @@ class RitaWindow(QMainWindow):
     def _status_update(self, st: StatusInfo) -> None:
         ws = st.workspace or "no workspace — set one on the Workspace page"
         zephyr = f"Zephyr {st.zephyr_version}" if st.zephyr_version else "Zephyr ?"
+        sdk = f"SDK {st.sdk_version}" if st.sdk_version else "SDK not found"
         claude = "claude ✓" if st.claude_cli else "claude CLI missing"
         self.status_bar.showMessage(
-            f"{ws}   ·   {zephyr}   ·   {st.modules} modules   ·   {claude}")
+            f"{ws}   ·   {zephyr}   ·   {sdk}   ·   {st.modules} modules   ·   {claude}")
 
     def closeEvent(self, event) -> None:  # noqa: N802 (Qt API)
         self.presenter.close()

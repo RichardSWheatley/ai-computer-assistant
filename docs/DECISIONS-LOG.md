@@ -3,6 +3,21 @@
 Compromises, proxies, and deferred decisions — with the reason and what would
 remove them. Newest first. (Required by the working rules in `CLAUDE.md`.)
 
+## 2026-07-28 — Zephyr knowledge pack (Phase B)
+
+- **The pack is a snapshot** (researched 2026-07-28 against the "latest"
+  docs); each topic cites its source URL so staleness is auditable.
+  Refreshing it is a re-research task, not a code change. It carries
+  conventions only — install facts stay workspace-derived.
+- **"build me an example/app" upgrades to scaffold** via a deterministic
+  rule (build verb + artifact token + no named existing sample). Logged
+  because "build" is genuinely ambiguous in English; the rule is table
+  logic, not semantic judgment, per Fix 1.
+- **hex-mode PSRAM specifics**: in-tree memc coverage centers on quad
+  APS6404L; hex-mode parts follow the same memc-over-MSPI shape (Ambiq
+  bindings support hex IO). The psram topic says exactly that rather than
+  overclaiming an in-tree hex driver.
+
 ## 2026-07-28 — GUI shell (Phase A)
 
 - **PySide6 (Qt 6) over web-view frameworks** — the requirement is a

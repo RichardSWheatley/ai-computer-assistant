@@ -38,6 +38,7 @@ class StatusInfo:
     zephyr_version: str | None
     modules: int
     claude_cli: bool
+    sdk_version: str | None = None
 
 
 def _noop(*_a, **_k) -> None:
@@ -148,17 +149,19 @@ class GuiPresenter:
         return result
 
     def status(self) -> StatusInfo:
+        from ..firmware.workspace import read_sdk_info, read_workspace_info
+
         zephyr_version = None
         if self.sup.cfg.workspace and Path(self.sup.cfg.workspace).exists():
-            from ..firmware.workspace import read_workspace_info
-
             zephyr_version = read_workspace_info(
                 self.sup.cfg.workspace)["zephyr_version"]
+        sdk = read_sdk_info()
         return StatusInfo(
             workspace=self.sup.cfg.workspace,
             zephyr_version=zephyr_version,
             modules=len(self.sup.registry.discover()),
-            claude_cli=shutil.which("claude") is not None)
+            claude_cli=shutil.which("claude") is not None,
+            sdk_version=sdk["version"] if sdk else None)
 
     def close(self) -> None:
         self._closing.set()

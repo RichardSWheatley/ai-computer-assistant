@@ -32,7 +32,8 @@ INTERROGATIVE_PREFIXES = (
     "where", "why", "how", "explain", "describe", "define",
 )
 
-ARTIFACT_TOKENS = {"application", "app", "program", "firmware", "project"}
+ARTIFACT_TOKENS = {"application", "app", "program", "firmware", "project",
+                   "example", "sample", "test"}
 
 # Rename patterns over normalized text; group 1 is the new name.
 RENAME_PATTERNS = (

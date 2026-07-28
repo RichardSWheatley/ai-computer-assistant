@@ -140,6 +140,15 @@ class Supervisor:
                     f"{b.get('twister_platform', board)}, supporting "
                     f"{supported}.{attached}")
 
+        # How-do-I questions answer from the shipped knowledge pack
+        # (deterministic keyword match; full topics via MCP zephyr_howto).
+        if norm.startswith(("how do i", "how can i", "how do you", "how to")):
+            from .firmware import knowledge
+
+            summary = knowledge.summary_for(norm.split())
+            if summary:
+                return summary
+
         # Zephyr version questions answer from the install's VERSION file.
         if "zephyr" in norm and "version" in norm:
             version = data.get("zephyr_version")

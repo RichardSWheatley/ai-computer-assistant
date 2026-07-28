@@ -20,7 +20,8 @@ from .model import normalize
 SAMPLE_SEED = ("blinky", "hello world", "hello_world", "button",
                "synchronization", "philosophers")
 PERIPHERAL_SEED = ("led", "gpio", "uart", "i2c", "spi", "pwm", "adc",
-                   "timer", "watchdog", "ble", "wifi", "ethernet")
+                   "timer", "watchdog", "ble", "wifi", "ethernet",
+                   "mspi", "psram", "qspi", "ospi", "flash", "dma")
 
 _SEED_PATH = Path(__file__).resolve().parent.parent / "firmware" / "data" / "boards.seed.json"
 

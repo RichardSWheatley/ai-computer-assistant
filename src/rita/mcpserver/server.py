@@ -38,6 +38,18 @@ def build_server(workspace: str | Path):  # pragma: no cover - exercised via SDK
         return json.dumps(tools.workspace_info())
 
     @srv.tool()
+    def list_topics() -> str:
+        """Zephyr convention topics RITA ships (how to build apps, twister,
+        ztest, devicetree, MSPI/PSRAM, SDK…) — curated from the official
+        docs, each citing its source."""
+        return json.dumps(tools.list_topics())
+
+    @srv.tool()
+    def zephyr_howto(topic: str) -> str:
+        """Full text of one shipped Zephyr convention topic."""
+        return tools.zephyr_howto(topic) or f"unknown topic {topic!r}"
+
+    @srv.tool()
     def find_verification(board: str, query: str, limit: int = 10) -> str:
         """Ranked samples/tests from the verification index that could verify
         an intent on a board. Query = peripheral/subsystem terms."""

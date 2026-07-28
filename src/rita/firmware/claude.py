@@ -119,6 +119,7 @@ class FakeClaude:
         self.patches: list[FailureArtifact] = []
         self.prompts: list[str] = []
         self.scaffolds: list[str] = []
+        self.scaffolds_dirs: list[str] = []
 
     def complete(self, prompt: str) -> str:
         self.prompts.append(prompt)
@@ -138,4 +139,5 @@ class FakeClaude:
         (dest / "prj.conf").write_text("CONFIG_GPIO=y\n")
         (dest / "src" / "main.c").write_text("int main(void) { return 0; }\n")
         self.scaffolds.append(goal)
+        self.scaffolds_dirs.append(str(dest))
         return ScaffoldResult(ok=True, app_dir=str(dest), detail="scaffolded (fake)")

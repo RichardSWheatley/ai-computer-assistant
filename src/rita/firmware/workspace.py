@@ -35,6 +35,44 @@ def read_zephyr_version(zephyr_base: Path) -> str | None:
     return f"{version}-{extra}" if extra else version
 
 
+def read_sdk_info() -> dict | None:
+    """The actual Zephyr SDK install, or None — never guessed.
+
+    Discovery order (per the SDK docs): ZEPHYR_SDK_INSTALL_DIR, then
+    zephyr-sdk-* under the standard locations. Version from the SDK's
+    sdk_version file, else the directory name.
+    """
+    import os
+
+    candidates: list[Path] = []
+    env = os.environ.get("ZEPHYR_SDK_INSTALL_DIR")
+    if env and Path(env).is_dir():
+        env_path = Path(env)
+        if env_path.name.startswith("zephyr-sdk"):
+            candidates.append(env_path)
+        else:  # parent dir holding several SDK versions
+            candidates.extend(sorted(env_path.glob("zephyr-sdk-*")))
+    if not candidates:
+        roots = [Path.home(), Path.home() / ".local", Path.home() / ".local/opt",
+                 Path("/opt"), Path("/usr/local")]
+        pf = os.environ.get("PROGRAMFILES")
+        if pf:
+            roots.append(Path(pf))
+        for root in roots:
+            if root.is_dir():
+                candidates.extend(sorted(root.glob("zephyr-sdk-*")))
+    for sdk in candidates:
+        if not sdk.is_dir():
+            continue
+        version_file = sdk / "sdk_version"
+        if version_file.is_file():
+            version = version_file.read_text().strip()
+        else:
+            version = sdk.name.removeprefix("zephyr-sdk-")
+        return {"path": str(sdk), "version": version}
+    return None
+
+
 def read_workspace_info(workspace: str | Path) -> dict:
     ws = Path(workspace)
     zephyr_base = ws / "zephyr"
@@ -42,4 +80,5 @@ def read_workspace_info(workspace: str | Path) -> dict:
         "workspace": str(ws),
         "zephyr_base": str(zephyr_base),
         "zephyr_version": read_zephyr_version(zephyr_base),
+        "sdk": read_sdk_info(),
     }

@@ -1,6 +1,6 @@
 [project]
 name = "rita"
-version = "0.10.0"
+version = "0.11.0"
 description = "RITA — Routing, Iteration, Testing, Automation: a deterministic orchestrator with a speech front end for Zephyr firmware work."
 readme = "README.md"
 requires-python = ">=3.11"
@@ -39,4 +39,4 @@ build-backend = "setuptools.build_meta"
 where = ["src"]
 
 [tool.setuptools.package-data]
-rita = ["firmware/data/*.json"]
+rita = ["firmware/data/*.json", "firmware/data/knowledge/*"]

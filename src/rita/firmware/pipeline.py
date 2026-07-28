@@ -28,6 +28,27 @@ from .west import ZephyrRunner
 
 SIM_PLATFORM = "native_sim"
 
+
+def applications_root(cfg: RitaConfig) -> Path:
+    """Where scaffolded applications live: inside the workspace, beside
+    zephyr/ — never in it (see knowledge topic `app-locations`)."""
+    if cfg.applications_dir:
+        return Path(cfg.applications_dir)
+    return Path(cfg.workspace or ".") / "applications"
+
+
+def _app_slug(goal: str) -> str:
+    words = [w for w in Utterance_norm(goal).split()
+             if w not in ("an", "a", "the", "for", "me", "that", "with", "on",
+                          "in", "please", "build", "write", "create", "make")]
+    return "-".join(words[:4]) or "app"
+
+
+def Utterance_norm(text: str) -> str:
+    from ..routing.model import normalize
+
+    return normalize(text)
+
 StageName = Literal["RESOLVE", "BUILD", "SIM_TEST", "DEVICE"]
 Outcome = Literal["green", "blocked", "retries_exhausted", "failed"]
 
@@ -89,10 +110,17 @@ class IteratePipeline:
         self.workdir.mkdir(parents=True, exist_ok=True)
 
         # 1. RESOLVE (and scaffold when the request is to write an app).
+        # Scaffolded apps land under applications_dir (workspace convention),
+        # with the shipped Zephyr conventions attached to the request.
         build_target: Path
+        app_dir = self.workdir / "app"
         if scaffold:
-            app_dir = self.workdir / "app"
-            scaffolded = self.claude.scaffold(goal, board, app_dir)
+            from . import knowledge
+
+            app_dir = applications_root(self.cfg) / _app_slug(goal)
+            notes = knowledge.notes_for(terms + goal.split())
+            enriched = goal if not notes else f"{goal}\n\nZephyr notes:\n{notes}"
+            scaffolded = self.claude.scaffold(enriched, board, app_dir)
             if not scaffolded.ok:
                 self._record(report, StageResult("RESOLVE", "failed",
                                                  f"scaffold failed: {scaffolded.detail}"))
@@ -106,7 +134,7 @@ class IteratePipeline:
             suite_dir = Path(self.cfg.workspace) / resolution.entry.path
         else:
             suite_dir = self.workdir / "authored"
-        build_target = (self.workdir / "app") if scaffold else suite_dir
+        build_target = app_dir if scaffold else suite_dir
         self._record(report, StageResult(
             "RESOLVE", "green",
             f"{resolution.method}: "

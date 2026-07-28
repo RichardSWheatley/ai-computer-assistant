@@ -55,6 +55,10 @@ def route(utt: Utterance, vocab: Vocabulary, assistant_name: str = "Rita") -> Di
         if verb == "run_samples" and not (entities.sample or "sample" in norm
                                           or "samples" in norm):
             verb = None
+        # "build me an example/app for X" with no existing sample named is a
+        # request to CREATE something new — scaffold, not build.
+        if verb == "build" and entities.artifact and not entities.sample:
+            verb = "scaffold"
         if verb is not None:
             return Dispatch(kind="work", verb=verb, entities=entities,
                             matched_by="verb+entity" if has_entity else "verb",
