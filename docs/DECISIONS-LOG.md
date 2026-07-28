@@ -3,6 +3,21 @@
 Compromises, proxies, and deferred decisions — with the reason and what would
 remove them. Newest first. (Required by the working rules in `CLAUDE.md`.)
 
+## 2026-07-28 — Phase 6 (Fix 6)
+
+- **The supervisor uses in-process seams (WestCli/ClaudeWorkerCli) for
+  pipeline work by default**; module processes are launched via the
+  registry when installed. Full module-backed pipeline wiring (a
+  ZephyrRunner proxy over RPC) is a hardening step for the packaged
+  install — the protocol, registry, drain, caps, and crash isolation are
+  all in and tested against real child processes.
+- **One in-flight request per handle** (events stream independently).
+  The smallest concurrency model that supports checkpoints and progress;
+  request pipelining can come later without a wire change.
+- **`docs/ACCESS.md` (laptop access beyond the workspace) is deferred**
+  until a capability actually needs it — the enumerated-permission rule is
+  stated in the spec so nothing lands implicitly.
+
 ## 2026-07-28 — Phase 5 (Fix 5)
 
 - **The speech strip is deliberately over-aggressive** (drops any token

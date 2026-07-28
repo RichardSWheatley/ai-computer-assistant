@@ -3,6 +3,31 @@
 All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/); versions follow semver.
 
+## [0.7.0] - 2026-07-28
+
+### Added
+- **Fix 6 — supervisor + versioned module processes** (`aica.modules`,
+  `aica.supervisor`): capabilities run as separately versioned child
+  processes under `~/.rita/modules/<name>/<version>/` with language-agnostic
+  manifests (entrypoint argv, capabilities, max_instances, min_supervisor,
+  exclusivity keys) and a `current` pointer file. Updates = drop a dir +
+  flip the pointer; running instances drain on their version; rollback =
+  flip back.
+- Module IPC: the worker wire shape upgraded with a mandatory `hello`
+  handshake (protocol + version verified at launch), enforced per-call
+  timeouts, and async events (progress/checkpoint/log) demultiplexed by a
+  per-handle reader thread.
+- Registry: instance caps and exclusive resource claims (zephyr-runner per
+  serial port, joulescope max 1); crash isolation — a dead module fails its
+  call with the stderr tail and the supervisor keeps working.
+- Shipped modules: voice-in, voice-out, zephyr-runner, claude-worker,
+  scaffold; cerberus + joulescope as honest stubs. `modules` CLI
+  (list / `install --dev`).
+- `Supervisor`: thin shell owning the router, TaskManager, PAUSE/STOP,
+  output channels, and the registry; `talk` now runs through it (wake word
+  + grammar routing + managed pipeline tasks).
+- Spec: `docs/specs/supervisor-modules.md`.
+
 ## [0.6.0] - 2026-07-28
 
 ### Added

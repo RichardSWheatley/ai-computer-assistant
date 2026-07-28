@@ -91,26 +91,43 @@ def cmd_doc(args) -> int:
 
 
 def cmd_talk(args) -> int:
-    cfg = load_config(local_only=args.local_only)
-    if args.live:
-        cfg.dry_run = False
-    confirm = None
-    if args.confirm:
-        from .ui.console import make_console_confirmer
-        confirm = make_console_confirmer()
-    asst = build_assistant(cfg, confirm=confirm, headless=not args.live)
+    from .config import load_rita_config
+    from .supervisor import Supervisor
+
+    sup = Supervisor()
     try:
-        from .voice.loop import build_voice_loop
+        loop = sup.make_voice_loop(push_to_talk=args.push_to_talk,
+                                   seconds=args.seconds, model=args.model)
     except Exception as exc:  # pragma: no cover
         print(f"voice deps missing: {exc}\n  pip install -e \".[voice]\"")
         return 1
-    loop = build_voice_loop(asst, push_to_talk=args.push_to_talk,
-                            seconds=args.seconds, model=args.model)
-    mode_note = "LIVE (real input)" if args.live else "simulation (safe)"
+    name = load_rita_config().assistant_name
     listen = "push-to-talk (Enter)" if args.push_to_talk else f"continuous ({args.seconds}s turns)"
-    print(f"=== Talk to AICA  [mode: {cfg.mode} | {mode_note} | {listen}] ===")
-    print("Say 'stop listening' or press Ctrl+C to end.")
+    ws = sup.cfg.workspace or "not configured (run: sync --workspace <path>)"
+    print(f"=== Talk to {name}  [{listen}] ===")
+    print(f"workspace: {ws}")
+    print(f"Wake with 'hello {name}'. Say 'stop listening' or press Ctrl+C to end.")
     loop.run()
+    return 0
+
+
+def cmd_modules(args) -> int:
+    from .modules.registry import ModuleRegistry
+
+    if args.action == "install":
+        from .modules.install import dev_install
+        for m in dev_install():
+            print(f"installed {m.name} {m.version}")
+        return 0
+    reg = ModuleRegistry()
+    found = reg.discover()
+    if not found:
+        print("no modules installed (try: modules install --dev)")
+        return 0
+    for name, versions in found.items():
+        cur = reg.current(name)
+        marks = ", ".join(f"{v}*" if v == cur else v for v in versions)
+        print(f"  {name:14} {marks}   (* = current)")
     return 0
 
 
@@ -222,10 +239,17 @@ def main(argv: list[str] | None = None) -> int:
     mcp = sub.add_parser("mcp-serve", help="serve the workspace MCP server over stdio")
     mcp.add_argument("--workspace", help="Zephyr workspace root (default from config)")
 
+    mods = sub.add_parser("modules", help="list or install capability modules")
+    mods.add_argument("action", nargs="?", default="list",
+                      choices=["list", "install"])
+    mods.add_argument("--dev", action="store_true",
+                      help="install manifests pointing at this package")
+
     args = parser.parse_args(argv)
     return {"doctor": cmd_doctor, "plugins": cmd_plugins, "run": cmd_run,
             "doc": cmd_doc, "workflow": cmd_workflow, "talk": cmd_talk,
-            "sync": cmd_sync, "mcp-serve": cmd_mcp_serve}[args.cmd](args)
+            "sync": cmd_sync, "mcp-serve": cmd_mcp_serve,
+            "modules": cmd_modules}[args.cmd](args)
 
 
 if __name__ == "__main__":

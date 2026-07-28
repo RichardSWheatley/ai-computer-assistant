@@ -124,6 +124,11 @@ class PausableSpeaker:
             self._cond.notify_all()
         self._halt_engine()
 
+    # TextToSpeech protocol compatibility: a PausableSpeaker can stand in
+    # anywhere a plain speaker is expected (queued, non-blocking).
+    def speak(self, text: str) -> None:
+        self.say(text)
+
     # --- introspection ------------------------------------------------------
 
     @property
