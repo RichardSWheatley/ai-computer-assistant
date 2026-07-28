@@ -3,6 +3,27 @@
 All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/); versions follow semver.
 
+## [0.12.0] - 2026-07-28
+
+### Added
+- **Modular Windows installer** (`packaging/`): PyInstaller bundle with two
+  executables — windowed `RitaApp.exe` (the app) and console `rita.exe`
+  (dev CLI + module host) — and an Inno Setup installer with selectable
+  components (core+GUI required; voice, workspace MCP, and each capability
+  module individually selectable). Post-install, module registration is
+  manifest-writing into `%USERPROFILE%\.rita\modules\` via
+  `rita.exe modules install --only <selected>`. Start-menu/desktop
+  shortcuts launch the GUI; uninstall leaves `~/.rita` user data.
+- `rita module-run <name>`: hosts a capability module over stdio — the
+  universal manifest entrypoint that works identically from a venv
+  (`python -m rita module-run X`) and a frozen bundle (no `python -m`
+  available). `modules install --only a,b` installs a subset.
+- CI: `.github/workflows/installer.yml` builds the bundle and installer on
+  windows-latest (manual dispatch or version tags) and uploads
+  `RITA-Setup-<version>.exe` as an artifact; `packaging/build.ps1` is the
+  same recipe for a local one-command build.
+- Spec: `docs/specs/installer.md`.
+
 ## [0.11.0] - 2026-07-28
 
 ### Added

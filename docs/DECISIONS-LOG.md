@@ -3,6 +3,17 @@
 Compromises, proxies, and deferred decisions — with the reason and what would
 remove them. Newest first. (Required by the working rules in `CLAUDE.md`.)
 
+## 2026-07-28 — Installer (Phase C)
+
+- **The installer is authored + CI-built here, smoke-run on the target
+  machine.** This container is Linux; the windows-latest workflow produces
+  the artifact, and GETTING-STARTED carries the real-machine checklist.
+- **Voice runtime deps are not bundled** (faster-whisper/torch would
+  multiply installer size); the Voice component registers the modules and
+  the runtime installs on first use. Revisit if offline installs matter.
+- **No custom icon yet** — shortcuts use the exe default. A designed .ico
+  is cosmetic backlog, not scope-widening.
+
 ## 2026-07-28 — Zephyr knowledge pack (Phase B)
 
 - **The pack is a snapshot** (researched 2026-07-28 against the "latest"

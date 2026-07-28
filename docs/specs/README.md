@@ -12,5 +12,6 @@ One spec per directive fix, written before its tests and implementation:
 | `supervisor-modules.md` | Fix 6 — thin supervisor + versioned modules | **done** |
 | `gui-shell.md` | The native GUI app (presenter + Qt window) | **done** |
 | `zephyr-knowledge.md` | Shipped Zephyr conventions + SDK awareness | **done** |
+| `installer.md` | Modular Windows installer + module-run host | **done** |
 
 Update the status column as each lands.

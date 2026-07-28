@@ -35,18 +35,33 @@ SHIPPED: dict[str, tuple[str, str, list[str], int, list[str]]] = {
 }
 
 
-def dev_install(root: str | Path | None = None) -> list[Manifest]:
+def _entrypoint(name: str) -> list[str]:
+    """Interpreter-correct module entrypoint: a frozen bundle has no
+    `python -m`, so its exe hosts modules directly via `module-run`."""
+    if getattr(sys, "frozen", False):  # pragma: no cover - packaged app
+        return [sys.executable, "module-run", name]
+    return [sys.executable, "-m", "rita", "module-run", name]
+
+
+def dev_install(root: str | Path | None = None,
+                only: list[str] | None = None) -> list[Manifest]:
     if root is None:
         from ..home import modules_dir
 
         root = modules_dir()
     root = Path(root)
+    selected = {n.strip() for n in only} if only else set(SHIPPED)
+    unknown = selected - set(SHIPPED)
+    if unknown:
+        raise ValueError(f"unknown modules: {', '.join(sorted(unknown))}")
     installed: list[Manifest] = []
     for name, (mod, version, caps, max_inst, excl) in SHIPPED.items():
+        if name not in selected:
+            continue
         d = root / name / version
         d.mkdir(parents=True, exist_ok=True)
         text = (f'name = "{name}"\nversion = "{version}"\n'
-                f"entrypoint = {json.dumps([sys.executable, '-m', mod])}\n"
+                f"entrypoint = {json.dumps(_entrypoint(name))}\n"
                 f"capabilities = {json.dumps(caps)}\n"
                 f"max_instances = {max_inst}\n"
                 f'min_supervisor = "{_MIN_SUPERVISOR}"\n')

@@ -111,12 +111,29 @@ def cmd_talk(args) -> int:
     return 0
 
 
+def cmd_module_run(args) -> int:
+    """Host one capability module over stdio (what manifests point at).
+
+    Works identically from a venv (`python -m rita module-run X`) and a
+    frozen bundle (`rita.exe module-run X`) — no `python -m` needed."""
+    import runpy
+
+    from .modules.install import SHIPPED
+
+    if args.name not in SHIPPED:
+        print(f"unknown module: {args.name} (have: {', '.join(SHIPPED)})")
+        return 2
+    runpy.run_module(SHIPPED[args.name][0], run_name="__main__")
+    return 0
+
+
 def cmd_modules(args) -> int:
     from .modules.registry import ModuleRegistry
 
     if args.action == "install":
         from .modules.install import dev_install
-        for m in dev_install():
+        only = args.only.split(",") if args.only else None
+        for m in dev_install(only=only):
             print(f"installed {m.name} {m.version}")
         return 0
     reg = ModuleRegistry()
@@ -244,12 +261,17 @@ def main(argv: list[str] | None = None) -> int:
                       choices=["list", "install"])
     mods.add_argument("--dev", action="store_true",
                       help="install manifests pointing at this package")
+    mods.add_argument("--only", help="comma-separated module names to install")
+
+    mrun = sub.add_parser("module-run",
+                          help="host one capability module over stdio")
+    mrun.add_argument("name", help="module name (e.g. zephyr-runner)")
 
     args = parser.parse_args(argv)
     return {"doctor": cmd_doctor, "plugins": cmd_plugins, "run": cmd_run,
             "doc": cmd_doc, "workflow": cmd_workflow, "talk": cmd_talk,
             "sync": cmd_sync, "mcp-serve": cmd_mcp_serve,
-            "modules": cmd_modules}[args.cmd](args)
+            "modules": cmd_modules, "module-run": cmd_module_run}[args.cmd](args)
 
 
 if __name__ == "__main__":

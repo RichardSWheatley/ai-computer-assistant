@@ -1,0 +1,51 @@
+name: windows-installer
+
+on:
+  workflow_dispatch:
+  push:
+    tags: ["v*"]
+
+jobs:
+  installer:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install build deps
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e ".[gui,mcp,firmware]" pyinstaller
+
+      - name: Run the test suite
+        run: |
+          pip install pytest
+          python -m pytest -q
+
+      - name: Build the bundle (PyInstaller)
+        run: pyinstaller packaging/rita.spec --noconfirm --distpath dist
+
+      - name: Read version
+        id: version
+        run: |
+          $v = (python -c "import rita; print(rita.__version__)").Trim()
+          "version=$v" >> $env:GITHUB_OUTPUT
+
+      - name: Install Inno Setup
+        run: choco install innosetup -y --no-progress
+
+      - name: Compile the installer
+        run: |
+          & "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe" `
+            "/DAppVersion=${{ steps.version.outputs.version }}" `
+            packaging\installer.iss
+
+      - name: Upload installer artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: RITA-Setup-${{ steps.version.outputs.version }}
+          path: dist/installer/RITA-Setup-*.exe
+          if-no-files-found: error
