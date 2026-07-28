@@ -1,18 +1,24 @@
-"""The conversation loop: listen -> transcribe -> run the task -> speak back.
+"""The conversation loop: listen -> transcribe -> route -> act -> speak back.
 
 VoiceLoop is backend-agnostic (recorder / STT / TTS / handler are injected), so
-it's fully testable with fakes. `make_orchestrator_handler` turns a spoken
-request into a goal for the assistant and returns a short spoken summary of what
-it did — security gates (confirmation, quarantine, audit) still apply because it
-runs through the normal Orchestrator.
+it's fully testable with fakes. `RouterShell` is the deterministic front end
+(Fix 1): wake grammar first, then grammar routing — chat is the fallback, and
+the LLM never decides intent. `make_orchestrator_handler` remains for the
+legacy desktop-agent path (`run` command); the router never dispatches to it.
 """
 
 from __future__ import annotations
 
+from pathlib import Path
 from typing import Callable
 
+from ..config import load_rita_config, save_rita_config
+from ..routing.model import Dispatch, Utterance
+from ..routing.router import route
+from ..routing.vocabulary import Vocabulary
+from ..routing.wake import WakeGate
 from .mic import Recorder
-from .stt import SpeechToText
+from .stt import SpeechToText, to_utterance
 from .trigger import Trigger
 from .tts import TextToSpeech
 
@@ -38,18 +44,95 @@ def make_orchestrator_handler(assistant) -> Handler:
     return handle
 
 
+class RouterShell:
+    """Wake gate + router + handler table. The shell owns control flow.
+
+    Handlers: `work(dispatch) -> str`, `chat(text) -> str`,
+    `control(dispatch) -> str`. All optional — safe placeholder replies are
+    used until the corresponding fix lands. Rename dispatches persist the new
+    name (config data, not code) and re-arm the wake gate immediately.
+    """
+
+    def __init__(self, vocab: Vocabulary | None = None, *,
+                 config_path: str | Path | None = None,
+                 require_wake: bool = True,
+                 work: Callable[[Dispatch], str] | None = None,
+                 chat: Callable[[str], str] | None = None,
+                 control: Callable[[Dispatch], str] | None = None) -> None:
+        self.vocab = vocab or Vocabulary.load()
+        self.config_path = config_path
+        self.cfg = load_rita_config(config_path)
+        self.gate = WakeGate(self.cfg.assistant_name)
+        self.require_wake = require_wake
+        self.awake = not require_wake
+        self.work = work
+        self.chat = chat
+        self.control = control
+
+    def handle(self, utt: Utterance | str) -> str:
+        if isinstance(utt, str):
+            utt = Utterance.from_text(utt)
+
+        decision = self.gate.feed(utt)
+        if decision.woke:
+            self.awake = True
+            if decision.residual is None:
+                return "Yes?"
+            utt = decision.residual
+        elif not self.awake:
+            return ""  # asleep and not addressed: stay quiet
+
+        return self.dispatch(route(utt, self.vocab, self.cfg.assistant_name))
+
+    def dispatch(self, d: Dispatch) -> str:
+        if d.kind == "rename":
+            self.cfg.assistant_name = d.argument.capitalize()
+            save_rita_config(self.cfg, self.config_path)
+            self.gate = WakeGate(self.cfg.assistant_name)
+            return f"Okay — call me {self.cfg.assistant_name} from now on."
+        if d.kind == "control":
+            if self.control is not None:
+                return self.control(d)
+            return f"Noted: {d.argument}."
+        if d.kind == "work":
+            if self.work is not None:
+                return self.work(d)
+            what = d.verb or "work"
+            target = d.entities.board or d.entities.sample or "the workspace"
+            return f"I heard a {what} request for {target}, but that pipeline isn't wired up yet."
+        if self.chat is not None:
+            return self.chat(d.residual)
+        return "I'm listening."
+
+
 class VoiceLoop:
     def __init__(self, recorder: Recorder, stt: SpeechToText, tts: TextToSpeech,
-                 handler: Handler, trigger: Trigger | None = None) -> None:
+                 handler: Handler, trigger: Trigger | None = None,
+                 utterance_handler: Callable[[Utterance], str] | None = None) -> None:
         self.recorder = recorder
         self.stt = stt
         self.tts = tts
         self.handler = handler
         self.trigger = trigger  # push-to-talk / wake-word gate; None = continuous
+        # When set, turns flow as timed Utterances (wake grammar needs word
+        # timings); `handler` is ignored for those turns.
+        self.utterance_handler = utterance_handler
 
     def converse_once(self) -> tuple[str, str]:
         """One turn: record, transcribe, handle, speak. Returns (heard, said)."""
         wav = self.recorder.record()
+        if self.utterance_handler is not None:
+            utt = to_utterance(self.stt, wav)
+            heard = utt.text.strip()
+            if not heard:
+                return "", ""
+            if heard.lower().strip(" .!?") in _STOP_PHRASES:
+                self.tts.speak("Goodbye.")
+                return heard, "Goodbye."
+            said = self.utterance_handler(utt)
+            if said:  # empty reply = utterance ignored (e.g. not awake)
+                self.tts.speak(said)
+            return heard, said
         heard = (self.stt.transcribe(wav) or "").strip()
         if not heard:
             return "", ""
@@ -77,18 +160,26 @@ class VoiceLoop:
 
 
 def build_voice_loop(assistant, *, push_to_talk: bool = False,
-                     seconds: float = 5.0, model: str = "base") -> "VoiceLoop":
-    """Assemble a VoiceLoop with the real backends, lazily."""
+                     seconds: float = 5.0, model: str = "base",
+                     use_router: bool = True) -> "VoiceLoop":
+    """Assemble a VoiceLoop with the real backends, lazily.
+
+    With `use_router` (the default) turns flow through the deterministic
+    RouterShell — wake grammar, then grammar routing, chat as fallback. Pass
+    False to get the legacy direct-to-agent handler.
+    """
     from .stt import WhisperSTT
     from .tts import Pyttsx3TTS
 
     tts = Pyttsx3TTS()
     handler = make_orchestrator_handler(assistant)
+    utterance_handler = RouterShell().handle if use_router else None
     if push_to_talk:
         from .mic import PushToTalkRecorder
         from .trigger import EnterKeyTrigger
         return VoiceLoop(PushToTalkRecorder(), WhisperSTT(model=model), tts,
-                         handler, trigger=EnterKeyTrigger())
+                         handler, trigger=EnterKeyTrigger(),
+                         utterance_handler=utterance_handler)
     from .mic import MicRecorder
     return VoiceLoop(MicRecorder(seconds=seconds), WhisperSTT(model=model),
-                     tts, handler)
+                     tts, handler, utterance_handler=utterance_handler)

@@ -33,12 +33,47 @@ class WhisperSTT:
         segments, _ = self._load().transcribe(wav_path)
         return " ".join(seg.text for seg in segments).strip()
 
+    def transcribe_utterance(self, wav_path: str) -> "Utterance":  # pragma: no cover
+        """Transcribe with per-word timestamps (feeds the wake grammar)."""
+        from ..routing.model import Utterance, Word
+
+        segments, _ = self._load().transcribe(wav_path, word_timestamps=True)
+        words: list[Word] = []
+        for seg in segments:
+            for w in (seg.words or []):
+                words.append(Word(text=w.word.strip(), start=w.start, end=w.end))
+        text = " ".join(w.text for w in words).strip()
+        return Utterance(text=text, words=tuple(words),
+                         t_start=words[0].start if words else 0.0,
+                         t_end=words[-1].end if words else 0.0)
+
 
 class FakeSTT:
-    def __init__(self, text: str = "") -> None:
+    def __init__(self, text: str = "", utterances: list | None = None) -> None:
         self.text = text
+        self.utterances = list(utterances) if utterances else None
         self.calls: list[str] = []
 
     def transcribe(self, wav_path: str) -> str:
         self.calls.append(wav_path)
+        if self.utterances:
+            return self.utterances.pop(0).text
         return self.text
+
+    def transcribe_utterance(self, wav_path: str):
+        from ..routing.model import Utterance
+
+        self.calls.append(wav_path)
+        if self.utterances:
+            return self.utterances.pop(0)
+        return Utterance.from_text(self.text)
+
+
+def to_utterance(stt: SpeechToText, wav_path: str):
+    """Get an Utterance from any STT backend (word timings when available)."""
+    from ..routing.model import Utterance
+
+    fn = getattr(stt, "transcribe_utterance", None)
+    if fn is not None:
+        return fn(wav_path)
+    return Utterance.from_text(stt.transcribe(wav_path) or "")

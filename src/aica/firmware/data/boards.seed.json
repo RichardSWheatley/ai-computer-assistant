@@ -1,0 +1,45 @@
+{
+  "_comment": "Packaged board-vocabulary seed so routing works before the first `rita sync`. The synced ~/.rita/boards.json (generated from the workspace) supersedes this.",
+  "boards": {
+    "apollo510_evb": {
+      "name": "apollo510_evb",
+      "aliases": ["apollo510", "apollo 510"],
+      "vendor": "ambiq",
+      "arch": "arm",
+      "twister_platform": "apollo510_evb/apollo510",
+      "supported": ["gpio", "uart", "i2c", "spi", "pwm", "led"]
+    },
+    "nrf52840dk": {
+      "name": "nrf52840dk",
+      "aliases": ["nrf52840", "nrf52840 dk", "nrf 52840"],
+      "vendor": "nordic",
+      "arch": "arm",
+      "twister_platform": "nrf52840dk/nrf52840",
+      "supported": ["gpio", "uart", "i2c", "spi", "pwm", "adc", "led", "ble"]
+    },
+    "esp32_devkitc": {
+      "name": "esp32_devkitc",
+      "aliases": ["esp32", "esp 32"],
+      "vendor": "espressif",
+      "arch": "xtensa",
+      "twister_platform": "esp32_devkitc/esp32/procpu",
+      "supported": ["gpio", "uart", "i2c", "spi", "pwm", "adc", "wifi", "led"]
+    },
+    "frdm_k64f": {
+      "name": "frdm_k64f",
+      "aliases": ["k64f", "frdm k64f"],
+      "vendor": "nxp",
+      "arch": "arm",
+      "twister_platform": "frdm_k64f/mk64f12",
+      "supported": ["gpio", "uart", "i2c", "spi", "pwm", "adc", "ethernet", "led"]
+    },
+    "native_sim": {
+      "name": "native_sim",
+      "aliases": ["native sim", "the simulator", "simulator"],
+      "vendor": "zephyr",
+      "arch": "posix",
+      "twister_platform": "native_sim",
+      "supported": ["gpio", "uart", "i2c", "spi", "adc", "led"]
+    }
+  }
+}

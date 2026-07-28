@@ -1,0 +1,59 @@
+"""The routing grammar: RITA's own domain vocabulary as data.
+
+These tables ARE the router's behavior — routing is matching against them,
+never semantic judgment. Extend the tables, not the code.
+"""
+
+from __future__ import annotations
+
+import re
+
+# Work verbs: token -> canonical verb. First matching token in the utterance
+# decides the verb.
+VERB_TOKENS: dict[str, str] = {
+    "build": "build", "rebuild": "build", "compile": "build",
+    "flash": "flash", "reflash": "flash",
+    "measure": "measure",
+    "run": "run_samples",
+    "report": "report",
+    "write": "scaffold", "create": "scaffold", "make": "scaffold",
+    "scaffold": "scaffold",
+}
+
+# Whole-utterance control words (filler like "please" is ignored).
+CONTROL_TOKENS = {"pause", "resume", "continue", "stop", "cancel", "halt"}
+_FILLER_TOKENS = {"please", "now", "it", "that"}
+
+GREETING_TOKENS = {"hello", "hi", "hey"}
+
+# Interrogative shapes stay chat even when they name a board/sample.
+INTERROGATIVE_PREFIXES = (
+    "tell me about", "tell me", "what", "whats", "who", "whos", "when",
+    "where", "why", "how", "explain", "describe", "define",
+)
+
+ARTIFACT_TOKENS = {"application", "app", "program", "firmware", "project"}
+
+# Rename patterns over normalized text; group 1 is the new name.
+RENAME_PATTERNS = (
+    re.compile(r"\byour name is (?:now )?(\w+)"),
+    re.compile(r"\bcall yourself (\w+)"),
+    re.compile(r"\bchange your name to (\w+)"),
+)
+
+
+def is_control(tokens: tuple[str, ...]) -> bool:
+    meaningful = [t for t in tokens if t not in _FILLER_TOKENS]
+    return len(meaningful) == 1 and meaningful[0] in CONTROL_TOKENS
+
+
+def is_interrogative(norm: str) -> bool:
+    return norm.startswith(INTERROGATIVE_PREFIXES)
+
+
+def rename_target(norm: str) -> str | None:
+    for pat in RENAME_PATTERNS:
+        m = pat.search(norm)
+        if m:
+            return m.group(1)
+    return None

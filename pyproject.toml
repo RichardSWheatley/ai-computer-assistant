@@ -1,6 +1,6 @@
 [project]
 name = "aica"
-version = "0.1.1"
+version = "0.2.0"
 description = "A local-first, modular AI computer assistant (sees the screen, controls the PC, helps you code and do business work)."
 readme = "README.md"
 requires-python = ">=3.11"
@@ -29,3 +29,6 @@ build-backend = "setuptools.build_meta"
 
 [tool.setuptools.packages.find]
 where = ["src"]
+
+[tool.setuptools.package-data]
+aica = ["firmware/data/*.json"]
