@@ -29,13 +29,13 @@ GOOD_TEST_FILES = {
 
 class TestTwisterResults:
     def test_pass(self):
-        from aica.firmware.twister_results import parse_twister_json
+        from rita.firmware.twister_results import parse_twister_json
         r = parse_twister_json(TW / "pass.json")
         assert r.ok is True
         assert r.failures == ()
 
     def test_build_failure_is_compile_kind_with_file_hints(self):
-        from aica.firmware.twister_results import parse_twister_json
+        from rita.firmware.twister_results import parse_twister_json
         r = parse_twister_json(TW / "fail_build.json")
         assert r.ok is False
         f = r.failures[0]
@@ -44,7 +44,7 @@ class TestTwisterResults:
         assert any("main.c" in h for h in f.file_hints)
 
     def test_test_failure_is_test_kind(self):
-        from aica.firmware.twister_results import parse_twister_json
+        from rita.firmware.twister_results import parse_twister_json
         r = parse_twister_json(TW / "fail_test.json")
         assert r.ok is False
         f = r.failures[0]
@@ -56,11 +56,11 @@ class TestTwisterResults:
 
 def make_pipeline(tmp_path, *, build_seq=(), twister_seq=(), device_seq=(),
                   max_cycles=3, device=False, hw_map=None, completions=None):
-    from aica.config import RitaConfig
-    from aica.firmware.claude import FakeClaude
-    from aica.firmware.index import VerificationIndex
-    from aica.firmware.pipeline import IteratePipeline
-    from aica.firmware.west import FakeWest
+    from rita.config import RitaConfig
+    from rita.firmware.claude import FakeClaude
+    from rita.firmware.index import VerificationIndex
+    from rita.firmware.pipeline import IteratePipeline
+    from rita.firmware.west import FakeWest
 
     runner = FakeWest(build_seq=list(build_seq), twister_seq=list(twister_seq),
                       device_seq=list(device_seq), fixtures_dir=TW)
@@ -160,7 +160,7 @@ class TestIteratePipeline:
         assert "watchdog" in (suite / "testcase.yaml").read_text()
 
     def test_patch_requires_a_concrete_failure(self):
-        from aica.firmware.claude import FakeClaude
+        from rita.firmware.claude import FakeClaude
         with pytest.raises(ValueError):
             FakeClaude().patch(None, Path("."))
 
@@ -169,10 +169,10 @@ class TestIteratePipeline:
 
 class TestWorkDispatch:
     def test_build_dispatch_runs_pipeline_and_reports(self, tmp_path):
-        from aica.firmware.pipeline import handle_work_dispatch
-        from aica.routing.model import Utterance
-        from aica.routing.router import route
-        from aica.routing.vocabulary import Vocabulary
+        from rita.firmware.pipeline import handle_work_dispatch
+        from rita.routing.model import Utterance
+        from rita.routing.router import route
+        from rita.routing.vocabulary import Vocabulary
 
         pipe, runner, claude = make_pipeline(
             tmp_path, build_seq=["ok"], twister_seq=["pass.json"],

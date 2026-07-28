@@ -17,7 +17,7 @@ python -m pip install -U pip
 Check what the assistant detects on your machine:
 
 ```powershell
-python -m aica doctor
+python -m rita doctor
 ```
 
 (No GPU → it reports `acceleration: cpu`, `default mode: auto`, and that it will
@@ -32,9 +32,9 @@ Generates real PowerPoint / Word / Excel files. No GPU, no key, no permissions.
 ```powershell
 pip install -e ".[business]"
 
-python -m aica doc deck   examples\deck.json   -o demo.pptx
-python -m aica doc report examples\report.json -o demo.docx
-python -m aica doc sheet  examples\sheet.json  -o demo.xlsx
+python -m rita doc deck   examples\deck.json   -o demo.pptx
+python -m rita doc report examples\report.json -o demo.docx
+python -m rita doc sheet  examples\sheet.json  -o demo.xlsx
 ```
 
 Open `demo.pptx` / `demo.docx` / `demo.xlsx` in Office. Edit the JSON in
@@ -56,7 +56,7 @@ $env:ANTHROPIC_API_KEY = "sk-ant-..."   # from console.anthropic.com
 ### 2. Dry-run first (safe — nothing moves)
 
 ```powershell
-python -m aica run "open Notepad and type a hello note"
+python -m rita run "open Notepad and type a hello note"
 ```
 
 This runs the full perceive→plan→act loop in **simulation** (actions are logged,
@@ -65,7 +65,7 @@ not performed) so you can watch what it *would* do without risk.
 ### 3. Go live (it actually drives the mouse/keyboard)
 
 ```powershell
-python -m aica run "open Notepad and type a hello note" --live --confirm
+python -m rita run "open Notepad and type a hello note" --live --confirm
 ```
 
 - `--live` performs real input. `--confirm` prompts you before any
@@ -85,9 +85,9 @@ Speak commands; the assistant runs them and speaks back. Listening is local
 
 ```powershell
 pip install -e ".[voice]"
-python -m aica talk --push-to-talk                    # press Enter to talk (recommended)
-python -m aica talk --push-to-talk --live --confirm   # actually drives the screen
-python -m aica talk                                    # continuous: ~5s turns, no button
+python -m rita talk --push-to-talk                    # press Enter to talk (recommended)
+python -m rita talk --push-to-talk --live --confirm   # actually drives the screen
+python -m rita talk                                    # continuous: ~5s turns, no button
 ```
 
 - **Push-to-talk** (`--push-to-talk`): press **Enter** to start a turn, speak,
@@ -128,5 +128,5 @@ asks first.
 ## When you get a GPU later
 
 Install [Ollama](https://ollama.com), pull a model sized to your VRAM (run
-`aica doctor` for the recommendation), and the assistant **automatically** makes
+`rita doctor` for the recommendation), and the assistant **automatically** makes
 the local model the default — Claude becomes the fallback. No code changes.

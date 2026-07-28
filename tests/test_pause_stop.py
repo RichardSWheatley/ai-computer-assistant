@@ -40,11 +40,11 @@ class SteppableWest:
 
 
 def make_pipeline(tmp_path, *, build_seq=("ok",), twister_seq=("pass.json",)):
-    from aica.config import RitaConfig
-    from aica.firmware.claude import FakeClaude
-    from aica.firmware.index import VerificationIndex
-    from aica.firmware.pipeline import IteratePipeline
-    from aica.firmware.west import FakeWest
+    from rita.config import RitaConfig
+    from rita.firmware.claude import FakeClaude
+    from rita.firmware.index import VerificationIndex
+    from rita.firmware.pipeline import IteratePipeline
+    from rita.firmware.west import FakeWest
 
     fake = FakeWest(build_seq=list(build_seq), twister_seq=list(twister_seq),
                     fixtures_dir=TW)
@@ -66,7 +66,7 @@ def run_task(manager, pipe):
 
 class TestTaskManager:
     def test_pause_after_build_resumes_into_twister_without_rebuilding(self, tmp_path):
-        from aica.core.tasks import TaskManager
+        from rita.core.tasks import TaskManager
         manager = TaskManager()
         pipe, west, fake = make_pipeline(tmp_path)
 
@@ -86,7 +86,7 @@ class TestTaskManager:
         assert manager.report(tid).result.outcome == "green"
 
     def test_stop_reports_partial_results_and_manager_survives(self, tmp_path):
-        from aica.core.tasks import TaskManager
+        from rita.core.tasks import TaskManager
         manager = TaskManager()
         pipe, west, fake = make_pipeline(tmp_path)
 
@@ -107,7 +107,7 @@ class TestTaskManager:
         assert manager.wait_state(tid2, "DONE", timeout=5)
 
     def test_stop_while_paused_wakes_and_cancels(self, tmp_path):
-        from aica.core.tasks import TaskManager
+        from rita.core.tasks import TaskManager
         manager = TaskManager()
         pipe, west, fake = make_pipeline(tmp_path)
 
@@ -120,7 +120,7 @@ class TestTaskManager:
         assert manager.wait_state(tid, "STOPPED", timeout=5)
 
     def test_crash_is_failed_not_fatal(self):
-        from aica.core.tasks import TaskManager
+        from rita.core.tasks import TaskManager
         manager = TaskManager()
 
         def boom(ctl):
@@ -158,7 +158,7 @@ class BlockingTTS:
 
 class TestPausableSpeaker:
     def test_pause_keeps_position_resume_continues_stop_flushes(self):
-        from aica.voice.tts import PausableSpeaker
+        from rita.voice.tts import PausableSpeaker
         tts = BlockingTTS()
         spk = PausableSpeaker(tts)
         spk.say("One. Two. Three. Four.")
@@ -183,7 +183,7 @@ class TestPausableSpeaker:
         assert spk.pending == 0
 
     def test_say_after_stop_starts_fresh(self):
-        from aica.voice.tts import PausableSpeaker
+        from rita.voice.tts import PausableSpeaker
         tts = BlockingTTS()
         spk = PausableSpeaker(tts)
         spk.say("One. Two.")
@@ -195,11 +195,11 @@ class TestPausableSpeaker:
 
 class TestControlWords:
     def test_voice_control_words_drive_manager_and_speaker(self, tmp_path):
-        from aica.core.tasks import TaskManager, make_control_handler
-        from aica.routing.model import Utterance
-        from aica.routing.router import route
-        from aica.routing.vocabulary import Vocabulary
-        from aica.voice.tts import PausableSpeaker
+        from rita.core.tasks import TaskManager, make_control_handler
+        from rita.routing.model import Utterance
+        from rita.routing.router import route
+        from rita.routing.vocabulary import Vocabulary
+        from rita.voice.tts import PausableSpeaker
 
         manager = TaskManager()
         tts = BlockingTTS()

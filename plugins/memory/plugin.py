@@ -4,8 +4,8 @@
 store is in-memory by default; pass a path for persistence.
 """
 
-from aica.core.interfaces import Plugin, ToolResult, ToolSchema
-from aica.memory.store import MemoryStore
+from rita.core.interfaces import Plugin, ToolResult, ToolSchema
+from rita.memory.store import MemoryStore
 
 
 class MemoryPlugin(Plugin):

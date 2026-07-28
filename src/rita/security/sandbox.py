@@ -30,7 +30,7 @@ _DEFAULT_ALLOW_ENV = {
 # Even if allow-listed by name, drop anything that looks like a secret.
 _SECRET_RE = re.compile(
     r"(KEY|TOKEN|SECRET|PASSWORD|PASSWD|CREDENTIAL|SESSION|COOKIE|AUTH|"
-    r"ANTHROPIC|AICA_GRAPH|AWS_|AZURE_|GCP_|OPENAI)", re.IGNORECASE)
+    r"ANTHROPIC|AICA_GRAPH|RITA_GRAPH|AWS_|AZURE_|GCP_|OPENAI)", re.IGNORECASE)
 
 
 def _default_sandbox_dir() -> str:
@@ -55,15 +55,16 @@ class SandboxPolicy:
 
 def sandboxed_env(policy: SandboxPolicy, base: dict | None = None) -> dict:
     """Return a scrubbed environment: allow-listed names, minus anything that
-    looks secret. Adds AICA_SANDBOX / AICA_NO_NETWORK markers the worker reads."""
+    looks secret. Adds RITA_SANDBOX / RITA_NO_NETWORK markers the worker reads
+    (legacy AICA_* names are still set for one release)."""
     base = os.environ if base is None else base
     env = {
         k: v for k, v in base.items()
         if k in policy.allow_env and not _SECRET_RE.search(k)
     }
-    env["AICA_SANDBOX"] = "1"
+    env["RITA_SANDBOX"] = env["AICA_SANDBOX"] = "1"
     if policy.no_network:
-        env["AICA_NO_NETWORK"] = "1"
+        env["RITA_NO_NETWORK"] = env["AICA_NO_NETWORK"] = "1"
     return env
 
 

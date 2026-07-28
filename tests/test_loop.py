@@ -1,8 +1,8 @@
-from aica.app import build_assistant
-from aica.config import load_config
-from aica.core.interfaces import Plugin, ToolResult, ToolSchema
-from aica.core.registry import ToolRegistry
-from aica.plugins.loader import discover
+from rita.app import build_assistant
+from rita.config import load_config
+from rita.core.interfaces import Plugin, ToolResult, ToolSchema
+from rita.core.registry import ToolRegistry
+from rita.plugins.loader import discover
 
 
 def test_assistant_runs_to_completion():

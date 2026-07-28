@@ -9,7 +9,7 @@ response must split into:
   next;
 - **screen** — everything (code, diffs, logs, file paths), untouched.
 
-## Design (`aica.ui.channels.split_response`)
+## Design (`rita.ui.channels.split_response`)
 
 The brain (chat model / claude-worker prompts) is *asked* to emit both
 channels, but the **shell's deterministic strip is the guarantee** — it is

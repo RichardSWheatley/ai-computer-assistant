@@ -1,8 +1,8 @@
 """Worker sandboxing: env scrubbing, spawn kwargs, and a sandboxed round-trip."""
 
-from aica.security.sandbox import SandboxPolicy, sandboxed_env, spawn_kwargs
-from aica.workers import protocol as P
-from aica.workers.client import WorkerClient
+from rita.security.sandbox import SandboxPolicy, sandboxed_env, spawn_kwargs
+from rita.workers import protocol as P
+from rita.workers.client import WorkerClient
 
 
 def test_sandboxed_env_drops_secrets_keeps_safe():

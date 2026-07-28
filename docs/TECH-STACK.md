@@ -10,8 +10,8 @@ Concrete, opinionated library choices. **First pass targets Windows + macOS**
 | Simulated input | `pyautogui` + `pydirectinput` | `pyautogui` + Quartz |
 | Permissions | input access | grant **Accessibility + Screen Recording** in System Settings → Privacy |
 
-`aica/platform_support.py` selects these per-OS so the rest of the code is
-platform-agnostic. Run `aica doctor` to see what's detected on each machine.
+`rita/platform_support.py` selects these per-OS so the rest of the code is
+platform-agnostic. Run `rita doctor` to see what's detected on each machine.
 
 ## Language
 

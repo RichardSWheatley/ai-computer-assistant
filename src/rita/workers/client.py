@@ -23,7 +23,7 @@ class WorkerClient:
     def __init__(self, command: list[str] | None = None, sandbox=None) -> None:
         # Default: run the Python reference worker in-tree.
         self.command = command or [sys.executable, "-m",
-                                   "aica.workers.reference_worker"]
+                                   "rita.workers.reference_worker"]
         # Optional security.sandbox.SandboxPolicy — scrubs env, sets cwd + rlimits
         # so the worker never sees secrets and can't exceed resource bounds.
         self.sandbox = sandbox

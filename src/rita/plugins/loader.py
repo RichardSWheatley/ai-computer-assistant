@@ -65,7 +65,7 @@ def discover(plugins_dir: str | Path) -> list[LoadedPlugin]:
 
 
 def _load_module(name: str, path: Path) -> Plugin | None:
-    spec = importlib.util.spec_from_file_location(f"aica_plugin_{name}", path)
+    spec = importlib.util.spec_from_file_location(f"rita_plugin_{name}", path)
     if spec is None or spec.loader is None:
         return None
     module = importlib.util.module_from_spec(spec)

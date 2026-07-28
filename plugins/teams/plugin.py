@@ -4,8 +4,8 @@ Posting is outward_facing, so the orchestrator gates it behind a confirmation.
 Opt-in (enabled=false): needs msal + a signed-in account.
 """
 
-from aica.business.graph import GraphClient
-from aica.core.interfaces import Plugin, ToolResult, ToolSchema
+from rita.business.graph import GraphClient
+from rita.core.interfaces import Plugin, ToolResult, ToolSchema
 
 
 class TeamsPlugin(Plugin):

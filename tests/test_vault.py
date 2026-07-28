@@ -2,8 +2,8 @@
 
 import pytest
 
-from aica.business.graph import GraphClient
-from aica.security.vault import MemoryBackend, SecretVault, is_ref
+from rita.business.graph import GraphClient
+from rita.security.vault import MemoryBackend, SecretVault, is_ref
 
 
 def _vault():

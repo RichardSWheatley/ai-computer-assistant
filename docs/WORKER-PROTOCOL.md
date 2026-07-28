@@ -41,7 +41,7 @@ Response:
 
 ## Versioning
 
-`PROTOCOL_VERSION` lives in `src/aica/workers/protocol.py` — the single source of
+`PROTOCOL_VERSION` lives in `src/rita/workers/protocol.py` — the single source of
 truth. Bump it on breaking changes; the client checks it via `ping`.
 
 ## Swapping in the Rust worker
@@ -51,7 +51,7 @@ truth. Bump it on breaking changes; the client checks it via `ping`.
 WorkerClient()
 
 # Production: a compiled Rust binary speaking the same protocol
-WorkerClient(["/usr/local/bin/aica-worker"])
+WorkerClient(["/usr/local/bin/rita-worker"])
 ```
 Or set `worker_command` in config. Nothing else changes.
 

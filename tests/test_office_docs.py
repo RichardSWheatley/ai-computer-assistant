@@ -17,7 +17,7 @@ def _load(name, file):
 
 def test_build_docx_report(tmp_path):
     docx = pytest.importorskip("docx")
-    from aica.business.docx_builder import build_report
+    from rita.business.docx_builder import build_report
     spec = {
         "title": "Q3 Report", "subtitle": "Board",
         "sections": [
@@ -39,7 +39,7 @@ def test_build_docx_report(tmp_path):
 
 def test_build_xlsx_workbook(tmp_path):
     openpyxl = pytest.importorskip("openpyxl")
-    from aica.business.xlsx_builder import build_workbook
+    from rita.business.xlsx_builder import build_workbook
     spec = {"sheets": [{
         "name": "Revenue", "headers": ["Quarter", "Revenue"],
         "rows": [["Q1", 10], ["Q2", 14], ["Q3", 19]],

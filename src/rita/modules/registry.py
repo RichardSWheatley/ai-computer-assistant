@@ -24,12 +24,14 @@ class ModuleCompatError(ModuleError):
 
 
 def _supervisor_version_default() -> str:
-    try:
-        from importlib.metadata import version
+    from importlib.metadata import version
 
-        return version("aica")
-    except Exception:  # pragma: no cover - not installed
-        return "0.0.0"
+    for dist in ("rita", "aica"):   # legacy dist name during the transition
+        try:
+            return version(dist)
+        except Exception:
+            continue
+    return "0.0.0"  # pragma: no cover - not installed
 
 
 class ModuleRegistry:

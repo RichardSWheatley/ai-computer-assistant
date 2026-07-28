@@ -13,7 +13,7 @@ The router is a **pure function**: utterance in, dispatch decision out. No
 LLM, no I/O, table-driven tests. Chat is the **fallback** when nothing
 matches — inverted from before.
 
-### Stage zero: wake grammar (`aica.routing.wake.WakeGate`)
+### Stage zero: wake grammar (`rita.routing.wake.WakeGate`)
 
 - `("hello" | "hi" | "hey") + <name>` with the name starting within
   **≤ 0.5 s** of the greeting ending → wake; the words after the name are the
@@ -29,7 +29,7 @@ matches — inverted from before.
   (`Utterance.words`). When absent, greeting-immediately-followed-by-name
   adjacency within the same utterance is the proxy (see DECISIONS-LOG).
 
-### Router (`aica.routing.router.route`)
+### Router (`rita.routing.router.route`)
 
 `route(utterance, vocabulary, assistant_name) -> Dispatch`, evaluated in
 order:
@@ -54,7 +54,7 @@ order:
    vocabulary.
 6. **Fallback**: nothing matched → `kind="chat"` (`matched_by="fallback"`).
 
-### Dispatch model (`aica.routing.model`)
+### Dispatch model (`rita.routing.model`)
 
 ```
 Word(text, start, end)                      # STT word timing (seconds)
@@ -67,16 +67,16 @@ Dispatch(kind: wake_only|work|chat|control|rename,
 WakeDecision(woke, residual)
 ```
 
-### Vocabulary (`aica.routing.vocabulary.Vocabulary`)
+### Vocabulary (`rita.routing.vocabulary.Vocabulary`)
 
 Loaded from `~/.rita/boards.json` and the verification index when present;
 before the first workspace sync, a packaged seed
-(`aica/firmware/data/boards.seed.json`) provides board vocabulary so routing
+(`rita/firmware/data/boards.seed.json`) provides board vocabulary so routing
 works out of the box. Aliases are derived (strip `_evb`/vendor suffixes,
 spaced variants). Samples/peripherals have a small builtin seed
 (blinky, hello_world, button; led, gpio, uart, i2c, spi, pwm, adc).
 
-### Shell (`aica.voice.loop.RouterShell`)
+### Shell (`rita.voice.loop.RouterShell`)
 
 Holds the `WakeGate` + persisted config; feeds utterances through wake → route
 → the registered handlers (`work`, `chat`, `control`). Work handlers are

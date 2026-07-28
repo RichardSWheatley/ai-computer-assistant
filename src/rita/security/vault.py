@@ -15,7 +15,7 @@ from __future__ import annotations
 
 from typing import Protocol, runtime_checkable
 
-SERVICE = "aica"
+SERVICE = "aica"  # unchanged on purpose: renaming would orphan stored secrets
 _REF_PREFIX = "vault:"
 
 

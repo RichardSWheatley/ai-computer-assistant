@@ -8,10 +8,10 @@ from __future__ import annotations
 
 import pytest
 
-from aica.config import load_rita_config
-from aica.routing.model import Utterance
-from aica.routing.router import route
-from aica.routing.vocabulary import Vocabulary
+from rita.config import load_rita_config
+from rita.routing.model import Utterance
+from rita.routing.router import route
+from rita.routing.vocabulary import Vocabulary
 
 
 @pytest.fixture(scope="module")
@@ -121,7 +121,7 @@ def test_route_is_deterministic(vocab):
 
 class TestRouterShell:
     def make_shell(self, tmp_path, **kw):
-        from aica.voice.loop import RouterShell
+        from rita.voice.loop import RouterShell
         return RouterShell(config_path=tmp_path / "config", **kw)
 
     def test_hello_rita_build_blinky_wakes_and_routes(self, tmp_path):

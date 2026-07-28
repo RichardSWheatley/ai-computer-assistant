@@ -1,7 +1,7 @@
 [project]
-name = "aica"
-version = "0.7.0"
-description = "A local-first, modular AI computer assistant (sees the screen, controls the PC, helps you code and do business work)."
+name = "rita"
+version = "0.8.0"
+description = "RITA — Routing, Iteration, Testing, Automation: a deterministic orchestrator with a speech front end for Zephyr firmware work."
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = []
@@ -23,7 +23,9 @@ firmware = ["pyyaml"]                 # full YAML for workspace metadata (subset
 mcp = ["mcp"]                         # the workspace MCP server (rita mcp-serve)
 
 [project.scripts]
-aica = "aica.__main__:main"
+rita = "rita.__main__:main"
+# Deprecated alias for one release; remove in 0.9.
+aica = "rita.__main__:main"
 
 [build-system]
 requires = ["setuptools>=68"]
@@ -33,4 +35,4 @@ build-backend = "setuptools.build_meta"
 where = ["src"]
 
 [tool.setuptools.package-data]
-aica = ["firmware/data/*.json"]
+rita = ["firmware/data/*.json"]

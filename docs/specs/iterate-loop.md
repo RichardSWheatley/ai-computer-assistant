@@ -7,7 +7,7 @@ given failure output, produce a patch (or, on request, scaffold an app /
 write a test — Fix 2). The orchestrator decides what runs, where, and when
 to stop. Gates decide success.
 
-## Pipeline (`aica.firmware.pipeline.IteratePipeline`)
+## Pipeline (`rita.firmware.pipeline.IteratePipeline`)
 
 ```
 1. RESOLVE   — verification resolution (Fix 2); scaffold first if asked

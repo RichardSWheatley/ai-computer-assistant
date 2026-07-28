@@ -70,15 +70,15 @@ Both planners implement the same single-step contract (`plan()` returns one
 ## Selecting a mode
 
 ```bash
-aica run "refactor this module"               # auto: local if VRAM, Claude if not
-aica run "summarize this contract" --local-only   # privacy, one run
+rita run "refactor this module"               # auto: local if VRAM, Claude if not
+rita run "summarize this contract" --local-only   # privacy, one run
 export AICA_LOCAL_ONLY=1                        # force local everywhere
 ```
 
 or in a config file:
 
 ```toml
-[aica]
+[rita]
 mode = "local-only"   # or "auto"
 ```
 

@@ -6,7 +6,7 @@ from pathlib import Path
 
 import pytest
 
-from aica.business.graph import GraphClient
+from rita.business.graph import GraphClient
 
 # Load the opt-in drop-in plugins directly (they're enabled=false in manifests).
 _PLUGINS = Path(__file__).resolve().parents[1] / "plugins"
@@ -19,7 +19,7 @@ sys.path.insert(0, str(_PLUGINS / "powerpoint"))
 
 def test_build_deck_writes_real_pptx(tmp_path):
     pptx = pytest.importorskip("pptx")  # noqa: F841
-    from aica.business.pptx_builder import build_deck
+    from rita.business.pptx_builder import build_deck
 
     spec = {
         "title": "Q3 Review",
@@ -45,7 +45,7 @@ def test_build_deck_writes_real_pptx(tmp_path):
 
 def test_build_deck_requires_title(tmp_path):
     pytest.importorskip("pptx")
-    from aica.business.pptx_builder import build_deck
+    from rita.business.pptx_builder import build_deck
     with pytest.raises(ValueError):
         build_deck({"slides": []}, str(tmp_path / "x.pptx"))
 

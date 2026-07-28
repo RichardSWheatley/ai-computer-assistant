@@ -7,7 +7,7 @@ the intent — or write one — without an LLM guessing over the filesystem.
 
 ## Design
 
-Resolution order (`aica.firmware.resolve.resolve_verification`):
+Resolution order (`rita.firmware.resolve.resolve_verification`):
 
 1. **Index, don't ask.** At workspace sync (`rita sync`), build a static
    index of `zephyr/samples/**/sample.yaml` and `zephyr/tests/**/testcase.yaml`:
@@ -19,17 +19,17 @@ Resolution order (`aica.firmware.resolve.resolve_verification`):
 2. **Claude judges fit only.** The top matches go to Claude as a single
    bounded call over each candidate's README + yaml: "does this verify
    *this* intent?" — answer is a choice + reason
-   (`aica.firmware.fit.judge_fit`). Claude picks among indexed candidates;
+   (`rita.firmware.fit.judge_fit`). Claude picks among indexed candidates;
    it cannot introduce new ones.
 3. **No match → Claude writes the test**
-   (`aica.firmware.testwriter.write_ztest`): a proper ztest with a
+   (`rita.firmware.testwriter.write_ztest`): a proper ztest with a
    `testcase.yaml`, validated before acceptance, so it runs under twister
    like everything else.
 
 `filter:` expressions are recorded, not evaluated — twister is the gate that
 evaluates them (see DECISIONS-LOG).
 
-## boards.json (`rita sync`, `aica.firmware.boards`)
+## boards.json (`rita sync`, `rita.firmware.boards`)
 
 Generated into `~/.rita/boards.json` by scanning
 `zephyr/boards/**/board.yml` + twister platform yamls (`identifier`,
@@ -50,7 +50,7 @@ Aliases are derived (strip `_evb`/`_dk` suffixes, spaced variants) — they
 feed the router's vocabulary (Fix 1), replacing the packaged seed after the
 first sync.
 
-## Workspace MCP server (`aica.mcpserver`, `rita mcp-serve`)
+## Workspace MCP server (`rita.mcpserver`, `rita mcp-serve`)
 
 RITA hosts a stdio MCP server over the given Zephyr checkout so the
 claude-worker queries the workspace's code and intent through tools instead

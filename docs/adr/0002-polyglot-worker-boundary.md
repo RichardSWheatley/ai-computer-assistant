@@ -30,7 +30,7 @@ on the other side.
   config flag (`use_native_worker`), not a refactor.
 - The Rust worker is introduced **incrementally**: ship Python-only, then
   replace the reference worker with a binary that speaks the same protocol
-  (`worker_command = ["aica-worker"]`) — no brain-side changes.
+  (`worker_command = ["rita-worker"]`) — no brain-side changes.
 - Each side uses its best ecosystem: Python's AI/Office libraries, Rust's
   latency, memory safety, and single-binary packaging (incl. a Tauri shell).
 
@@ -41,7 +41,7 @@ on the other side.
 - Two runtimes to package — mitigated because the worker is a single static
   binary and the brain is a standard Python app.
 - Protocol must be versioned and kept in one place
-  (`src/aica/workers/protocol.py`).
+  (`src/rita/workers/protocol.py`).
 
 ## Status of implementation
 

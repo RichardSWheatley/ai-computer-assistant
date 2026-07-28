@@ -1,6 +1,6 @@
 """A real child-process module used by the supervisor/registry tests.
 
-Speaks the module RPC protocol via aica.modules.runtime.serve. Its version
+Speaks the module RPC protocol via rita.modules.runtime.serve. Its version
 is argv[1] so tests can install several versions of the same module.
 """
 
@@ -8,7 +8,7 @@ import os
 import sys
 import time
 
-from aica.modules.runtime import serve
+from rita.modules.runtime import serve
 
 VERSION = sys.argv[1] if len(sys.argv) > 1 else "1.0.0"
 STATE = {"value": None}

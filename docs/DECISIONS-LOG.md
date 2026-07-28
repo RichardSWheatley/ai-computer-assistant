@@ -3,6 +3,17 @@
 Compromises, proxies, and deferred decisions — with the reason and what would
 remove them. Newest first. (Required by the working rules in `CLAUDE.md`.)
 
+## 2026-07-28 — Phase 7 (rename)
+
+- **Keyring service name stays `aica`** — renaming it would orphan every
+  secret users already stored. Revisit only with a migration that copies
+  entries forward.
+- **Legacy `AICA_*` env names are honored (and the sandbox sets both
+  marker spellings) for one release** so external workers keep working;
+  drop in 0.9.
+- **Historical CHANGELOG/DECISIONS entries keep their original `aica.*`
+  module paths** — they describe the code as it was at that version.
+
 ## 2026-07-28 — Phase 6 (Fix 6)
 
 - **The supervisor uses in-process seams (WestCli/ClaudeWorkerCli) for

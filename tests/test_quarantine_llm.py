@@ -1,11 +1,11 @@
 """Quarantined-LLM: no-tools digest of untrusted text, re-scanned by Quarantine."""
 
-from aica.llm.quarantined import (
+from rita.llm.quarantined import (
     QuarantinedLLM,
     make_claude_backend,
     make_ollama_backend,
 )
-from aica.security.quarantine import Quarantine
+from rita.security.quarantine import Quarantine
 
 
 def test_quarantined_llm_calls_backend_with_directive():

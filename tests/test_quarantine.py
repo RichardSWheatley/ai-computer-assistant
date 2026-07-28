@@ -1,12 +1,12 @@
 """Quarantine + audit tests, and an end-to-end injection-resistance check."""
 
-from aica.app import build_assistant
-from aica.config import load_config
-from aica.core.events import EventBus
-from aica.core.interfaces import Element, ScreenState
-from aica.perception.mock import MockPerception
-from aica.security.audit import AuditLog
-from aica.security.quarantine import Quarantine
+from rita.app import build_assistant
+from rita.config import load_config
+from rita.core.events import EventBus
+from rita.core.interfaces import Element, ScreenState
+from rita.perception.mock import MockPerception
+from rita.security.audit import AuditLog
+from rita.security.quarantine import Quarantine
 
 
 # --- quarantine ------------------------------------------------------------
@@ -87,6 +87,6 @@ def test_injection_on_screen_does_not_escape_quarantine():
     sanitized = asst.quarantine.sanitize_state(asst.perception.observe())
     assert sanitized.suspicious
     # And under suspicion, even a benign local action is gated (blocked unattended).
-    from aica.core.interfaces import ToolCall
+    from rita.core.interfaces import ToolCall
     asst._suspicious = True
     assert asst.would_allow(ToolCall(tool="type_text", args={"text": "x"})) is False

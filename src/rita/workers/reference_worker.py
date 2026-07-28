@@ -4,7 +4,7 @@ It speaks the exact wire protocol (docs/WORKER-PROTOCOL.md), so it lets the
 whole system run and be tested today. Replace it with a compiled Rust worker
 by pointing WorkerClient.command at the binary — nothing else changes.
 
-Run standalone:  python -m aica.workers.reference_worker
+Run standalone:  python -m rita.workers.reference_worker
 """
 
 from __future__ import annotations

@@ -1,6 +1,6 @@
 """Module IPC wire contract: newline JSON over stdio.
 
-Same request/response shape as aica.workers.protocol (kept untouched for
+Same request/response shape as rita.workers.protocol (kept untouched for
 the legacy eyes/hands worker), plus what modules need:
 
   request:  {"id": 1, "method": "start", "params": {...}}

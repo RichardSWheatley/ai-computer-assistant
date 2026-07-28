@@ -1,6 +1,6 @@
 """Deterministic, grammar-first intent routing (Fix 1).
 
-Not to be confused with `aica.llm.router`, which selects WHICH MODEL plans a
+Not to be confused with `rita.llm.model_router`, which selects WHICH MODEL plans a
 step for the legacy agent. This package decides WHAT HAPPENS with an
 utterance — by matching, never by model judgment.
 """

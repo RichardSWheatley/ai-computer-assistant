@@ -7,9 +7,9 @@
 
 import pytest
 
-from aica.config import load_config
-from aica.core.interfaces import LLMProvider, ScreenState, ToolCall
-from aica.llm.router import (
+from rita.config import load_config
+from rita.core.interfaces import LLMProvider, ScreenState, ToolCall
+from rita.llm.model_router import (
     HeuristicClassifier,
     LLMRouter,
     OperatingMode,

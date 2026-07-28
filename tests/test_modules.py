@@ -40,7 +40,7 @@ def install_toy(root: Path, *, name="toy", version="1.0.0", max_instances=2,
 
 @pytest.fixture()
 def registry(tmp_path):
-    from aica.modules.registry import ModuleRegistry
+    from rita.modules.registry import ModuleRegistry
     reg = ModuleRegistry(root=tmp_path / "modules",
                          supervisor_version=SUP_VERSION)
     yield reg
@@ -49,7 +49,7 @@ def registry(tmp_path):
 
 class TestManifest:
     def test_parse(self, tmp_path):
-        from aica.modules.manifest import load_manifest
+        from rita.modules.manifest import load_manifest
         install_toy(tmp_path, exclusivity=["serial_port"])
         m = load_manifest(tmp_path / "toy" / "1.0.0" / "manifest.toml")
         assert m.name == "toy"
@@ -59,14 +59,14 @@ class TestManifest:
         assert m.exclusivity_keys == ("serial_port",)
 
     def test_missing_fields_rejected(self, tmp_path):
-        from aica.modules.manifest import ManifestError, load_manifest
+        from rita.modules.manifest import ManifestError, load_manifest
         p = tmp_path / "manifest.toml"
         p.write_text('name = "x"\n')
         with pytest.raises(ManifestError):
             load_manifest(p)
 
     def test_min_supervisor_newer_than_us_is_a_launch_error(self, registry, tmp_path):
-        from aica.modules.registry import ModuleCompatError
+        from rita.modules.registry import ModuleCompatError
         install_toy(registry.root, min_supervisor="99.0.0")
         with pytest.raises(ModuleCompatError):
             registry.launch("toy")
@@ -90,14 +90,14 @@ class TestHandleAndProtocol:
         assert ("checkpoint", {"stage": "BUILD"}) in seen
 
     def test_per_call_timeout_is_honored(self, registry):
-        from aica.modules.handle import ModuleCallTimeout
+        from rita.modules.handle import ModuleCallTimeout
         install_toy(registry.root)
         h = registry.launch("toy")
         with pytest.raises(ModuleCallTimeout):
             h.call("slow", {"seconds": 5}, timeout=0.2)
 
     def test_handshake_failure_is_a_launch_error(self, registry):
-        from aica.modules.handle import ModuleError
+        from rita.modules.handle import ModuleError
         install_toy(registry.root, name="garbage", entrypoint=[
             sys.executable, "-c",
             "import time; print('this is not json', flush=True); time.sleep(10)"])
@@ -105,7 +105,7 @@ class TestHandleAndProtocol:
             registry.launch("garbage", handshake_timeout=1.0)
 
     def test_crash_isolation_supervisor_survives(self, registry):
-        from aica.modules.handle import ModuleError
+        from rita.modules.handle import ModuleError
         install_toy(registry.root)
         h = registry.launch("toy")
         with pytest.raises(ModuleError):
@@ -133,14 +133,14 @@ class TestRegistry:
         assert h2.call("status")["version"] == "2.0.0"
 
     def test_max_instances_enforced(self, registry):
-        from aica.modules.registry import ModuleBusy
+        from rita.modules.registry import ModuleBusy
         install_toy(registry.root, max_instances=1)
         registry.launch("toy")
         with pytest.raises(ModuleBusy):
             registry.launch("toy")
 
     def test_exclusive_claims(self, registry):
-        from aica.modules.registry import ModuleBusy
+        from rita.modules.registry import ModuleBusy
         install_toy(registry.root, max_instances=4,
                     exclusivity=["serial_port"])
         registry.launch("toy", claims={"serial_port": "/dev/ttyACM0"})
@@ -160,8 +160,8 @@ class TestRegistry:
 class TestDevInstallAndStubs:
     def test_dev_install_writes_all_module_manifests(self, tmp_path, monkeypatch):
         monkeypatch.setenv("RITA_HOME", str(tmp_path / "rita"))
-        from aica.modules.install import dev_install
-        from aica.modules.registry import ModuleRegistry
+        from rita.modules.install import dev_install
+        from rita.modules.registry import ModuleRegistry
         installed = dev_install()
         names = {m.name for m in installed}
         assert {"voice-in", "voice-out", "zephyr-runner", "claude-worker",
@@ -173,8 +173,8 @@ class TestDevInstallAndStubs:
 
     def test_stub_modules_are_honest(self, tmp_path, monkeypatch):
         monkeypatch.setenv("RITA_HOME", str(tmp_path / "rita"))
-        from aica.modules.install import dev_install
-        from aica.modules.registry import ModuleRegistry
+        from rita.modules.install import dev_install
+        from rita.modules.registry import ModuleRegistry
         dev_install()
         reg = ModuleRegistry(supervisor_version=SUP_VERSION)
         try:
@@ -188,11 +188,11 @@ class TestDevInstallAndStubs:
 
 class TestSupervisor:
     def make_supervisor(self, tmp_path):
-        from aica.config import RitaConfig
-        from aica.firmware.claude import FakeClaude
-        from aica.firmware.west import FakeWest
-        from aica.supervisor import Supervisor
-        from aica.voice.tts import FakeTTS
+        from rita.config import RitaConfig
+        from rita.firmware.claude import FakeClaude
+        from rita.firmware.west import FakeWest
+        from rita.supervisor import Supervisor
+        from rita.voice.tts import FakeTTS
 
         cfg = RitaConfig(workspace=str(WS))
         fit = json.dumps({"fit": "sample.basic.blinky", "reason": "fits"})
@@ -215,9 +215,9 @@ class TestSupervisor:
 
     def test_work_without_workspace_asks_for_sync(self, tmp_path, monkeypatch):
         monkeypatch.setenv("RITA_HOME", str(tmp_path / "rita"))
-        from aica.config import RitaConfig
-        from aica.supervisor import Supervisor
-        from aica.voice.tts import FakeTTS
+        from rita.config import RitaConfig
+        from rita.supervisor import Supervisor
+        from rita.voice.tts import FakeTTS
         sup = Supervisor(rita_cfg=RitaConfig(workspace=None),
                          config_path=tmp_path / "config", tts=FakeTTS(),
                          workdir=tmp_path / "work")

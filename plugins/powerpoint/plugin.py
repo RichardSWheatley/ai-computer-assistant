@@ -1,11 +1,11 @@
 """PowerPoint plugin — generate richly-designed .pptx decks.
 
-Accepts a deck spec (see aica.business.pptx_builder) and writes a real, editable
+Accepts a deck spec (see rita.business.pptx_builder) and writes a real, editable
 PowerPoint file. Opt-in (enabled=false) because it needs python-pptx.
 """
 
-from aica.business.pptx_builder import build_deck
-from aica.core.interfaces import Plugin, ToolResult, ToolSchema
+from rita.business.pptx_builder import build_deck
+from rita.core.interfaces import Plugin, ToolResult, ToolSchema
 
 
 class PowerPointPlugin(Plugin):

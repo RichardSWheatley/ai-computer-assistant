@@ -1,9 +1,9 @@
 """CLI entry point.
 
 Commands:
-  aica doctor            Show detected hardware + the model recommendation.
-  aica plugins           List built-in + discovered plugins and their tools.
-  aica run "<goal>"      Run the agent loop toward a goal (mock-safe).
+  rita doctor            Show detected hardware + the model recommendation.
+  rita plugins           List built-in + discovered plugins and their tools.
+  rita run "<goal>"      Run the agent loop toward a goal (mock-safe).
 """
 
 from __future__ import annotations
@@ -20,7 +20,7 @@ from .hardware import detect_hardware, recommend_model
 def cmd_doctor(_args) -> int:
     hw = detect_hardware()
     rec = recommend_model(hw)
-    print("=== AICA hardware doctor ===")
+    print("=== RITA hardware doctor ===")
     print(f"platform        : {hw.platform}"
           f"  (first-pass supported: {platform_support.is_supported()})")
     print(f"a11y backend    : {platform_support.a11y_backend()}")
@@ -36,7 +36,7 @@ def cmd_doctor(_args) -> int:
     print(f"note            : {rec['note']}")
     print(f"os note         : {platform_support.notes()}")
     cfg = load_config()
-    print(f"default mode    : {cfg.mode}  (use `aica run --local-only` for privacy)")
+    print(f"default mode    : {cfg.mode}  (use `rita run --local-only` for privacy)")
     return 0
 
 
@@ -193,8 +193,8 @@ def cmd_workflow(args) -> int:
 
 
 def main(argv: list[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(prog="aica",
-                                     description="Local AI computer assistant")
+    parser = argparse.ArgumentParser(prog="rita",
+                                     description="RITA: deterministic firmware orchestrator with a speech front end")
     sub = parser.add_subparsers(dest="cmd", required=True)
     sub.add_parser("doctor", help="show hardware + model recommendation")
     sub.add_parser("plugins", help="list registered tools")

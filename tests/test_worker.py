@@ -1,10 +1,10 @@
 """Proves the Python<->worker boundary works end to end by spawning the
 reference worker as a real subprocess and driving it over the protocol."""
 
-from aica.app import build_assistant
-from aica.config import load_config
-from aica.workers import protocol as P
-from aica.workers.client import WorkerClient
+from rita.app import build_assistant
+from rita.config import load_config
+from rita.workers import protocol as P
+from rita.workers.client import WorkerClient
 
 
 def test_worker_ping_and_actions():

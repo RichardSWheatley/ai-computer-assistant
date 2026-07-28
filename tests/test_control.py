@@ -5,12 +5,12 @@ injected fake backends. The OS-specific a11y/capture walks need on-device
 tuning, but the pure logic and tool wiring are covered here.
 """
 
-from aica.action.desktop import DesktopController
-from aica.action.input import InputController
-from aica.core.interfaces import Element
-from aica.perception.a11y import A11yBackend, NullA11y, get_a11y_backend
-from aica.perception.desktop import DesktopPerception, fuse
-from aica.plugins.computer_use import ComputerUsePlugin
+from rita.action.desktop import DesktopController
+from rita.action.input import InputController
+from rita.core.interfaces import Element
+from rita.perception.a11y import A11yBackend, NullA11y, get_a11y_backend
+from rita.perception.desktop import DesktopPerception, fuse
+from rita.plugins.computer_use import ComputerUsePlugin
 
 
 class FakeA11y(A11yBackend):
@@ -58,7 +58,7 @@ def test_locate_returns_coordinates():
 
 
 def test_null_backend_when_unsupported(monkeypatch):
-    import aica.perception.a11y as mod
+    import rita.perception.a11y as mod
     monkeypatch.setattr(mod.platform_support, "current_os", lambda: "Linux")
     assert isinstance(get_a11y_backend(), NullA11y)
 

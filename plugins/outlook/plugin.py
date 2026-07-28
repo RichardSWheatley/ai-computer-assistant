@@ -7,8 +7,8 @@ gates it behind a confirmation. The Graph client is built lazily on first use
 Opt-in (enabled=false): needs msal + a signed-in account (AICA_GRAPH_* env).
 """
 
-from aica.business.graph import GraphClient
-from aica.core.interfaces import Plugin, ToolResult, ToolSchema
+from rita.business.graph import GraphClient
+from rita.core.interfaces import Plugin, ToolResult, ToolSchema
 
 
 class OutlookPlugin(Plugin):

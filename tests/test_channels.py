@@ -29,40 +29,40 @@ ADVERSARIAL = [
 class TestSplitResponse:
     @pytest.mark.parametrize("text", ADVERSARIAL)
     def test_speech_never_contains_forbidden_tokens(self, text):
-        from aica.ui.channels import split_response
+        from rita.ui.channels import split_response
         r = split_response(text)
         for rx in FORBIDDEN_IN_SPEECH:
             assert not rx.search(r.speech), (rx.pattern, r.speech)
 
     @pytest.mark.parametrize("text", ADVERSARIAL)
     def test_screen_preserves_everything(self, text):
-        from aica.ui.channels import split_response
+        from rita.ui.channels import split_response
         assert split_response(text).screen == text
 
     @pytest.mark.parametrize("text", ADVERSARIAL)
     def test_speech_is_at_most_two_sentences(self, text):
-        from aica.ui.channels import split_response
+        from rita.ui.channels import split_response
         speech = split_response(text).speech
         assert len(re.findall(r"[.!?](?:\s|$)", speech)) <= 2
 
     def test_code_only_response_speaks_fallback(self):
-        from aica.ui.channels import split_response
+        from rita.ui.channels import split_response
         r = split_response("```python\nprint('hi')\n```")
         assert r.speech == "The details are on your screen."
 
     def test_conversational_text_passes_through(self):
-        from aica.ui.channels import split_response
+        from rita.ui.channels import split_response
         r = split_response("The build is green. Twister passed on native sim.")
         assert r.speech == "The build is green. Twister passed on native sim."
 
 
 class TestVoiceLoopEnforcement:
     def test_loop_speaks_stripped_channel_and_screens_the_rest(self):
-        from aica.routing.model import Utterance
-        from aica.voice.loop import VoiceLoop
-        from aica.voice.mic import FakeRecorder
-        from aica.voice.stt import FakeSTT
-        from aica.voice.tts import FakeTTS
+        from rita.routing.model import Utterance
+        from rita.voice.loop import VoiceLoop
+        from rita.voice.mic import FakeRecorder
+        from rita.voice.stt import FakeSTT
+        from rita.voice.tts import FakeTTS
 
         reply = "Fixed it:\n```c\nint x = 1;\n```\nThe build is green now."
         screens: list[str] = []
@@ -76,11 +76,11 @@ class TestVoiceLoopEnforcement:
         assert "int x" not in tts.spoken[0]
 
     def test_utterance_path_is_also_enforced(self):
-        from aica.routing.model import Utterance
-        from aica.voice.loop import RouterShell, VoiceLoop
-        from aica.voice.mic import FakeRecorder
-        from aica.voice.stt import FakeSTT
-        from aica.voice.tts import FakeTTS
+        from rita.routing.model import Utterance
+        from rita.voice.loop import RouterShell, VoiceLoop
+        from rita.voice.mic import FakeRecorder
+        from rita.voice.stt import FakeSTT
+        from rita.voice.tts import FakeTTS
 
         # A work handler that (wrongly) returns a diff — the shell must strip it.
         shell = RouterShell(require_wake=False,
@@ -96,7 +96,7 @@ class TestVoiceLoopEnforcement:
 
 class TestStreamingStart:
     def test_say_does_not_block_on_playback(self):
-        from aica.voice.tts import PausableSpeaker
+        from rita.voice.tts import PausableSpeaker
 
         release = threading.Semaphore(0)
 

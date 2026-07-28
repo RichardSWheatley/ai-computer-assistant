@@ -1,12 +1,12 @@
 """Documents plugin — generate Word (.docx) and Excel (.xlsx) files.
 
 Opt-in (enabled=false); needs python-docx + openpyxl. Both write real, editable
-files. See aica.business.docx_builder / xlsx_builder for the spec shapes.
+files. See rita.business.docx_builder / xlsx_builder for the spec shapes.
 """
 
-from aica.business.docx_builder import build_report
-from aica.business.xlsx_builder import build_workbook
-from aica.core.interfaces import Plugin, ToolResult, ToolSchema
+from rita.business.docx_builder import build_report
+from rita.business.xlsx_builder import build_workbook
+from rita.core.interfaces import Plugin, ToolResult, ToolSchema
 
 
 class DocumentsPlugin(Plugin):

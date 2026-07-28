@@ -1,4 +1,4 @@
-from aica.hardware import GPU, Hardware, recommend_model
+from rita.hardware import GPU, Hardware, recommend_model
 
 
 def test_no_vram_recommends_cloud():
@@ -26,6 +26,6 @@ def test_metal_backend():
 
 def test_detect_hardware_runs():
     # Should never raise, even with no GPU and no optional deps.
-    from aica.hardware import detect_hardware
+    from rita.hardware import detect_hardware
     hw = detect_hardware()
     assert isinstance(hw.gpus, list)

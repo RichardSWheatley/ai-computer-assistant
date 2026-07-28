@@ -18,19 +18,19 @@ _MIN_SUPERVISOR = "0.7.0"
 
 # name -> (module path, version, capabilities, max_instances, exclusivity keys)
 SHIPPED: dict[str, tuple[str, str, list[str], int, list[str]]] = {
-    "voice-in": ("aica.modules_impl.voice_in", "1.0.0",
+    "voice-in": ("rita.modules_impl.voice_in", "1.0.0",
                  ["listen"], 1, []),
-    "voice-out": ("aica.modules_impl.voice_out", "1.0.0",
+    "voice-out": ("rita.modules_impl.voice_out", "1.0.0",
                   ["speak", "pause", "stop"], 1, []),
-    "zephyr-runner": ("aica.modules_impl.zephyr_runner", "1.0.0",
+    "zephyr-runner": ("rita.modules_impl.zephyr_runner", "1.0.0",
                       ["build", "twister", "flash"], 4, ["serial_port"]),
-    "claude-worker": ("aica.modules_impl.claude_worker", "1.0.0",
+    "claude-worker": ("rita.modules_impl.claude_worker", "1.0.0",
                       ["complete", "patch", "scaffold"], 4, []),
-    "scaffold": ("aica.modules_impl.scaffold", "1.0.0",
+    "scaffold": ("rita.modules_impl.scaffold", "1.0.0",
                  ["scaffold"], 2, []),
-    "cerberus": ("aica.modules_impl.cerberus", "0.1.0",
+    "cerberus": ("rita.modules_impl.cerberus", "0.1.0",
                  ["analyze"], 1, []),
-    "joulescope": ("aica.modules_impl.joulescope", "0.1.0",
+    "joulescope": ("rita.modules_impl.joulescope", "0.1.0",
                    ["measure"], 1, []),   # one probe, ever
 }
 

@@ -15,7 +15,7 @@ from .config import Config
 from .core.events import EventBus
 from .core.orchestrator import Orchestrator
 from .core.registry import ToolRegistry
-from .llm.router import build_default_planner
+from .llm.model_router import build_default_planner
 from .perception.desktop import DesktopPerception
 from .perception.mock import MockPerception
 from .plugins.computer_use import ComputerUsePlugin

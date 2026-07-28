@@ -2,8 +2,8 @@
 
 from dataclasses import dataclass
 
-from aica.memory.store import MemoryStore
-from aica.workflows.engine import BUILTINS, Workflow, WorkflowEngine
+from rita.memory.store import MemoryStore
+from rita.workflows.engine import BUILTINS, Workflow, WorkflowEngine
 
 
 # --- memory ----------------------------------------------------------------

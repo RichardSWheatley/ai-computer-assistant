@@ -5,7 +5,7 @@ handle them in `invoke()`, expose `create()`. Drop this folder into `plugins/`
 and its tools appear automatically — no core changes.
 """
 
-from aica.core.interfaces import Plugin, ToolResult, ToolSchema
+from rita.core.interfaces import Plugin, ToolResult, ToolSchema
 
 
 class HelloPlugin(Plugin):

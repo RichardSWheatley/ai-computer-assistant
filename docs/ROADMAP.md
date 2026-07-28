@@ -26,13 +26,13 @@ office docs) are opt-in.
 | Worker sandbox (scrubbed env, cwd, rlimits, no-network) | ✅ shipped | `feature/worker-sandboxing` |
 | Quarantined-LLM split (no-tools digest, re-scanned) | ✅ shipped | `feature/quarantine-llm` |
 | Secret vault (OS keychain + `vault:` refs) | ✅ shipped | `feature/secret-vault` |
-| Interactive confirmation (`aica run --confirm`) | ✅ shipped | `feature/control-ui` |
+| Interactive confirmation (`rita run --confirm`) | ✅ shipped | `feature/control-ui` |
 | Word (.docx) + Excel (.xlsx) generation | ✅ shipped | `feature/office-docs` |
 | Workflows engine + persistent memory/RAG | ✅ shipped | `feature/workflows` |
-| Weekend path: no-key `aica doc` CLI, `--live`, no-GPU routing | ✅ shipped | `feature/weekend-quickstart` |
-| Voice I/O: mic→Whisper→task→TTS speaker (`aica talk`) | ✅ shipped | `feature/voice-io` |
+| Weekend path: no-key `rita doc` CLI, `--live`, no-GPU routing | ✅ shipped | `feature/weekend-quickstart` |
+| Voice I/O: mic→Whisper→task→TTS speaker (`rita talk`) | ✅ shipped | `feature/voice-io` |
 | Push-to-talk (press Enter to talk) | ✅ shipped | `feature/voice-io` (tip) |
-| Wake-word ("Hey AICA") always-on trigger | ⏳ next | — |
+| Wake-word ("Hey RITA") always-on trigger | ⏳ next | — |
 
 ## What's next (remaining backlog)
 

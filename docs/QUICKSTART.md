@@ -13,7 +13,7 @@ pip install -e .
 ## 2. Check what your machine offers
 
 ```bash
-aica doctor
+rita doctor
 ```
 
 Shows detected GPUs/VRAM, the chosen acceleration backend (CUDA / Metal / CPU),
@@ -24,8 +24,8 @@ tiny CPU model + Claude escalation.**
 ## 3. List tools and run the loop (mock-safe)
 
 ```bash
-aica plugins                       # built-in + discovered plugin tools
-aica run "type hello into notepad" # runs perceive->plan->act->verify
+rita plugins                       # built-in + discovered plugin tools
+rita run "type hello into notepad" # runs perceive->plan->act->verify
 ```
 
 ## 4. Add a feature — drop in a plugin
@@ -37,7 +37,7 @@ Copy `plugins/hello/` to `plugins/<your-feature>/`, edit `plugin.toml` and
 
 | Want | Install | Notes |
 |---|---|---|
-| Local model (GPU) | `pip install -e ".[local-llm,gpu]"` + [Ollama](https://ollama.com) | Pull a model sized to your VRAM (see `aica doctor`) |
+| Local model (GPU) | `pip install -e ".[local-llm,gpu]"` + [Ollama](https://ollama.com) | Pull a model sized to your VRAM (see `rita doctor`) |
 | Claude escalation | `pip install -e ".[cloud]"` + `ANTHROPIC_API_KEY` | Hard / high-stakes steps only |
 | Screen capture | `pip install -e ".[perception]"` | `mss` + OCR |
 | Mouse/keyboard control | `pip install -e ".[control]"` | Real simulated input |

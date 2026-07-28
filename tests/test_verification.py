@@ -16,13 +16,13 @@ WS = FIXTURES / "zephyr_ws"
 
 @pytest.fixture(scope="module")
 def index():
-    from aica.firmware.index import VerificationIndex
+    from rita.firmware.index import VerificationIndex
     return VerificationIndex.build(WS)
 
 
 @pytest.fixture(scope="module")
 def tools():
-    from aica.mcpserver.tools import WorkspaceTools
+    from rita.mcpserver.tools import WorkspaceTools
     return WorkspaceTools(WS)
 
 
@@ -64,7 +64,7 @@ class TestVerificationIndex:
         assert index.find("apollo510_evb", ["quantum", "teleport"]) == []
 
     def test_save_load_round_trip(self, index, tmp_path):
-        from aica.firmware.index import VerificationIndex
+        from rita.firmware.index import VerificationIndex
         p = tmp_path / "index.json"
         index.save(p)
         loaded = VerificationIndex.load(p)
@@ -76,7 +76,7 @@ class TestVerificationIndex:
 
 class TestBoards:
     def test_build_boards_json(self):
-        from aica.firmware.boards import build_boards_json
+        from rita.firmware.boards import build_boards_json
         data = build_boards_json(WS, hw_map=FIXTURES / "map.yaml")
         b = data["boards"]["apollo510_evb"]
         assert b["twister_platform"] == "apollo510_evb/apollo510"
@@ -90,8 +90,8 @@ class TestBoards:
 
     def test_sync_writes_home_files_and_feeds_vocabulary(self, tmp_path, monkeypatch):
         monkeypatch.setenv("RITA_HOME", str(tmp_path / "rita"))
-        from aica.firmware.sync import sync_workspace
-        from aica.routing.vocabulary import Vocabulary
+        from rita.firmware.sync import sync_workspace
+        from rita.routing.vocabulary import Vocabulary
 
         result = sync_workspace(WS, hw_map=FIXTURES / "map.yaml")
         assert (tmp_path / "rita" / "boards.json").exists()
@@ -106,12 +106,12 @@ class TestBoards:
 
 class TestFitJudge:
     def make_candidates(self):
-        from aica.firmware.index import VerificationIndex
+        from rita.firmware.index import VerificationIndex
         idx = VerificationIndex.build(WS)
         return idx.find("apollo510_evb", ["led", "blinky"])
 
     def test_yes_selects_candidate(self):
-        from aica.firmware.fit import judge_fit
+        from rita.firmware.fit import judge_fit
         cands = self.make_candidates()
         calls = []
 
@@ -126,13 +126,13 @@ class TestFitJudge:
         assert "sample.basic.blinky" in calls[0]    # candidates are in the prompt
 
     def test_no_fit_returns_none(self):
-        from aica.firmware.fit import judge_fit
+        from rita.firmware.fit import judge_fit
         decision = judge_fit("measure power", self.make_candidates(),
                              lambda p: json.dumps({"fit": "none", "reason": "nope"}))
         assert decision.entry is None
 
     def test_cannot_invent_a_candidate(self):
-        from aica.firmware.fit import judge_fit
+        from rita.firmware.fit import judge_fit
         decision = judge_fit("blink", self.make_candidates(),
                              lambda p: json.dumps({"fit": "sample.i.made.up",
                                                    "reason": "hallucinated"}))
@@ -152,7 +152,7 @@ GOOD_TEST_FILES = {
 
 class TestTestWriter:
     def test_writes_validated_ztest(self, tmp_path):
-        from aica.firmware.testwriter import write_ztest
+        from rita.firmware.testwriter import write_ztest
         written = write_ztest("blink the led", "apollo510_evb", tmp_path / "t",
                               lambda p: json.dumps(GOOD_TEST_FILES))
         assert (tmp_path / "t" / "testcase.yaml").exists()
@@ -160,14 +160,14 @@ class TestTestWriter:
         assert written.test_id == "app.blink.custom"
 
     def test_rejects_missing_testcase_yaml(self, tmp_path):
-        from aica.firmware.testwriter import write_ztest
+        from rita.firmware.testwriter import write_ztest
         bad = {k: v for k, v in GOOD_TEST_FILES.items() if k != "testcase.yaml"}
         with pytest.raises(ValueError):
             write_ztest("blink", "apollo510_evb", tmp_path / "t",
                         lambda p: json.dumps(bad))
 
     def test_rejects_unparseable_testcase_yaml(self, tmp_path):
-        from aica.firmware.testwriter import write_ztest
+        from rita.firmware.testwriter import write_ztest
         bad = dict(GOOD_TEST_FILES, **{"testcase.yaml": "no tests key here"})
         with pytest.raises(ValueError):
             write_ztest("blink", "apollo510_evb", tmp_path / "t",
@@ -178,8 +178,8 @@ class TestTestWriter:
 
 class TestResolveVerification:
     def test_known_sample_resolves_from_index(self, tmp_path):
-        from aica.firmware.index import VerificationIndex
-        from aica.firmware.resolve import resolve_verification
+        from rita.firmware.index import VerificationIndex
+        from rita.firmware.resolve import resolve_verification
         idx = VerificationIndex.build(WS)
         res = resolve_verification(
             goal="blink the led", board="apollo510_evb", terms=["led", "blinky"],
@@ -191,8 +191,8 @@ class TestResolveVerification:
 
     def test_no_match_forces_test_authorship(self, tmp_path):
         # Acceptance: nothing in the index verifies this -> a test is written.
-        from aica.firmware.index import VerificationIndex
-        from aica.firmware.resolve import resolve_verification
+        from rita.firmware.index import VerificationIndex
+        from rita.firmware.resolve import resolve_verification
         idx = VerificationIndex.build(WS)
         res = resolve_verification(
             goal="verify the watchdog fires", board="apollo510_evb",

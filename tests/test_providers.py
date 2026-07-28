@@ -5,11 +5,11 @@ local Ollama planners, and proves a local-LLM planner can drive the full
 orchestrator loop end to end.
 """
 
-from aica.app import build_assistant
-from aica.config import load_config
-from aica.core.interfaces import ScreenState, ToolSchema
-from aica.llm.claude_provider import ClaudePlanner, to_anthropic_tool
-from aica.llm.ollama_provider import OllamaPlanner, to_ollama_tool
+from rita.app import build_assistant
+from rita.config import load_config
+from rita.core.interfaces import ScreenState, ToolSchema
+from rita.llm.claude_provider import ClaudePlanner, to_anthropic_tool
+from rita.llm.ollama_provider import OllamaPlanner, to_ollama_tool
 
 
 def _tools():

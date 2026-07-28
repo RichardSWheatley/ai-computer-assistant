@@ -23,7 +23,7 @@ reached, then "paused".
 
 ## Design
 
-- `aica.core.tasks.TaskManager` — `submit(name, fn) -> TaskId`, `pause`,
+- `rita.core.tasks.TaskManager` — `submit(name, fn) -> TaskId`, `pause`,
   `resume`, `stop`, `state`, `report`, `wait_state`. Tasks run on worker
   threads; `fn(ctl)` receives a `TaskControl`.
 - `TaskControl.checkpoint(completed_stage)` records progress, then: raises
@@ -39,7 +39,7 @@ RUNNING | PAUSED --stop--> STOPPING --boundary--> STOPPED (partial report)
 - Because pausing blocks the worker *inside* the run, RESUME continues
   exactly where execution stopped: a task paused after BUILD resumes into
   SIM_TEST **without rebuilding** — no replay logic, no re-entry.
-- `aica.voice.tts.PausableSpeaker` wraps any `TextToSpeech`: text is split
+- `rita.voice.tts.PausableSpeaker` wraps any `TextToSpeech`: text is split
   into sentence chunks spoken on a worker thread; PAUSE takes effect at the
   next chunk boundary (and calls the engine's `stop()` when it has one),
   keeping the queue position; RESUME continues from that position; STOP

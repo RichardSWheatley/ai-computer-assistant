@@ -6,11 +6,11 @@ from pathlib import Path
 
 import pytest
 
-from aica.__main__ import main
-from aica.config import Config
-from aica.core.interfaces import ScreenState, ToolCall
-from aica.llm import router as router_mod
-from aica.llm.router import build_default_planner
+from rita.__main__ import main
+from rita.config import Config
+from rita.core.interfaces import ScreenState, ToolCall
+from rita.llm import model_router as router_mod
+from rita.llm.model_router import build_default_planner
 
 
 def test_doc_cli_writes_all_three(tmp_path):
@@ -41,7 +41,7 @@ def test_no_local_model_routes_everything_to_cloud(monkeypatch):
         def plan(self, goal, state, tools, history):
             return ToolCall(tool="task_complete", reasoning="cloud")
 
-    import aica.llm.claude_provider as cp
+    import rita.llm.claude_provider as cp
     monkeypatch.setattr(cp, "ClaudePlanner", FakeClaude)
 
     cfg = Config(use_local_llm=False, use_cloud=True, mode="auto",

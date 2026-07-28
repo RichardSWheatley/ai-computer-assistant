@@ -3,8 +3,8 @@ one-utterance wake+command."""
 
 from __future__ import annotations
 
-from aica.routing.model import Utterance, Word
-from aica.routing.wake import WakeGate
+from rita.routing.model import Utterance, Word
+from rita.routing.wake import WakeGate
 
 
 def timed(*words: tuple[str, float, float]) -> Utterance:

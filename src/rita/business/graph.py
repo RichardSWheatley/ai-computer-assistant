@@ -49,8 +49,10 @@ class GraphClient:
             import msal  # type: ignore
         except Exception as exc:
             raise GraphError("msal not installed (pip install msal)") from exc
-        client_id = os.environ.get("AICA_GRAPH_CLIENT_ID")
-        tenant = os.environ.get("AICA_GRAPH_TENANT_ID", "common")
+        client_id = os.environ.get("RITA_GRAPH_CLIENT_ID",
+                                   os.environ.get("AICA_GRAPH_CLIENT_ID"))
+        tenant = os.environ.get("RITA_GRAPH_TENANT_ID",
+                                os.environ.get("AICA_GRAPH_TENANT_ID", "common"))
         if not client_id:
             raise GraphError("AICA_GRAPH_CLIENT_ID not set")
         authority = f"https://login.microsoftonline.com/{tenant}"

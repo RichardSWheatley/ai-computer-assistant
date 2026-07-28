@@ -1,9 +1,9 @@
 """Interactive console confirmer + its integration with the orchestrator gate."""
 
-from aica.app import build_assistant
-from aica.config import load_config
-from aica.core.interfaces import Plugin, ToolCall, ToolResult, ToolSchema
-from aica.ui.console import describe_action, make_console_confirmer
+from rita.app import build_assistant
+from rita.config import load_config
+from rita.core.interfaces import Plugin, ToolCall, ToolResult, ToolSchema
+from rita.ui.console import describe_action, make_console_confirmer
 
 
 def test_describe_action_renders_tool_and_args():

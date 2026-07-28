@@ -6,8 +6,8 @@ from pathlib import Path
 
 import pytest
 
-from aica import home
-from aica.config import RitaConfig, load_rita_config, save_rita_config
+from rita import home
+from rita.config import RitaConfig, load_rita_config, save_rita_config
 
 
 @pytest.fixture()

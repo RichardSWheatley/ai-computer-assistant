@@ -3,6 +3,21 @@
 All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/); versions follow semver.
 
+## [0.8.0] - 2026-07-28
+
+### Changed
+- **The project is now RITA** — Routing, Iteration, Testing, Automation.
+  Package `aica` -> `rita`; CLI `rita` (an `aica` alias script remains for
+  one release); dist name `rita`; docs and specs swept. `llm/router.py`
+  (model selection) renamed to `llm/model_router.py`, freeing "router" for
+  the intent router.
+- Env vars: `RITA_LOCAL_ONLY`, `RITA_SANDBOX`, `RITA_NO_NETWORK`,
+  `RITA_GRAPH_*` — legacy `AICA_*` names still honored/set for one release.
+  The keyring service name stays `aica` on purpose (renaming would orphan
+  stored secrets).
+- Config/data live in `~/.rita/` (introduced in 0.1.1; a legacy `~/.aica/`
+  is migrated automatically, including `boards.json`).
+
 ## [0.7.0] - 2026-07-28
 
 ### Added

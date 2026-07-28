@@ -1,15 +1,15 @@
 """Security tests: trust fencing, injection detection/neutralization, egress
 allowlist, outbound DLP, the policy, and secure-by-default action gating."""
 
-from aica.app import build_assistant
-from aica.config import load_config
-from aica.core.interfaces import Element, Plugin, ToolResult, ToolSchema
-from aica.perception.desktop import fuse
-from aica.security.dlp import scan_outbound
-from aica.security.egress import EgressPolicy
-from aica.security.injection import neutralize, scan
-from aica.security.policy import SecurityPolicy
-from aica.security.trust import fence_untrusted
+from rita.app import build_assistant
+from rita.config import load_config
+from rita.core.interfaces import Element, Plugin, ToolResult, ToolSchema
+from rita.perception.desktop import fuse
+from rita.security.dlp import scan_outbound
+from rita.security.egress import EgressPolicy
+from rita.security.injection import neutralize, scan
+from rita.security.policy import SecurityPolicy
+from rita.security.trust import fence_untrusted
 
 
 # --- trust fencing ---------------------------------------------------------
@@ -107,7 +107,7 @@ def test_unattended_assistant_blocks_outward_action():
     cfg = load_config()
     asst = build_assistant(cfg)
     asst.registry.register_plugin(_SendPlugin())
-    from aica.core.interfaces import ToolCall
+    from rita.core.interfaces import ToolCall
     assert asst.would_allow(ToolCall(tool="send_it", args={"x": "y"})) is False
     # local actions are still allowed unattended
     assert asst.would_allow(ToolCall(tool="click", args={})) is True
@@ -117,7 +117,7 @@ def test_suspicion_escalates_local_write_confirmation():
     # Provenance binding: under suspicion, even a local write needs confirmation.
     cfg = load_config()
     asst = build_assistant(cfg)
-    from aica.core.interfaces import ToolCall
+    from rita.core.interfaces import ToolCall
     assert asst.would_allow(ToolCall(tool="click", args={})) is True
     asst._suspicious = True   # simulate just-ingested hostile content
     assert asst.would_allow(ToolCall(tool="click", args={})) is False

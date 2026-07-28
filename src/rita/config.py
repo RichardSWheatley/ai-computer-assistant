@@ -108,16 +108,19 @@ def load_config(path: str | Path | None = None,
         cfg.use_local_llm = True   # tiny CPU model
 
     # Mode: default is cloud-default (heavy lifting -> Claude). local-only can be
-    # forced via arg, env (AICA_LOCAL_ONLY=1), or the config file.
+    # forced via arg, env (RITA_LOCAL_ONLY=1; legacy AICA_LOCAL_ONLY honored),
+    # or the config file.
     if local_only is None:
-        local_only = os.environ.get("AICA_LOCAL_ONLY", "").lower() in ("1", "true", "yes")
+        raw = os.environ.get("RITA_LOCAL_ONLY",
+                             os.environ.get("AICA_LOCAL_ONLY", ""))
+        local_only = raw.lower() in ("1", "true", "yes")
     if local_only:
         cfg.mode = "local-only"
 
     # File overrides (optional) — may set mode too.
     if path and Path(path).exists():
         data = tomllib.loads(Path(path).read_text())
-        for k, v in data.get("aica", data).items():
+        for k, v in data.get("rita", data.get("aica", data)).items():
             if hasattr(cfg, k):
                 setattr(cfg, k, v)
 

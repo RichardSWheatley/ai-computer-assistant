@@ -2,11 +2,11 @@
 
 from dataclasses import dataclass, field
 
-from aica.voice.loop import VoiceLoop, build_voice_loop, make_orchestrator_handler
-from aica.voice.mic import FakeRecorder, MicRecorder, PushToTalkRecorder
-from aica.voice.stt import FakeSTT
-from aica.voice.trigger import FakeTrigger
-from aica.voice.tts import FakeTTS
+from rita.voice.loop import VoiceLoop, build_voice_loop, make_orchestrator_handler
+from rita.voice.mic import FakeRecorder, MicRecorder, PushToTalkRecorder
+from rita.voice.stt import FakeSTT
+from rita.voice.trigger import FakeTrigger
+from rita.voice.tts import FakeTTS
 
 
 def _loop(heard_text, handler):
