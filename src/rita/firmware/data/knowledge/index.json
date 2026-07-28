@@ -55,6 +55,20 @@
       "source": "https://docs.zephyrproject.org/latest/develop/west/build-flash-debug.html",
       "summary": "west flash --runner <tool> for one board; batch device work goes through twister's generated hardware map; RTT/stateful serial belongs to the pytest harness."
     },
+    "function-contracts": {
+      "title": "Function parameter contracts",
+      "keywords": ["contract", "validate", "restrict", "parameter", "guard",
+                   "input", "output", "defensive", "einval", "range"],
+      "source": "https://wiki.sei.cmu.edu/confluence/display/c",
+      "summary": "Every function restricts or validates its input/output parameters before executing: enums/narrow types, guard clauses, error returns; unit tests exercise the contract per function."
+    },
+    "unity-testing": {
+      "title": "Unity host unit tests",
+      "keywords": ["unity", "unit", "host", "test", "assert", "setup",
+                   "teardown", "run_test", "isolation"],
+      "source": "https://github.com/ThrowTheSwitch/Unity",
+      "summary": "Host-run Unity tests (not ztest): one function in isolation, hardware stubbed, test_<function> naming so per-function coverage is mechanically checkable."
+    },
     "sdk": {
       "title": "The Zephyr SDK",
       "keywords": ["sdk", "toolchain", "compiler", "gcc", "install", "zephyr_sdk_install_dir"],

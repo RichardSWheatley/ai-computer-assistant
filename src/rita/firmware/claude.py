@@ -62,8 +62,15 @@ _SCAFFOLD_PROMPT = """Create a complete Zephyr application in this directory
 for board {board}: {goal}
 
 It must build with `west build -b {board}` unmodified: include CMakeLists.txt,
-prj.conf, and src/main.c. Do exactly this one step; the orchestrator builds
-and tests it."""
+prj.conf, and src/main.c.
+
+Mandatory coding contract: every function must either RESTRICT its input and
+output parameters (constrained types, enforced ranges) or VALIDATE them
+before executing (guard clauses that reject invalid input). Every function
+will be unit-tested for its input/output parameters and statically checked;
+unguarded parameters are a defect.
+
+Do exactly this one step; the orchestrator checks and tests it."""
 
 
 class ClaudeWorkerCli:
@@ -138,6 +145,12 @@ class FakeClaude:
         (dest / "CMakeLists.txt").write_text("cmake_minimum_required(VERSION 3.20)\n")
         (dest / "prj.conf").write_text("CONFIG_GPIO=y\n")
         (dest / "src" / "main.c").write_text("int main(void) { return 0; }\n")
+        # A validated helper, so the unit tier has a function to cover.
+        (dest / "src" / "app.c").write_text(
+            "int fake_helper(int v) {\n"
+            "    if (v < 0) return -1;\n"
+            "    return v + 1;\n"
+            "}\n")
         self.scaffolds.append(goal)
         self.scaffolds_dirs.append(str(dest))
         return ScaffoldResult(ok=True, app_dir=str(dest), detail="scaffolded (fake)")

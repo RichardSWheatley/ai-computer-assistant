@@ -29,7 +29,8 @@ class TestPack:
         for t in topics:
             text = knowledge.get_topic(t["topic"])
             assert text.strip(), t["topic"]
-            assert "docs.zephyrproject.org" in text, f"{t['topic']} must cite its source"
+            # Every topic cites its source (Zephyr docs, SEI CERT, Unity...).
+            assert "http" in text, f"{t['topic']} must cite its source"
             assert t["keywords"], t["topic"]
 
     def test_match_topics_is_deterministic_keyword_overlap(self):

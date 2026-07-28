@@ -49,7 +49,7 @@ def Utterance_norm(text: str) -> str:
 
     return normalize(text)
 
-StageName = Literal["RESOLVE", "STATIC", "BUILD", "SIM_TEST", "DEVICE"]
+StageName = Literal["RESOLVE", "STATIC", "UNIT_TEST", "FINAL_TEST", "DEVICE"]
 Outcome = Literal["green", "blocked", "skipped", "retries_exhausted", "failed"]
 
 
@@ -73,7 +73,7 @@ class IteratePipeline:
     def __init__(self, *, runner: ZephyrRunner, claude: ClaudeWorker,
                  index: VerificationIndex, cfg: RitaConfig,
                  workdir: str | Path, boards: dict | None = None,
-                 static_checker=None, on_stage=None) -> None:
+                 static_checker=None, unit_runner=None, on_stage=None) -> None:
         self.runner = runner
         self.claude = claude
         self.index = index
@@ -82,6 +82,9 @@ class IteratePipeline:
         # The CERBERUS gate (StaticChecker). None = not configured: the
         # STATIC stage reports skipped — visible, never silently green.
         self.static_checker = static_checker
+        # The unit tier (UnityRunner). None = Unity/compiler unavailable:
+        # the UNIT_TEST stage reports skipped with the reason.
+        self.unit_runner = unit_runner
         self.on_stage = on_stage      # callable(StageResult) -> None (events/UI)
         if boards is None and cfg.workspace:
             boards = build_boards_json(cfg.workspace).get("boards", {})
@@ -144,13 +147,15 @@ class IteratePipeline:
             f"{resolution.entry.id if resolution.entry else resolution.written.test_id}"))
         self._checkpoint(ctl, "RESOLVE")
 
-        # 2-4. STATIC (CERBERUS) -> BUILD -> SIM_TEST. EVERY patch — static,
-        # compile, or test — re-enters at STATIC: patched code must re-pass
-        # the static gate before it may rebuild.
+        # The user's flow: code -> STATIC (CERBERUS) -> UNIT_TEST (every
+        # function's input/output parameters, host Unity) -> iterate ->
+        # FINAL_TEST (the Zephyr samples/tests). EVERY patch re-enters at
+        # STATIC: patched code re-passes every gate before moving on.
         max_cycles = self.cfg.max_patch_cycles
-        static_patches = build_patches = sim_patches = 0
-        static_skip_noted = False
+        static_patches = unit_patches = final_patches = 0
+        static_skip_noted = unit_skip_noted = unit_authored = False
         while True:
+            # --- STATIC: CERBERUS on the code -------------------------------
             if self.static_checker is None:
                 if not static_skip_noted:
                     self._record(report, StageResult(
@@ -177,46 +182,128 @@ class IteratePipeline:
                     "STATIC", "green", f"after {static_patches} patch cycles"))
                 self._checkpoint(ctl, "STATIC")
 
+            # --- UNIT_TEST: every function, input/output parameters --------
+            if not scaffold:
+                if not unit_skip_noted:
+                    self._record(report, StageResult(
+                        "UNIT_TEST", "skipped",
+                        "no authored code (existing sample run)"))
+                    unit_skip_noted = True
+            elif self.unit_runner is None:
+                if not unit_skip_noted:
+                    self._record(report, StageResult(
+                        "UNIT_TEST", "skipped",
+                        "Unity/host compiler unavailable — install Unity "
+                        "(Modules page) and a host C compiler"))
+                    unit_skip_noted = True
+            else:
+                from .functions import list_functions, untested_functions
+                from .testwriter import write_unity_tests
+
+                src_dir = app_dir / "src"
+                unit_dir = app_dir / "tests" / "unit"
+                missing = untested_functions(src_dir, unit_dir)
+                if missing and not unit_authored:
+                    try:
+                        write_unity_tests(goal, list_functions(src_dir),
+                                          unit_dir, self.claude.complete)
+                    except ValueError as exc:
+                        self._record(report, StageResult(
+                            "UNIT_TEST", "failed",
+                            f"unit-test authorship rejected: {exc}"))
+                        return report
+                    unit_authored = True
+                    missing = untested_functions(src_dir, unit_dir)
+                if missing:
+                    artifact = FailureArtifact(
+                        kind="unit", suite="unit coverage", platform="host",
+                        reason="functions without unit tests",
+                        log_excerpt="every function must be tested for its "
+                                    "input/output parameters; missing: "
+                                    + ", ".join(f.name for f in missing),
+                        file_hints=tuple(f.file for f in missing))
+                    if unit_patches >= max_cycles:
+                        self._record(report, StageResult(
+                            "UNIT_TEST", "retries_exhausted",
+                            "coverage still incomplete after "
+                            f"{unit_patches} patch cycles",
+                            failures=(artifact,)))
+                        self._record(report, StageResult(
+                            "DEVICE", "blocked",
+                            "not attempted: unit tier never passed"))
+                        report.outcome = "retries_exhausted"
+                        return report
+                    self.claude.patch(artifact, app_dir)
+                    unit_patches += 1
+                    continue
+                ures = self.unit_runner.run(src_dir, unit_dir)
+                if ures.unavailable:
+                    if not unit_skip_noted:
+                        self._record(report, StageResult(
+                            "UNIT_TEST", "skipped", ures.reason))
+                        unit_skip_noted = True
+                elif not ures.ok:
+                    if unit_patches >= max_cycles:
+                        self._record(report, StageResult(
+                            "UNIT_TEST", "retries_exhausted",
+                            f"still failing after {unit_patches} patch cycles",
+                            failures=ures.failures))
+                        self._record(report, StageResult(
+                            "DEVICE", "blocked",
+                            "not attempted: unit tier never passed"))
+                        report.outcome = "retries_exhausted"
+                        return report
+                    self.claude.patch(ures.failures[0], app_dir)
+                    unit_patches += 1
+                    continue
+                else:
+                    self._record(report, StageResult(
+                        "UNIT_TEST", "green",
+                        f"{ures.passed}/{ures.ran} function-contract tests "
+                        f"passed after {unit_patches} patch cycles"))
+                    self._checkpoint(ctl, "UNIT_TEST")
+
+            # --- FINAL_TEST: the Zephyr samples/tests (twister) -------------
             bres = self.runner.build(build_target, SIM_PLATFORM,
                                      self.workdir / "build")
             if not bres.ok:
-                if build_patches >= max_cycles:
+                if final_patches >= max_cycles:
                     self._record(report, StageResult(
-                        "BUILD", "retries_exhausted",
-                        f"still failing after {build_patches} patch cycles",
+                        "FINAL_TEST", "retries_exhausted",
+                        f"build still failing after {final_patches} patch cycles",
                         failures=(bres.failure,)))
                     self._record(report, StageResult(
-                        "DEVICE", "blocked", "not attempted: sim never went green"))
+                        "DEVICE", "blocked",
+                        "not attempted: final test never went green"))
                     report.outcome = "retries_exhausted"
                     return report
                 self.claude.patch(bres.failure, build_target)
-                build_patches += 1
+                final_patches += 1
                 continue
-            self._record(report, StageResult(
-                "BUILD", "green", f"after {build_patches} patch cycles"))
-            self._checkpoint(ctl, "BUILD")
+            self._checkpoint(ctl, "FINAL_BUILD")
 
             tres = self.runner.twister(testsuite=suite_dir,
                                        platform=SIM_PLATFORM,
-                                       outdir=self.workdir / "twister-sim")
+                                       outdir=self.workdir / "twister-final")
             if tres.ok:
                 self._record(report, StageResult(
-                    "SIM_TEST", "green", f"after {sim_patches} patch cycles"))
-                self._checkpoint(ctl, "SIM_TEST")
+                    "FINAL_TEST", "green",
+                    f"Zephyr suite green after {final_patches} patch cycles"))
+                self._checkpoint(ctl, "FINAL_TEST")
                 break
-            if sim_patches >= max_cycles:
+            if final_patches >= max_cycles:
                 self._record(report, StageResult(
-                    "SIM_TEST", "retries_exhausted",
-                    f"still failing after {sim_patches} patch cycles",
+                    "FINAL_TEST", "retries_exhausted",
+                    f"still failing after {final_patches} patch cycles",
                     failures=tres.failures))
                 self._record(report, StageResult(
-                    "DEVICE", "blocked", "not attempted: sim never went green"))
+                    "DEVICE", "blocked",
+                    "not attempted: final test never went green"))
                 report.outcome = "retries_exhausted"
                 return report
             self.claude.patch(tres.failures[0], build_target)
-            sim_patches += 1
-            # loop -> STATIC: a patch must re-pass the static gate, and a
-            # rebuild is cheap in sim.
+            final_patches += 1
+            # loop -> STATIC: every patch re-passes every gate.
 
         # 4. DEVICE — blocked until the bench milestone; never faked green.
         if not self.cfg.device_tier_enabled:

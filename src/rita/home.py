@@ -69,6 +69,10 @@ def cerberus_dir() -> Path:
     return _sub("cerberus")
 
 
+def unity_dir() -> Path:
+    return _sub("unity")
+
+
 def modules_dir() -> Path:
     return _sub("modules")
 

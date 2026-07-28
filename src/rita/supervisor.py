@@ -83,6 +83,14 @@ class Supervisor:
             return default_checker(clone, deep=self.cfg.cerberus_deep)
         return None
 
+    def _make_unit_runner(self):
+        """The unit tier: host Unity when the framework is on this machine.
+        None = the UNIT_TEST stage reports skipped with the reason."""
+        from .firmware.unity import HostUnity, detect_unity
+
+        unity = detect_unity()
+        return HostUnity(unity_src=unity) if unity is not None else None
+
     def _make_index(self):
         if self._index is not None:
             return self._index
@@ -106,7 +114,8 @@ class Supervisor:
         pipeline = IteratePipeline(
             runner=self._make_runner(), claude=self._make_claude(),
             index=self._make_index(), cfg=self.cfg, workdir=workdir,
-            static_checker=self._make_static_checker())
+            static_checker=self._make_static_checker(),
+            unit_runner=self._make_unit_runner())
         e = d.entities
         board = e.board or "native_sim"
         terms = [t for t in (e.sample, e.peripheral) if t] \

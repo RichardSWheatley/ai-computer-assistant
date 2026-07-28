@@ -3,6 +3,35 @@
 All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/); versions follow semver.
 
+## [0.15.0] - 2026-07-28
+
+### Changed
+- **The pipeline now matches the owner's flow exactly**: ask → code →
+  CERBERUS → **unit test every single function** → iterate → **final
+  test = the Zephyr samples/tests**. Stages are RESOLVE → STATIC →
+  UNIT_TEST → FINAL_TEST → DEVICE (BUILD/SIM_TEST are gone as named
+  stages; compiling is an internal detail of the final test).
+
+### Added
+- **Per-function unit tier** — the owner's TDD definition: every function
+  written is tested for its **input and output parameters** (valid,
+  boundary, invalid) before moving on, and the coding contract requires
+  every function to **restrict or validate** its parameters before
+  executing (rule stated verbatim in the scaffold brief).
+- Host **Unity** runner (`rita.firmware.unity.HostUnity`): compiles
+  unity.c + tests + sources with the host compiler, parses Unity output
+  into concrete artifacts; honest `unavailable` when compiler/framework
+  missing. Unity acquisition mirrors CERBERUS (`rita unity install`,
+  installer hook, GUI button; CERBERUS's own `unity/` layout detected).
+- Deterministic per-function coverage gate
+  (`rita.firmware.functions`): scans authored C for function definitions
+  and fails the stage naming any function without a `test_<name>` — no
+  judgment calls. Unit-test authorship (`write_unity_tests`) validates
+  full coverage and rejects ztest-shaped output.
+- `FailureArtifact.kind` gains `"unit"`; sample-only runs report the unit
+  stage `skipped: no authored code`. Knowledge topics `function-contracts`
+  and `unity-testing` brief Claude.
+
 ## [0.14.0] - 2026-07-28
 
 ### Added

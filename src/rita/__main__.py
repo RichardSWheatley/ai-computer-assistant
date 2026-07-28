@@ -125,6 +125,19 @@ def cmd_cerberus(args) -> int:
     return 0
 
 
+def cmd_unity(args) -> int:
+    from .firmware.unity import UNITY_REPO_URL, detect_unity, install_unity
+
+    if args.action == "install":
+        res = install_unity(url=args.url or UNITY_REPO_URL)
+        print(res.detail)
+        return 0 if res.ok else 1
+    found = detect_unity()
+    print(f"Unity: {found}" if found else
+          "Unity: not installed (rita unity install)")
+    return 0
+
+
 def cmd_module_run(args) -> int:
     """Host one capability module over stdio (what manifests point at).
 
@@ -287,12 +300,18 @@ def main(argv: list[str] | None = None) -> int:
                       choices=["status", "install"])
     cerb.add_argument("--url", help="override the CERBERUS repo URL")
 
+    uni = sub.add_parser("unity",
+                         help="install or inspect the Unity unit-test framework")
+    uni.add_argument("action", nargs="?", default="status",
+                     choices=["status", "install"])
+    uni.add_argument("--url", help="override the Unity repo URL")
+
     args = parser.parse_args(argv)
     return {"doctor": cmd_doctor, "plugins": cmd_plugins, "run": cmd_run,
             "doc": cmd_doc, "workflow": cmd_workflow, "talk": cmd_talk,
             "sync": cmd_sync, "mcp-serve": cmd_mcp_serve,
             "modules": cmd_modules, "module-run": cmd_module_run,
-            "cerberus": cmd_cerberus}[args.cmd](args)
+            "cerberus": cmd_cerberus, "unity": cmd_unity}[args.cmd](args)
 
 
 if __name__ == "__main__":

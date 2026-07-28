@@ -22,6 +22,15 @@ speech front end that drives firmware development on a **Zephyr workspace**
   never scraped stdout), and — when the bench milestone lands — device runs
   and power numbers. We never trust Claude's output; we trust the gates.
 
+## The flow
+
+**Ask, code, static check, unit test with TDD principles, …, iterate if
+needed, final test.** Claude codes to the goal; CERBERUS statically checks
+it; every single function is unit-tested (host Unity) for its input and
+output parameters — every function restricts or validates them before
+executing; iteration re-passes every gate; the final test is the Zephyr
+samples/tests tier.
+
 ## The fixes, in mandated order of work
 
 1. **Fix 1** — Grammar-first router + wake grammar; chat as fallback.

@@ -72,7 +72,7 @@ sample names — never an LLM guessing.
 
 | You say | What RITA does |
 |---|---|
-| **"Rita, please build me an example for MSPI that communicates with a PSRAM on MSPI0 in hex mode."** | Scaffolds a new application in `<workspace>\applications\`, briefing the coding agent with the shipped MSPI + PSRAM recipes (devicetree overlay with `mspi-io-mode`, `CONFIG_MSPI`/memc Kconfig, timing notes) → CERBERUS static check → finds or writes the verifying test → builds → runs twister on `native_sim` → reports. Every patch re-passes the static gate first. |
+| **"Rita, please build me an example for MSPI that communicates with a PSRAM on MSPI0 in hex mode."** | Codes the application in `<workspace>\applications\` (every function restricts or validates its input/output parameters) → **CERBERUS** static check → **unit tests**: every single function gets host-run Unity tests of its parameters — valid, boundary, invalid — all green before moving on → iterates as needed (every patch re-passes every gate) → **final test**: the relevant Zephyr samples/tests under twister → reports. |
 | "build blinky" | Resolves `samples/basic/blinky` from the index, builds, twister-gates it. |
 | "flash blinky to the apollo510" | Sim-first pipeline; the device step stays **blocked** until the bench milestone — RITA says so instead of pretending. |
 | "run the samples" / "report on the last run" | Pipeline verbs, same gates. |
@@ -103,7 +103,7 @@ cancels at a safe boundary and reports what completed.
 | `%USERPROFILE%\.rita\work\task-N\` | each task's build output — `twister.json` in there is the gate verdict |
 | `<workspace>\applications\` | applications RITA scaffolds for you (configurable in Settings) |
 
-## 6. The CERBERUS static gate
+## 6. The gates: CERBERUS and per-function unit tests
 
 Every piece of code Claude produces passes CERBERUS before it may build,
 and every patch re-passes it. The default is CERBERUS's Head 1 — 94
@@ -114,6 +114,16 @@ offers deep mode (`analyze`: the Oracle LLM head — Claude working inside
 CERBERUS — plus Unity test generation), which uses your Anthropic key via
 CERBERUS's own environment variables. Without CERBERUS installed the
 static stage reports itself as skipped — visibly, never silently.
+
+After CERBERUS, **every single function RITA writes gets unit-tested for
+its input and output parameters** — valid values, boundaries, and invalid
+values the function must reject (the coding contract requires every
+function to restrict or validate its parameters before executing). These
+are host-run **Unity** tests (the framework is cloned at install, like
+CERBERUS; a host C compiler such as MinGW gcc is needed on Windows), and
+a deterministic scan fails the stage naming any function without tests.
+Only when CERBERUS and the unit tier are both green does the **final
+test** run: the relevant Zephyr samples/tests under twister.
 
 ## 7. What's deliberately not on yet
 

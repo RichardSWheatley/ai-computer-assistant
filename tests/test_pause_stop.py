@@ -97,8 +97,8 @@ class TestTaskManager:
         assert manager.wait_state(tid, "STOPPED", timeout=5)
         rep = manager.report(tid)
         assert "RESOLVE" in rep.completed_stages
-        assert "BUILD" in rep.completed_stages
-        assert "SIM_TEST" not in rep.completed_stages  # cancelled at boundary
+        assert "FINAL_BUILD" in rep.completed_stages
+        assert "FINAL_TEST" not in rep.completed_stages  # cancelled at boundary
 
         # Per-task: the manager keeps accepting work.
         pipe2, west2, fake2 = make_pipeline(tmp_path / "second")

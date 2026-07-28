@@ -52,6 +52,8 @@ Filename: "{app}\rita.exe"; Parameters: "modules install --only {code:SelectedMo
     Flags: runhidden; StatusMsg: "Registering capability modules..."
 Filename: "{app}\rita.exe"; Parameters: "cerberus install"; Components: mod_cerberus; \
     Flags: runhidden; StatusMsg: "Downloading CERBERUS (static gate)..."
+Filename: "{app}\rita.exe"; Parameters: "unity install"; \
+    Flags: runhidden; StatusMsg: "Downloading Unity (unit-test framework)..."
 Filename: "{app}\RitaApp.exe"; Description: "Launch RITA"; Flags: postinstall nowait skipifsilent
 
 [UninstallDelete]

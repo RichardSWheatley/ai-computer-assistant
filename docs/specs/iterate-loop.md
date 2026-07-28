@@ -9,16 +9,26 @@ to stop. Gates decide success.
 
 ## Pipeline (`rita.firmware.pipeline.IteratePipeline`)
 
+The flow, in the owner's words: **"Ask, code, static check, unit test with
+TDD principles, …, iterate if needed, final test"** — where TDD means
+*test every single function you write before you move on*, for its input
+and output parameters, and every function restricts or validates those
+parameters before executing.
+
 ```
-1. RESOLVE   — verification resolution (Fix 2); scaffold first if asked
-2. STATIC    — CERBERUS static check; findings -> Claude patches (max N=3)
-               (unconfigured -> reported as skipped, never silently green)
-3. BUILD     — west build; compile errors -> Claude patches (max N)
-4. SIM_TEST  — west twister -p native_sim until green (max N patch cycles)
-5. DEVICE    — west twister --device-testing --hardware-map map.yaml
-               BLOCKED until the bench milestone; never faked green
+1. RESOLVE    — the ask: router intake; pick the Zephyr suites that will
+                be the final test (find-or-write, Fix 2); scaffold if asked
+   (CODE)     — Claude codes to the goal under the parameter-contract rule
+2. STATIC     — CERBERUS on the code; findings -> Claude patches (max N=3)
+                (unconfigured -> reported as skipped, never silently green)
+3. UNIT_TEST  — EVERY function gets host-run Unity tests of its
+                input/output parameters (valid/boundary/invalid). A
+                deterministic scan names any function without tests ->
+                Claude adds them; then all tests must pass. (Not ztest.)
+4. FINAL_TEST — the Zephyr samples/tests via twister on native_sim
+5. DEVICE     — BLOCKED until the bench milestone; never faked green
 EVERY patch re-enters at STATIC. Budget exhausted at any stage -> STOP.
-Report. Log in DECISIONS-LOG.  (See docs/specs/static-check.md.)
+Report. Log in DECISIONS-LOG. (See docs/specs/static-check.md.)
 ```
 
 Rules (each enforced in code and covered by a test):

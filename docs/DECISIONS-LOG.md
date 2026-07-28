@@ -3,6 +3,24 @@
 Compromises, proxies, and deferred decisions — with the reason and what would
 remove them. Newest first. (Required by the working rules in `CLAUDE.md`.)
 
+## 2026-07-28 — Per-function unit tier
+
+- **The owner's TDD definition is adopted verbatim**: code to the goal,
+  then test every single function (input/output parameters) before moving
+  on — not test-first ceremony. Unit tests are host Unity, never ztest;
+  the Zephyr suites are the final test.
+- **Function discovery is a regex over conventional C** (brace-level
+  definitions; main and test files excluded). Exotic C (K&R, heavy
+  macro-generated definitions) could evade it — CERBERUS and compilation
+  still see everything, and the scan can only under-count, never
+  fake-cover.
+- **Windows needs a host C compiler for the unit tier** (MinGW gcc);
+  absent compiler → the stage reports skipped with the reason, never
+  silently green. Bundling a compiler with the installer is a possible
+  future component.
+- The knowledge-pack citation test now accepts any http source (SEI CERT
+  and ThrowTheSwitch joined docs.zephyrproject.org as cited sources).
+
 ## 2026-07-28 — Real CERBERUS wiring
 
 - **Default gate = `scan` (Head 1), not `analyze`.** Head 1 is

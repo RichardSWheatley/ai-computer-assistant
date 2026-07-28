@@ -42,7 +42,10 @@ class ModulesPage(QWidget):
         self.cerberus_btn = QPushButton("Install / update CERBERUS",
                                         objectName="primary")
         self.cerberus_btn.clicked.connect(self._install_cerberus)
+        self.unity_btn = QPushButton("Install / update Unity")
+        self.unity_btn.clicked.connect(self._install_unity)
         row.addWidget(self.cerberus_btn)
+        row.addWidget(self.unity_btn)
         row.addStretch(1)
         cv.addLayout(row)
         v.addWidget(card)
@@ -81,6 +84,21 @@ class ModulesPage(QWidget):
             self.cerberus_status.setText(
                 "Not installed. Installing clones "
                 "github.com/RichardSWheatley/cerberus into ~/.rita (needs git).")
+
+    def _install_unity(self) -> None:
+        from ..firmware.unity import install_unity
+
+        self.unity_btn.setEnabled(False)
+        self.sig_cerberus.emit("Installing Unity (unit-test framework)…")
+
+        def run() -> None:
+            try:
+                res = install_unity()
+                self.sig_cerberus.emit(res.detail)
+            finally:
+                self.unity_btn.setEnabled(True)
+
+        threading.Thread(target=run, daemon=True).start()
 
     def _install_cerberus(self) -> None:
         from ..firmware.cerberus_setup import install_cerberus

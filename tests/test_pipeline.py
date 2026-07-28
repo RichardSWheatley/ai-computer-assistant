@@ -88,8 +88,8 @@ class TestIteratePipeline:
         assert report.outcome == "green"
         assert claude.patches == []                    # never invoked
         stages = {s.stage: s.outcome for s in report.stages}
-        assert stages["BUILD"] == "green"
-        assert stages["SIM_TEST"] == "green"
+        assert stages["UNIT_TEST"] == "skipped"        # no authored code
+        assert stages["FINAL_TEST"] == "green"         # the Zephyr suite ran
         assert stages["DEVICE"] == "blocked"           # tier off, never faked
 
     def test_compile_fail_patch_then_green(self, tmp_path):
@@ -111,9 +111,9 @@ class TestIteratePipeline:
                           terms=["led", "blinky"])
         assert report.outcome == "retries_exhausted"
         assert len(claude.patches) == 3                # budget honored exactly
-        build = next(s for s in report.stages if s.stage == "BUILD")
-        assert build.outcome == "retries_exhausted"
-        assert build.failures                          # failure attached
+        final = next(s for s in report.stages if s.stage == "FINAL_TEST")
+        assert final.outcome == "retries_exhausted"
+        assert final.failures                          # failure attached
 
     def test_sim_test_fail_patch_then_green(self, tmp_path):
         pipe, runner, claude = make_pipeline(

@@ -32,6 +32,57 @@ class WrittenTest:
     files: tuple[str, ...]
 
 
+_UNITY_PROMPT = """Write host-run Unity unit tests for this goal: {goal}
+
+Test EVERY function below for its input and output parameters — valid
+values, boundary values, and invalid values that the function must reject
+(each function restricts or validates its parameters before executing):
+
+{functions}
+
+Return ONLY a JSON object mapping relative file paths to file contents.
+Each test file MUST include "unity.h" (never ztest), define at least one
+test_<function_name> test per function above, and provide a main() calling
+UNITY_BEGIN/RUN_TEST/UNITY_END. Tests compile on the host with the sources
+under test — no Zephyr, no hardware."""
+
+
+def write_unity_tests(goal: str, functions, dest: str | Path,
+                      complete: Complete) -> WrittenTest:
+    """Unit-test authorship: every listed function must be covered.
+    Deterministically validated before acceptance."""
+    listing = "\n".join(f"- {f.name}  ({f.file}:{f.line})" for f in functions)
+    raw = complete(_UNITY_PROMPT.format(goal=goal, functions=listing))
+    try:
+        m = re.search(r"\{.*\}", raw, re.DOTALL)
+        files = json.loads(m.group(0) if m else raw)
+    except Exception as exc:
+        raise ValueError(f"unit-test writer returned unparseable output: {exc}") from exc
+    if not isinstance(files, dict) or not files:
+        raise ValueError("unit-test writer returned no files")
+    corpus = "\n".join(str(v) for v in files.values())
+    if "ztest" in corpus:
+        raise ValueError("unit tests must be Unity host tests, not ztest")
+    if "unity.h" not in corpus:
+        raise ValueError("unit tests must include unity.h")
+    uncovered = [f.name for f in functions if f"test_{f.name}" not in corpus]
+    if uncovered:
+        raise ValueError("functions without unit tests: " + ", ".join(uncovered))
+
+    dest = Path(dest)
+    written: list[str] = []
+    for rel, content in files.items():
+        rel_path = Path(rel)
+        if rel_path.is_absolute() or ".." in rel_path.parts:
+            raise ValueError(f"unsafe path from unit-test writer: {rel}")
+        p = dest / rel_path
+        p.parent.mkdir(parents=True, exist_ok=True)
+        p.write_text(str(content))
+        written.append(rel)
+    return WrittenTest(dest=str(dest), test_id="unit",
+                      files=tuple(sorted(written)))
+
+
 def write_ztest(goal: str, board: str, dest: str | Path,
                 complete: Complete) -> WrittenTest:
     raw = complete(_PROMPT.format(goal=goal, board=board))
