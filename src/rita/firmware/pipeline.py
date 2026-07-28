@@ -49,8 +49,8 @@ def Utterance_norm(text: str) -> str:
 
     return normalize(text)
 
-StageName = Literal["RESOLVE", "BUILD", "SIM_TEST", "DEVICE"]
-Outcome = Literal["green", "blocked", "retries_exhausted", "failed"]
+StageName = Literal["RESOLVE", "STATIC", "BUILD", "SIM_TEST", "DEVICE"]
+Outcome = Literal["green", "blocked", "skipped", "retries_exhausted", "failed"]
 
 
 @dataclass(frozen=True)
@@ -73,12 +73,15 @@ class IteratePipeline:
     def __init__(self, *, runner: ZephyrRunner, claude: ClaudeWorker,
                  index: VerificationIndex, cfg: RitaConfig,
                  workdir: str | Path, boards: dict | None = None,
-                 on_stage=None) -> None:
+                 static_checker=None, on_stage=None) -> None:
         self.runner = runner
         self.claude = claude
         self.index = index
         self.cfg = cfg
         self.workdir = Path(workdir)
+        # The CERBERUS gate (StaticChecker). None = not configured: the
+        # STATIC stage reports skipped — visible, never silently green.
+        self.static_checker = static_checker
         self.on_stage = on_stage      # callable(StageResult) -> None (events/UI)
         if boards is None and cfg.workspace:
             boards = build_boards_json(cfg.workspace).get("boards", {})
@@ -141,10 +144,39 @@ class IteratePipeline:
             f"{resolution.entry.id if resolution.entry else resolution.written.test_id}"))
         self._checkpoint(ctl, "RESOLVE")
 
-        # 2/3. BUILD then SIM_TEST; a sim patch re-enters at BUILD.
+        # 2-4. STATIC (CERBERUS) -> BUILD -> SIM_TEST. EVERY patch — static,
+        # compile, or test — re-enters at STATIC: patched code must re-pass
+        # the static gate before it may rebuild.
         max_cycles = self.cfg.max_patch_cycles
-        build_patches = sim_patches = 0
+        static_patches = build_patches = sim_patches = 0
+        static_skip_noted = False
         while True:
+            if self.static_checker is None:
+                if not static_skip_noted:
+                    self._record(report, StageResult(
+                        "STATIC", "skipped",
+                        "CERBERUS not configured (set cerberus_command)"))
+                    static_skip_noted = True
+            else:
+                sres = self.static_checker.check(build_target)
+                if not sres.ok:
+                    if static_patches >= max_cycles:
+                        self._record(report, StageResult(
+                            "STATIC", "retries_exhausted",
+                            f"findings persist after {static_patches} patch cycles",
+                            failures=sres.findings))
+                        self._record(report, StageResult(
+                            "DEVICE", "blocked",
+                            "not attempted: static gate never passed"))
+                        report.outcome = "retries_exhausted"
+                        return report
+                    self.claude.patch(sres.findings[0], build_target)
+                    static_patches += 1
+                    continue
+                self._record(report, StageResult(
+                    "STATIC", "green", f"after {static_patches} patch cycles"))
+                self._checkpoint(ctl, "STATIC")
+
             bres = self.runner.build(build_target, SIM_PLATFORM,
                                      self.workdir / "build")
             if not bres.ok:
@@ -183,7 +215,8 @@ class IteratePipeline:
                 return report
             self.claude.patch(tres.failures[0], build_target)
             sim_patches += 1
-            # goto BUILD: cheap in sim, and a patch can break the build.
+            # loop -> STATIC: a patch must re-pass the static gate, and a
+            # rebuild is cheap in sim.
 
         # 4. DEVICE — blocked until the bench milestone; never faked green.
         if not self.cfg.device_tier_enabled:

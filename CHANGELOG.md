@@ -3,6 +3,24 @@
 All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/); versions follow semver.
 
+## [0.13.0] - 2026-07-28
+
+### Added
+- **CERBERUS static-check gate** (`rita.firmware.static_check`): the flow
+  is now ask → code → **STATIC** → build → twister → iterate → final
+  test. A new STATIC stage sits between Claude's code and the compiler,
+  and **every patch — static, compile, or test — re-enters at STATIC**,
+  so patched code always re-passes the gate before rebuilding.
+- `StaticChecker` seam: `CerberusCli` runs the configured command
+  (`RitaConfig.cerberus_command`, also in GUI Settings) over the target;
+  exit 0 = clean; JSON findings parse into `FailureArtifact(kind="static")`
+  and any other output still yields a concrete artifact. Unconfigured →
+  the stage reports `skipped` — visible, never silently green.
+- The `cerberus` module is now a real RPC wrapper over the gate
+  (`start {command}` / `check {target}`, v0.2.0), keeping its honest
+  not-configured answer when unset.
+- Spec: `docs/specs/static-check.md`; iterate-loop spec updated.
+
 ## [0.12.1] - 2026-07-28
 
 ### Added

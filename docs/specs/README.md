@@ -13,5 +13,6 @@ One spec per directive fix, written before its tests and implementation:
 | `gui-shell.md` | The native GUI app (presenter + Qt window) | **done** |
 | `zephyr-knowledge.md` | Shipped Zephyr conventions + SDK awareness | **done** |
 | `installer.md` | Modular Windows installer + module-run host | **done** |
+| `static-check.md` | CERBERUS static-check gate in the loop | **done** |
 
 Update the status column as each lands.

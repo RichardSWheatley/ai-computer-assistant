@@ -68,6 +68,14 @@ class Supervisor:
         return ClaudeWorkerCli(self.cfg.workspace,
                                mcp_config=mcp if mcp.exists() else None)
 
+    def _make_static_checker(self):
+        """The CERBERUS gate, when configured. None = STATIC reports skipped."""
+        if not self.cfg.cerberus_command:
+            return None
+        from .firmware.static_check import CerberusCli
+
+        return CerberusCli(self.cfg.cerberus_command)
+
     def _make_index(self):
         if self._index is not None:
             return self._index
@@ -90,7 +98,8 @@ class Supervisor:
         workdir = self.workdir / f"task-{self._task_seq}"
         pipeline = IteratePipeline(
             runner=self._make_runner(), claude=self._make_claude(),
-            index=self._make_index(), cfg=self.cfg, workdir=workdir)
+            index=self._make_index(), cfg=self.cfg, workdir=workdir,
+            static_checker=self._make_static_checker())
         e = d.entities
         board = e.board or "native_sim"
         terms = [t for t in (e.sample, e.peripheral) if t] \

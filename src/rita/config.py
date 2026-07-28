@@ -52,6 +52,9 @@ class RitaConfig:
     workspace: str | None = None       # Zephyr workspace root on this machine
     hardware_map: str | None = None    # twister map.yaml (device tier)
     applications_dir: str | None = None  # scaffold target; default <workspace>/applications
+    # CERBERUS static-check gate: the command RITA runs over generated code
+    # (target dir is appended). Unset -> the STATIC stage reports skipped.
+    cerberus_command: str | None = None
     max_patch_cycles: int = 3
     # Device tier stays off until the bench milestone proves flash/serial/harness.
     device_tier_enabled: bool = False

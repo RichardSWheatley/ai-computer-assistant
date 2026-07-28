@@ -70,7 +70,7 @@ sample names — never an LLM guessing.
 
 | You say | What RITA does |
 |---|---|
-| **"Rita, please build me an example for MSPI that communicates with a PSRAM on MSPI0 in hex mode."** | Scaffolds a new application in `<workspace>\applications\`, briefing the coding agent with the shipped MSPI + PSRAM recipes (devicetree overlay with `mspi-io-mode`, `CONFIG_MSPI`/memc Kconfig, timing notes) → finds or writes the verifying test → builds → runs twister on `native_sim` → reports. |
+| **"Rita, please build me an example for MSPI that communicates with a PSRAM on MSPI0 in hex mode."** | Scaffolds a new application in `<workspace>\applications\`, briefing the coding agent with the shipped MSPI + PSRAM recipes (devicetree overlay with `mspi-io-mode`, `CONFIG_MSPI`/memc Kconfig, timing notes) → CERBERUS static check → finds or writes the verifying test → builds → runs twister on `native_sim` → reports. Every patch re-passes the static gate first. |
 | "build blinky" | Resolves `samples/basic/blinky` from the index, builds, twister-gates it. |
 | "flash blinky to the apollo510" | Sim-first pipeline; the device step stays **blocked** until the bench milestone — RITA says so instead of pretending. |
 | "run the samples" / "report on the last run" | Pipeline verbs, same gates. |

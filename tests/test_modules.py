@@ -181,7 +181,11 @@ class TestDevInstallAndStubs:
             h = reg.launch("cerberus")
             res = h.call("start", timeout=10)
             assert res.get("ok") is False               # never fake capability
-            assert "not present" in res.get("error", "")
+            assert "not configured" in res.get("error", "")
+            h2 = reg.launch("joulescope")
+            res2 = h2.call("start", timeout=10)
+            assert res2.get("ok") is False
+            assert "not present" in res2.get("error", "")
         finally:
             reg.shutdown_all()
 

@@ -28,6 +28,10 @@ class SettingsPage(QWidget):
         self.budget.setRange(1, 10)
         self.budget.setValue(cfg.max_patch_cycles)
         form.addRow("Patch cycles per stage", self.budget)
+        self.cerberus_edit = QLineEdit(cfg.cerberus_command or "")
+        self.cerberus_edit.setPlaceholderText(
+            "CERBERUS command (static gate) — leave empty to skip the stage")
+        form.addRow("CERBERUS", self.cerberus_edit)
         self.voice = QCheckBox("Enable voice (wake word + speech)")
         form.addRow("", self.voice)
         note = QLabel("The device tier stays off until the bench milestone — "
@@ -44,6 +48,7 @@ class SettingsPage(QWidget):
         sup = self.presenter.sup
         sup.cfg.assistant_name = self.name_edit.text().strip() or "Rita"
         sup.cfg.max_patch_cycles = self.budget.value()
+        sup.cfg.cerberus_command = self.cerberus_edit.text().strip() or None
         save_rita_config(sup.cfg, sup.config_path)
         from ..routing.wake import WakeGate
 

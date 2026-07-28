@@ -28,7 +28,7 @@ SHIPPED: dict[str, tuple[str, str, list[str], int, list[str]]] = {
                       ["complete", "patch", "scaffold"], 4, []),
     "scaffold": ("rita.modules_impl.scaffold", "1.0.0",
                  ["scaffold"], 2, []),
-    "cerberus": ("rita.modules_impl.cerberus", "0.1.0",
+    "cerberus": ("rita.modules_impl.cerberus", "0.2.0",
                  ["analyze"], 1, []),
     "joulescope": ("rita.modules_impl.joulescope", "0.1.0",
                    ["measure"], 1, []),   # one probe, ever

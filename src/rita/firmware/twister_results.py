@@ -21,7 +21,7 @@ _OK_STATUSES = {"passed", "skipped", "filtered", "notrun"}
 
 @dataclass(frozen=True)
 class FailureArtifact:
-    kind: Literal["compile", "test"]
+    kind: Literal["compile", "test", "static"]
     suite: str
     platform: str
     reason: str

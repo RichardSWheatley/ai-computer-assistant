@@ -11,11 +11,14 @@ to stop. Gates decide success.
 
 ```
 1. RESOLVE   — verification resolution (Fix 2); scaffold first if asked
-2. BUILD     — west build; compile errors -> Claude patches (max N=3)
-3. SIM_TEST  — west twister -p native_sim until green (max N patch cycles)
-4. DEVICE    — west twister --device-testing --hardware-map map.yaml
+2. STATIC    — CERBERUS static check; findings -> Claude patches (max N=3)
+               (unconfigured -> reported as skipped, never silently green)
+3. BUILD     — west build; compile errors -> Claude patches (max N)
+4. SIM_TEST  — west twister -p native_sim until green (max N patch cycles)
+5. DEVICE    — west twister --device-testing --hardware-map map.yaml
                BLOCKED until the bench milestone; never faked green
-Budget exhausted at any stage -> STOP. Report. Log in DECISIONS-LOG.
+EVERY patch re-enters at STATIC. Budget exhausted at any stage -> STOP.
+Report. Log in DECISIONS-LOG.  (See docs/specs/static-check.md.)
 ```
 
 Rules (each enforced in code and covered by a test):

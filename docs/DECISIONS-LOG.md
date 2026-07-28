@@ -3,6 +3,20 @@
 Compromises, proxies, and deferred decisions — with the reason and what would
 remove them. Newest first. (Required by the working rules in `CLAUDE.md`.)
 
+## 2026-07-28 — CERBERUS gate
+
+- **The adapter's exact CERBERUS interface is provisional.** The tool is
+  the owner's and lives online; until its invocation/output contract is
+  provided, `CerberusCli` runs a configured command with the target dir
+  appended and accepts JSON findings or raw text (exit code is the
+  verdict). Wiring the precise contract is a config/adapter tweak, not a
+  pipeline change. One patch per finding-round uses the first finding —
+  matching the one-step-per-invocation rule; batching findings into one
+  artifact is a tuning option.
+- **STATIC re-entry applies to every patch** (including compile/test
+  patches), which can consume static budget on code Claude just changed —
+  intentional: the gate's judgment outranks iteration speed.
+
 ## 2026-07-28 — Installer (Phase C)
 
 - **The installer is authored + CI-built here, smoke-run on the target
