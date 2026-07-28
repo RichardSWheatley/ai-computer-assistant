@@ -37,10 +37,15 @@ route, does not decide when tests run, and does not judge its own success:
 
 ## Quick start
 
+**RITA is a desktop app** — see **[docs/GETTING-STARTED.md](docs/GETTING-STARTED.md)**
+for the installer, pointing RITA at your Zephyr folder, and the workflow
+examples. Developers can run everything from a checkout:
+
 ```bash
-pip install -e ".[dev]"
+pip install -e ".[dev,gui]"
+rita-app                                       # the GUI (or: python -m rita.gui)
 rita sync --workspace /path/to/zephyrproject   # index boards + samples/tests
-rita talk                                      # "hello Rita, build blinky"
+rita talk                                      # voice-only shell
 rita modules install --dev                     # register capability modules
 rita mcp-serve --workspace ...                 # workspace MCP (needs .[mcp])
 ```

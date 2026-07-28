@@ -3,6 +3,15 @@
 All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/); versions follow semver.
 
+## [0.12.1] - 2026-07-28
+
+### Added
+- `docs/GETTING-STARTED.md`: the GUI-first user guide — installer +
+  components, pointing RITA at the Zephyr folder, workflow examples (the
+  MSPI/PSRAM utterance as the flagship), the two panes and two buttons,
+  where things land, what's deliberately blocked, troubleshooting, and a
+  5-minute smoke checklist. README links it as the primary path.
+
 ## [0.12.0] - 2026-07-28
 
 ### Added
