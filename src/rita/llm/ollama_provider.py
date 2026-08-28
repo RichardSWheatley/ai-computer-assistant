@@ -1,6 +1,6 @@
 """Ollama local-LLM planner — the default heavy-lifting engine when VRAM exists.
 
-Implements the same single-step planner contract as the Claude provider, using
+Implements the same single-step planner contract as the cloud provider, using
 Ollama's tool-calling (OpenAI-style function tools) so a local model picks the
 next action. Runs fully on-device — nothing leaves the machine.
 

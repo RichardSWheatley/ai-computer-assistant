@@ -10,7 +10,7 @@ RITA is **not an LLM agent**. It is a **deterministic orchestrator** with a
 speech front end that drives firmware development on a **Zephyr workspace**
 (pre-installed on the user's machine; its path is config, not code).
 
-- **Claude (`claude -p`) is the coding agent** — one capability among several.
+- **the coding agent (the coder command) is the coding agent** — one capability among several.
   It authors applications when asked (scaffold), writes tests when none exist,
   judges verification fit, and produces patches from failure output. It does
   **not** route, does not decide when tests run, and does not judge its own
@@ -20,12 +20,12 @@ speech front end that drives firmware development on a **Zephyr workspace**
   conditions belong to the orchestrator.
 - **Gates own all verification.** The compiler, twister (its `twister.json`,
   never scraped stdout), and — when the bench milestone lands — device runs
-  and power numbers. We never trust Claude's output; we trust the gates.
+  and power numbers. We never trust the coding agent's output; we trust the gates.
 
 ## The flow
 
 **Ask, code, static check, unit test with TDD principles, …, iterate if
-needed, final test.** Claude codes to the goal; CERBERUS statically checks
+needed, final test.** the coding agent codes to the goal; CERBERUS statically checks
 it; every single function is unit-tested (host Unity) for its input and
 output parameters — every function restricts or validates them before
 executing; iteration re-passes every gate; the final test is the Zephyr
@@ -35,7 +35,7 @@ samples/tests tier.
 
 1. **Fix 1** — Grammar-first router + wake grammar; chat as fallback.
 2. **Fix 2** — Verification resolution (index → fit-judge → write-the-test),
-   served to the claude-worker over an MCP server on the workspace.
+   served to the coder-worker over an MCP server on the workspace.
 3. **Fix 3** — The iterate loop belongs to the orchestrator (sim-first,
    bounded retries, exhaustion is a reported outcome).
 4. **Fix 4** — PAUSE and RESUME/STOP controls.
@@ -53,4 +53,4 @@ green.
 ## Standing rule
 
 Do not widen scope beyond the fixes. When in doubt, harden what exists instead
-of widening. See `CLAUDE.md` for the working process every change follows.
+of widening. See `docs/WORKING-RULES.md` for the working process every change follows.

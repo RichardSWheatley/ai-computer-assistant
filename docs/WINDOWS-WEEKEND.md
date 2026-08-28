@@ -1,6 +1,6 @@
 # Weekend Quickstart — Windows, no GPU
 
-You don't need a GPU. With no VRAM, the assistant uses **Claude in the cloud** as
+You don't need a GPU. With no VRAM, the assistant uses **the cloud model in the cloud** as
 its brain and runs everything else on your PC. Two tracks below: a 5-minute
 guaranteed win, then the real computer-use assistant.
 
@@ -21,7 +21,7 @@ python -m rita doctor
 ```
 
 (No GPU → it reports `acceleration: cpu`, `default mode: auto`, and that it will
-lean on Claude. That's expected.)
+lean on the cloud model. That's expected.)
 
 ---
 
@@ -42,15 +42,15 @@ Open `demo.pptx` / `demo.docx` / `demo.xlsx` in Office. Edit the JSON in
 
 ---
 
-## Track B — Claude-powered computer-use (the real assistant)
+## Track B — the cloud model-powered computer-use (the real assistant)
 
-The assistant sees the screen and drives your apps, with Claude as the brain.
+The assistant sees the screen and drives your apps, with the cloud model as the brain.
 
 ### 1. Install + set your key
 
 ```powershell
 pip install -e ".[cloud,control,windows]"
-$env:ANTHROPIC_API_KEY = "sk-ant-..."   # from console.anthropic.com
+$env:<YOUR_LLM_API_KEY> = "..."   # from your model vendor's console
 ```
 
 ### 2. Dry-run first (safe — nothing moves)
@@ -129,4 +129,4 @@ asks first.
 
 Install [Ollama](https://ollama.com), pull a model sized to your VRAM (run
 `rita doctor` for the recommendation), and the assistant **automatically** makes
-the local model the default — Claude becomes the fallback. No code changes.
+the local model the default — the cloud model becomes the fallback. No code changes.

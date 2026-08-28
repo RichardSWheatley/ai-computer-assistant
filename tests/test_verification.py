@@ -102,7 +102,7 @@ class TestBoards:
         assert vocab.find_board("flash blinky to the apollo510") == "apollo510_evb"
 
 
-# --- Fit judge (Claude judges fit ONLY, one bounded call) -------------------
+# --- Fit judge (the coding agent judges fit ONLY, one bounded call) ----------
 
 class TestFitJudge:
     def make_candidates(self):
@@ -139,7 +139,7 @@ class TestFitJudge:
         assert decision.entry is None
 
 
-# --- Test writer (no match -> Claude writes a proper ztest) ------------------
+# --- Test writer (no match -> the coding agent writes a proper ztest) --------
 
 GOOD_TEST_FILES = {
     "testcase.yaml": ("tests:\n  app.blink.custom:\n    tags: led gpio\n"

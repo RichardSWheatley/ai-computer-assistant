@@ -15,5 +15,6 @@ One spec per directive fix, written before its tests and implementation:
 | `installer.md` | Modular Windows installer + module-run host | **done** |
 | `static-check.md` | CERBERUS static-check gate in the loop | **done** |
 | `projects.md` | Task handoff: AI plans (data only), RITA executes | **done** |
+| `coding-agent-seam.md` | Vendor-neutral coder seam; command is config | **done** |
 
 Update the status column as each lands.

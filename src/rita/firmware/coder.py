@@ -1,13 +1,14 @@
-"""The claude-worker seam: Claude as the coding agent, one step per call.
+"""The coder-worker seam: an external CLI as the coding agent, one step per call.
 
-Claude authors applications (scaffold), writes tests (Fix 2), judges fit
-(Fix 2), and patches failures. It never routes, never schedules tests, and
-never judges its own success — gates do. `patch()` REQUIRES a concrete
-`FailureArtifact`: the invariant is enforced here and honored by the
-pipeline, which only builds artifacts from parsed gate results.
+The coding agent authors applications (scaffold), writes tests (Fix 2),
+judges fit (Fix 2), and patches failures. It never routes, never schedules
+tests, and never judges its own success — gates do. `patch()` REQUIRES a
+concrete `FailureArtifact`: the invariant is enforced here and honored by
+the pipeline, which only builds artifacts from parsed gate results.
 
-`ClaudeWorkerCli` shells out to `claude -p` with `--mcp-config` pointing at
-the workspace MCP server (Fix 2) so Claude sees the workspace through
+`CoderCli` shells out to the command the user configured (`coder_command`
+— which CLI is config data, never code) with `--mcp-config` pointing at
+the workspace MCP server (Fix 2) so the agent sees the workspace through
 indexed tools, not filesystem groping.
 """
 
@@ -36,7 +37,7 @@ class ScaffoldResult:
 
 
 @runtime_checkable
-class ClaudeWorker(Protocol):
+class CoderWorker(Protocol):
     def complete(self, prompt: str) -> str: ...
 
     def patch(self, failure: FailureArtifact, workdir: Path) -> PatchResult: ...
@@ -47,7 +48,7 @@ class ClaudeWorker(Protocol):
 def _require_failure(failure: FailureArtifact | None) -> FailureArtifact:
     if failure is None or not failure.log_excerpt.strip():
         raise ValueError(
-            "Claude is never invoked to patch without a concrete failure "
+            "The coding agent is never invoked to patch without a concrete failure "
             "artifact (parsed from the gate result)")
     return failure
 
@@ -73,12 +74,11 @@ unguarded parameters are a defect.
 Do exactly this one step; the orchestrator checks and tests it."""
 
 
-class ClaudeWorkerCli:
-    """`claude -p` subprocess with a bounded timeout (runs on the user's box)."""
+class CoderCli:
+    """The configured coding-agent CLI as a subprocess, bounded timeout."""
 
-    def __init__(self, workspace: str | Path,
+    def __init__(self, workspace: str | Path, command: tuple[str, ...], *,
                  mcp_config: str | Path | None = None,
-                 command: tuple[str, ...] = ("claude", "-p"),
                  timeout: float = 600.0) -> None:
         self.workspace = Path(workspace)
         self.mcp_config = str(mcp_config) if mcp_config else None
@@ -86,7 +86,7 @@ class ClaudeWorkerCli:
         self.timeout = timeout
 
     def _invoke(self, prompt: str, cwd: Path, *,
-                allow_edits: bool) -> subprocess.CompletedProcess:  # pragma: no cover - needs claude CLI
+                allow_edits: bool) -> subprocess.CompletedProcess:  # pragma: no cover - needs the coding-agent CLI
         args = [*self.command, prompt, "--output-format", "text"]
         if self.mcp_config:
             args += ["--mcp-config", self.mcp_config]
@@ -95,11 +95,11 @@ class ClaudeWorkerCli:
         return subprocess.run(args, cwd=cwd, capture_output=True, text=True,
                               timeout=self.timeout)
 
-    def complete(self, prompt: str) -> str:  # pragma: no cover - needs claude CLI
+    def complete(self, prompt: str) -> str:  # pragma: no cover - needs the coding-agent CLI
         proc = self._invoke(prompt, self.workspace, allow_edits=False)
         return proc.stdout
 
-    def patch(self, failure: FailureArtifact, workdir: Path) -> PatchResult:  # pragma: no cover - needs claude CLI
+    def patch(self, failure: FailureArtifact, workdir: Path) -> PatchResult:  # pragma: no cover - needs the coding-agent CLI
         failure = _require_failure(failure)
         prompt = _PATCH_PROMPT.format(kind=failure.kind,
                                       artifact=failure.describe())
@@ -107,7 +107,7 @@ class ClaudeWorkerCli:
         return PatchResult(ok=proc.returncode == 0,
                            detail=(proc.stdout or proc.stderr or "")[-500:])
 
-    def scaffold(self, goal: str, board: str, dest: Path) -> ScaffoldResult:  # pragma: no cover - needs claude CLI
+    def scaffold(self, goal: str, board: str, dest: Path) -> ScaffoldResult:  # pragma: no cover - needs the coding-agent CLI
         dest.mkdir(parents=True, exist_ok=True)
         prompt = _SCAFFOLD_PROMPT.format(goal=goal, board=board)
         proc = self._invoke(prompt, dest, allow_edits=True)
@@ -116,7 +116,7 @@ class ClaudeWorkerCli:
                               detail=(proc.stdout or "")[-500:])
 
 
-class FakeClaude:
+class FakeCoder:
     """Scripted worker that records every artifact it is handed."""
 
     def __init__(self, completions: list[str] | None = None,

@@ -1,9 +1,9 @@
-"""Fit judging (Fix 2, step 2): Claude judges fit ONLY.
+"""Fit judging (Fix 2, step 2): the coding agent judges fit ONLY.
 
 One bounded call over the top index matches — README + yaml facts in, a
-choice + reason out. Claude cannot introduce candidates the index didn't
+choice + reason out. The agent cannot introduce candidates the index didn't
 return, and the answer never schedules anything: the orchestrator does.
-`complete` is any text-completion callable (the claude-worker in production,
+`complete` is any text-completion callable (the coder-worker in production,
 a lambda in tests).
 """
 

@@ -322,7 +322,7 @@ UNITY_FILES_FOR_FAKE = json.dumps({"test_app.c": (
 def make_scaffold_pipeline(tmp_path, *, unit_seq=("green",), static_seq=None,
                            twister_seq=("pass.json",), max_cycles=3):
     from rita.config import RitaConfig
-    from rita.firmware.claude import FakeClaude
+    from rita.firmware.coder import FakeCoder
     from rita.firmware.index import VerificationIndex
     from rita.firmware.pipeline import IteratePipeline
     from rita.firmware.static_check import FakeCerberus
@@ -332,16 +332,16 @@ def make_scaffold_pipeline(tmp_path, *, unit_seq=("green",), static_seq=None,
     runner = FakeWest(build_seq=["ok"] * 6, twister_seq=list(twister_seq),
                       fixtures_dir=TW)
     fit = json.dumps({"fit": "sample.basic.blinky", "reason": "fits"})
-    claude = FakeClaude(completions=[fit, UNITY_FILES_FOR_FAKE])
+    coder = FakeCoder(completions=[fit, UNITY_FILES_FOR_FAKE])
     unity = FakeUnity(script=list(unit_seq))
     checker = FakeCerberus(script=list(static_seq)) if static_seq else None
     cfg = RitaConfig(workspace=str(WS), max_patch_cycles=max_cycles,
                      applications_dir=str(tmp_path / "apps"))
-    pipe = IteratePipeline(runner=runner, claude=claude,
+    pipe = IteratePipeline(runner=runner, coder=coder,
                            index=VerificationIndex.build(WS), cfg=cfg,
                            workdir=tmp_path / "work", static_checker=checker,
                            unit_runner=unity)
-    return pipe, runner, claude, unity
+    return pipe, runner, coder, unity
 
 
 def run_scaffold(pipe):
@@ -351,26 +351,26 @@ def run_scaffold(pipe):
 
 class TestPipelineUnitStage:
     def test_stage_order_and_authorship(self, tmp_path):
-        pipe, runner, claude, unity = make_scaffold_pipeline(tmp_path)
+        pipe, runner, coder, unity = make_scaffold_pipeline(tmp_path)
         report = run_scaffold(pipe)
         assert report.outcome == "green"
         names = [s.stage for s in report.stages]
         assert names.index("UNIT_TEST") < names.index("FINAL_TEST")
         # Unit tests were authored to cover fake_helper, then run green once.
-        assert any("fake_helper" in p for p in claude.prompts)  # named in brief
-        app_dir = Path(claude.scaffolds_dirs[0])
+        assert any("fake_helper" in p for p in coder.prompts)  # named in brief
+        app_dir = Path(coder.scaffolds_dirs[0])
         assert (app_dir / "tests" / "unit" / "test_app.c").exists()
         assert unity.calls == 1
         # The final test (Zephyr suite) ran under twister.
         assert runner.twister_calls
 
     def test_unit_red_patches_and_reenters_static(self, tmp_path):
-        pipe, runner, claude, unity = make_scaffold_pipeline(
+        pipe, runner, coder, unity = make_scaffold_pipeline(
             tmp_path, unit_seq=("red", "green"),
             static_seq=["clean", "clean"])
         report = run_scaffold(pipe)
         assert report.outcome == "green"
-        assert [p.kind for p in claude.patches] == ["unit"]
+        assert [p.kind for p in coder.patches] == ["unit"]
         assert unity.calls == 2                    # re-run after the patch
         # STATIC ran once per code version (patch re-entered the gate).
         static_greens = [s for s in report.stages
@@ -378,7 +378,7 @@ class TestPipelineUnitStage:
         assert len(static_greens) == 2
 
     def test_unit_exhaustion_is_reported_and_final_never_runs(self, tmp_path):
-        pipe, runner, claude, unity = make_scaffold_pipeline(
+        pipe, runner, coder, unity = make_scaffold_pipeline(
             tmp_path, unit_seq=["red"] * 10, max_cycles=2)
         report = run_scaffold(pipe)
         assert report.outcome == "retries_exhausted"
@@ -388,7 +388,7 @@ class TestPipelineUnitStage:
 
     def test_sample_run_skips_unit_stage_visibly(self, tmp_path):
         from rita.firmware.pipeline import IteratePipeline
-        pipe, runner, claude, unity = make_scaffold_pipeline(tmp_path)
+        pipe, runner, coder, unity = make_scaffold_pipeline(tmp_path)
         report = pipe.run(goal="blink the led", board="apollo510_evb",
                           terms=["led", "blinky"], scaffold=False)
         unit = next(s for s in report.stages if s.stage == "UNIT_TEST")
@@ -401,7 +401,7 @@ class TestPipelineUnitStage:
 
 class TestContractRule:
     def test_scaffold_brief_carries_the_rule(self):
-        from rita.firmware.claude import _SCAFFOLD_PROMPT
+        from rita.firmware.coder import _SCAFFOLD_PROMPT
         text = _SCAFFOLD_PROMPT.lower()
         assert "restrict" in text and "validate" in text
         assert "input" in text and "output" in text

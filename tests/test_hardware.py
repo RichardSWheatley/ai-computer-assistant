@@ -6,7 +6,7 @@ def test_no_vram_recommends_cloud():
     assert hw.has_vram is False
     assert hw.acceleration == "cpu"
     rec = recommend_model(hw)
-    assert rec["lean_on_claude"] is True
+    assert rec["lean_on_cloud"] is True
 
 
 def test_cuda_gpu_detected():
@@ -16,7 +16,7 @@ def test_cuda_gpu_detected():
     assert hw.total_vram_mb == 24564
     rec = recommend_model(hw)
     assert rec["tier"] == "sweet-spot"
-    assert rec["lean_on_claude"] is False
+    assert rec["lean_on_cloud"] is False
 
 
 def test_metal_backend():

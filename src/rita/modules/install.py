@@ -24,7 +24,7 @@ SHIPPED: dict[str, tuple[str, str, list[str], int, list[str]]] = {
                   ["speak", "pause", "stop"], 1, []),
     "zephyr-runner": ("rita.modules_impl.zephyr_runner", "1.0.0",
                       ["build", "twister", "flash"], 4, ["serial_port"]),
-    "claude-worker": ("rita.modules_impl.claude_worker", "1.0.0",
+    "coder-worker": ("rita.modules_impl.coder_worker", "1.0.0",
                       ["complete", "patch", "scaffold"], 4, []),
     "scaffold": ("rita.modules_impl.scaffold", "1.0.0",
                  ["scaffold"], 2, []),

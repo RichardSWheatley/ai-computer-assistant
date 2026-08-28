@@ -26,7 +26,7 @@ class Supervisor:
     def __init__(self, *, rita_cfg: RitaConfig | None = None,
                  config_path: str | Path | None = None,
                  vocab: Vocabulary | None = None,
-                 tts=None, runner=None, claude=None, index=None,
+                 tts=None, runner=None, coder=None, index=None,
                  registry: ModuleRegistry | None = None,
                  workdir: str | Path | None = None) -> None:
         self.cfg = rita_cfg or load_rita_config(config_path)
@@ -35,7 +35,7 @@ class Supervisor:
         self.registry = registry or ModuleRegistry()
         self.speaker = PausableSpeaker(tts) if tts is not None else None
         self._runner = runner
-        self._claude = claude
+        self._coder = coder
         self._index = index
         if workdir is None:
             from .home import rita_home
@@ -59,15 +59,26 @@ class Supervisor:
 
         return WestCli(self.cfg.workspace)
 
-    def _make_claude(self):
-        if self._claude is not None:
-            return self._claude
-        from .firmware.claude import ClaudeWorkerCli
+    def _make_coder(self):
+        """The coding-agent seam: injected worker first, else the CLI named
+        by config. Which CLI is config data, never code — None means RITA
+        can't code and says so."""
+        if self._coder is not None:
+            return self._coder
+        if not self.cfg.coder_command:
+            return None
+        from .firmware.coder import CoderCli
+        from .firmware.static_check import split_command
         from .home import mcp_config_path
 
         mcp = mcp_config_path()
-        return ClaudeWorkerCli(self.cfg.workspace,
-                               mcp_config=mcp if mcp.exists() else None)
+        return CoderCli(self.cfg.workspace,
+                        command=tuple(split_command(self.cfg.coder_command)),
+                        mcp_config=mcp if mcp.exists() else None)
+
+    _NO_CODER = ("No coding agent is configured, so I can't write or patch "
+                 "code yet. Set the coding agent command on the Settings "
+                 "page (any CLI that takes a prompt and can edit files).")
 
     def _make_static_checker(self):
         """The CERBERUS gate: explicit command wins, else the acquired
@@ -112,10 +123,13 @@ class Supervisor:
                     "sync with your workspace path first.")
         from .firmware.pipeline import IteratePipeline, describe
 
+        coder = self._make_coder()
+        if coder is None:
+            return self._NO_CODER
         self._task_seq += 1
         workdir = self.workdir / f"task-{self._task_seq}"
         pipeline = IteratePipeline(
-            runner=self._make_runner(), claude=self._make_claude(),
+            runner=self._make_runner(), coder=coder,
             index=self._make_index(), cfg=self.cfg, workdir=workdir,
             static_checker=self._make_static_checker(),
             unit_runner=self._make_unit_runner())
@@ -158,7 +172,7 @@ class Supervisor:
 
         def factory(item_id: str) -> IteratePipeline:
             return IteratePipeline(
-                runner=self._make_runner(), claude=self._make_claude(),
+                runner=self._make_runner(), coder=self._make_coder(),
                 index=self._make_index(), cfg=self.cfg,
                 workdir=self.workdir / project_id / item_id,
                 static_checker=self._make_static_checker(),
@@ -176,11 +190,13 @@ class Supervisor:
         if not self.cfg.workspace:
             return ("No Zephyr workspace is configured yet — point me at one "
                     "on the Workspace page first.")
+        if self._make_coder() is None:
+            return self._NO_CODER
         store = ProjectStore()
         project = quick_plan(goal, self.shell.vocab, store)
         if project is None:
             try:
-                project = plan_project(goal, self._make_claude().complete,
+                project = plan_project(goal, self._make_coder().complete,
                                        self.shell.vocab, store)
             except PlanError as exc:
                 return (f"I couldn't get a usable plan for that: {exc}. "
@@ -276,6 +292,10 @@ class Supervisor:
         if rep.state == "STOPPED":
             done = ", ".join(rep.completed_stages) or "nothing"
             return f"Stopped. Completed before the stop: {done}."
+        if rep.state == "FAILED":
+            # Exhaustion and failure are REPORTED outcomes, never hidden —
+            # the exception is the report.
+            return f"Task {tid} failed: {rep.error or 'unknown error'}"
         return f"Task {tid} is {rep.state.lower()}."
 
     # --- the talk loop -------------------------------------------------------

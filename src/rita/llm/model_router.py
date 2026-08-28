@@ -2,10 +2,10 @@
 
 Modes (see docs/MODES.md):
   AUTO (default) — hardware-driven. Heavy reasoning goes to the best LOCAL model
-      when one exists (i.e. when VRAM is available), and to Claude only when no
+      when one exists (i.e. when VRAM is available), and to the cloud only when no
       capable local model is present. Routine mechanical steps stay on the small
       local model for speed. So: local LLM is the default when you have VRAM;
-      Claude is the default when you don't. Cloud is also used to escalate when
+      cloud is the default when you don't. Cloud is also used to escalate when
       the local model gets stuck.
   LOCAL_ONLY     — cloud is hard-disabled. The cloud provider is never
       constructed, so nothing can leave the machine. Privacy guarantee.
@@ -14,7 +14,7 @@ The privacy guarantee is enforced structurally: in LOCAL_ONLY the router refuses
 to hold a cloud provider at all (asserted in __init__), so there is no code path
 that reaches the network.
 
-Concrete providers (Ollama, Claude) are loaded lazily; with nothing installed
+Concrete providers (local or cloud) are injected or loaded lazily; with nothing installed
 the router falls back to MockLLM so the loop always runs.
 """
 
@@ -28,7 +28,7 @@ from .mock import MockLLM
 
 
 class OperatingMode(str, Enum):
-    AUTO = "auto"              # hardware-driven: local when VRAM, Claude when none
+    AUTO = "auto"              # hardware-driven: local when VRAM, cloud when none
     LOCAL_ONLY = "local-only"  # never leave the machine
 
     @classmethod
@@ -141,7 +141,7 @@ class LLMRouter(LLMProvider):
             return self._route_small(goal, state, tools, history)
 
         # AUTO (hardware-driven). For heavy steps, prefer the best LOCAL model
-        # when one exists (VRAM present); fall back to Claude when there is no
+        # when one exists (VRAM present); fall back to the cloud when there is no
         # local large model, or to escalate a stuck local model.
         if heavy:
             if self.cloud is not None and (self.large is None or self._stuck(history)):
@@ -161,7 +161,7 @@ def _redact(state: ScreenState) -> ScreenState:
                        screenshot_path=None)  # never ship raw frames to cloud
 
 
-def build_default_planner(config) -> LLMProvider:
+def build_default_planner(config, cloud_planner=None) -> LLMProvider:
     """Construct a routed planner from config + detected hardware.
 
     Honors config.mode. In LOCAL_ONLY the cloud provider is never constructed.
@@ -179,17 +179,13 @@ def build_default_planner(config) -> LLMProvider:
     except Exception:
         small = large = None
 
-    if mode is not OperatingMode.LOCAL_ONLY:
-        try:  # pragma: no cover
-            if getattr(config, "use_cloud", True):
-                from .claude_provider import ClaudePlanner
-                cloud = ClaudePlanner(model=getattr(config, "cloud_model",
-                                                    "claude-opus-4-8"))
-        except Exception:
-            cloud = None
+    if mode is not OperatingMode.LOCAL_ONLY and getattr(config, "use_cloud", True):
+        # A cloud planner is injected, never built in: no vendor client ships
+        # with RITA. Pass one via `cloud=` or set config.cloud_planner.
+        cloud = cloud_planner or getattr(config, "cloud_planner", None)
 
     # No local model available (e.g. no GPU and no Ollama) but cloud is? Then
-    # Claude handles routine steps too — otherwise the routine path would fall
+    # the cloud model handles routine steps too — otherwise the routine path would fall
     # back to the do-nothing MockLLM. This is the no-GPU default.
     if small is None and cloud is not None:
         small = cloud

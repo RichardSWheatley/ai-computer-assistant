@@ -25,7 +25,7 @@ class SyncResult:
 
 
 def _write_mcp_config(ws: Path) -> str:
-    """~/.rita/mcp.json: how `claude -p` reaches the workspace MCP server.
+    """~/.rita/mcp.json: how the coding-agent CLI reaches the workspace MCP server.
 
     Module-invocation form (this interpreter, `-m rita`) so it works from
     any venv or packaged install regardless of PATH."""

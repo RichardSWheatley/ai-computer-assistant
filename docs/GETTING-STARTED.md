@@ -12,10 +12,10 @@ developers.
 | Windows 10/11 (64-bit) | first-supported OS (macOS/Linux later) | — |
 | A working Zephyr workspace | RITA operates **on** it; it learns your boards, samples, and Zephyr version from this folder | `west build` already works for you in it |
 | Zephyr SDK installed | real-board builds **and** the unit-tier C compiler (the SDK ships gcc by default) | RITA's status bar shows "SDK \<version\>" when found |
-| Claude Code CLI, logged in | RITA's coding agent (`claude -p`) for scaffolding, test-writing, and patches | RITA's status bar shows "claude ✓" |
+| A coding-agent CLI | any installed CLI that takes a prompt and can edit files; RITA drives it for scaffolding, test-writing, and patches. Enter its command on the **Settings** page ("Coding agent") | RITA's status bar shows "coder ✓" |
 
-Without the `claude` CLI, RITA still routes, syncs, indexes, and answers
-questions — it just can't author or patch code.
+Without a coding agent configured, RITA still routes, syncs, indexes, and
+answers questions — it just can't author or patch code, and says so.
 
 ## 2. Install RITA
 
@@ -28,7 +28,7 @@ artifact, or ask for a release build). Run it and pick your components:
 - **Voice** — wake-word listening and speech output modules.
 - **Workspace MCP** — the local MCP server the coding agent uses to see
   your workspace (recommended: keep it).
-- **Modules** — zephyr-runner (build/test/flash), claude-worker,
+- **Modules** — zephyr-runner (build/test/flash), coder-worker,
   scaffold, **CERBERUS** (the static gate — the installer clones
   github.com/RichardSWheatley/cerberus onto your machine; needs git on
   PATH), and a joulescope placeholder (honest stub until the bench
@@ -124,13 +124,13 @@ cancels at a safe boundary and reports what completed.
 
 ## 6. The gates: CERBERUS and per-function unit tests
 
-Every piece of code Claude produces passes CERBERUS before it may build,
+Every piece of code the coding agent produces passes CERBERUS before it may build,
 and every patch re-passes it. The default is CERBERUS's Head 1 — 94
 deterministic MISRA C:2012 / CERT C checks, free, **no API key needed**.
 If the installer's CERBERUS component didn't run (no git at install
 time), use **Modules → Install / update CERBERUS** in the app. Settings
-offers deep mode (`analyze`: the Oracle LLM head — Claude working inside
-CERBERUS — plus Unity test generation), which uses your Anthropic key via
+offers deep mode (`analyze`: the Oracle LLM head — the coding agent working inside
+CERBERUS — plus Unity test generation), which uses your API key via
 CERBERUS's own environment variables. Without CERBERUS installed the
 static stage reports itself as skipped — visibly, never silently.
 
@@ -157,8 +157,11 @@ the same reason.
 
 ## 8. Troubleshooting
 
-- **Status bar says "claude CLI missing"** — install/log in to Claude
-  Code; RITA finds it on PATH.
+- **Status bar says "coder not configured"** — enter your coding-agent
+  CLI's command on the Settings page ("Coding agent") and make sure that
+  executable is installed and on PATH. RITA never assumes a vendor.
+- **A work request answers "No coding agent is configured"** — same fix:
+  Settings → Coding agent.
 - **Sync finds 0 boards** — you probably picked a folder above or below
   the workspace; choose the folder that contains `zephyr/` (RITA also
   accepts `zephyr/` itself).
@@ -175,7 +178,7 @@ the same reason.
 
 ## First smoke test on your machine (5 minutes)
 
-1. Install → launch → status bar shows workspace/Zephyr/SDK/claude. 
+1. Install → launch → status bar shows workspace/Zephyr/SDK/coder. 
 2. Workspace page → point at `C:\zephyrproject` → Sync → boards + suites counted.
 3. Type `"tell me about the apollo510"` → real board facts.
 4. Type `"build blinky"` → watch the task run; green report lands in the transcript, details in the screen pane.

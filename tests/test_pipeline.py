@@ -1,8 +1,8 @@
 """Fix 3: the iterate loop belongs to the orchestrator.
 
-Bounded retries, sim-first, twister.json as the only gate truth, Claude
+Bounded retries, sim-first, twister.json as the only gate truth, the coding agent
 invoked exactly once per concrete failure artifact — all proven here with
-FakeWest + FakeClaude + fixture twister.json files.
+FakeWest + FakeCoder + fixture twister.json files.
 """
 
 from __future__ import annotations
@@ -57,21 +57,21 @@ class TestTwisterResults:
 def make_pipeline(tmp_path, *, build_seq=(), twister_seq=(), device_seq=(),
                   max_cycles=3, device=False, hw_map=None, completions=None):
     from rita.config import RitaConfig
-    from rita.firmware.claude import FakeClaude
+    from rita.firmware.coder import FakeCoder
     from rita.firmware.index import VerificationIndex
     from rita.firmware.pipeline import IteratePipeline
     from rita.firmware.west import FakeWest
 
     runner = FakeWest(build_seq=list(build_seq), twister_seq=list(twister_seq),
                       device_seq=list(device_seq), fixtures_dir=TW)
-    claude = FakeClaude(completions=list(completions or []))
+    coder = FakeCoder(completions=list(completions or []))
     cfg = RitaConfig(workspace=str(WS), max_patch_cycles=max_cycles,
                      device_tier_enabled=device,
                      hardware_map=str(hw_map) if hw_map else None)
-    pipe = IteratePipeline(runner=runner, claude=claude,
+    pipe = IteratePipeline(runner=runner, coder=coder,
                            index=VerificationIndex.build(WS), cfg=cfg,
                            workdir=tmp_path / "work")
-    return pipe, runner, claude
+    return pipe, runner, coder
 
 
 def blinky_fit(prompt: str) -> str:
@@ -79,62 +79,62 @@ def blinky_fit(prompt: str) -> str:
 
 
 class TestIteratePipeline:
-    def test_green_first_try_no_claude(self, tmp_path):
-        pipe, runner, claude = make_pipeline(
+    def test_green_first_try_no_coder(self, tmp_path):
+        pipe, runner, coder = make_pipeline(
             tmp_path, build_seq=["ok"], twister_seq=["pass.json"],
             completions=[blinky_fit("")])
         report = pipe.run(goal="blink the led", board="apollo510_evb",
                           terms=["led", "blinky"])
         assert report.outcome == "green"
-        assert claude.patches == []                    # never invoked
+        assert coder.patches == []                    # never invoked
         stages = {s.stage: s.outcome for s in report.stages}
         assert stages["UNIT_TEST"] == "skipped"        # no authored code
         assert stages["FINAL_TEST"] == "green"         # the Zephyr suite ran
         assert stages["DEVICE"] == "blocked"           # tier off, never faked
 
     def test_compile_fail_patch_then_green(self, tmp_path):
-        pipe, runner, claude = make_pipeline(
+        pipe, runner, coder = make_pipeline(
             tmp_path, build_seq=["fail_build.json", "ok"],
             twister_seq=["pass.json"], completions=[blinky_fit("")])
         report = pipe.run(goal="blink the led", board="apollo510_evb",
                           terms=["led", "blinky"])
         assert report.outcome == "green"
-        assert len(claude.patches) == 1
-        assert claude.patches[0].kind == "compile"
-        assert "led0" in claude.patches[0].log_excerpt  # concrete artifact in
+        assert len(coder.patches) == 1
+        assert coder.patches[0].kind == "compile"
+        assert "led0" in coder.patches[0].log_excerpt  # concrete artifact in
 
     def test_retries_exhausted_is_reported_not_hidden(self, tmp_path):
-        pipe, runner, claude = make_pipeline(
+        pipe, runner, coder = make_pipeline(
             tmp_path, build_seq=["fail_build.json"] * 10,
             max_cycles=3, completions=[blinky_fit("")])
         report = pipe.run(goal="blink the led", board="apollo510_evb",
                           terms=["led", "blinky"])
         assert report.outcome == "retries_exhausted"
-        assert len(claude.patches) == 3                # budget honored exactly
+        assert len(coder.patches) == 3                # budget honored exactly
         final = next(s for s in report.stages if s.stage == "FINAL_TEST")
         assert final.outcome == "retries_exhausted"
         assert final.failures                          # failure attached
 
     def test_sim_test_fail_patch_then_green(self, tmp_path):
-        pipe, runner, claude = make_pipeline(
+        pipe, runner, coder = make_pipeline(
             tmp_path, build_seq=["ok", "ok"],
             twister_seq=["fail_test.json", "pass.json"],
             completions=[blinky_fit("")])
         report = pipe.run(goal="blink the led", board="apollo510_evb",
                           terms=["led", "blinky"])
         assert report.outcome == "green"
-        assert len(claude.patches) == 1
-        assert claude.patches[0].kind == "test"
+        assert len(coder.patches) == 1
+        assert coder.patches[0].kind == "test"
 
     def test_sim_green_precedes_device_and_blocked_tier_never_runs_device(self, tmp_path):
-        pipe, runner, claude = make_pipeline(
+        pipe, runner, coder = make_pipeline(
             tmp_path, build_seq=["ok"], twister_seq=["pass.json"],
             completions=[blinky_fit("")])
         pipe.run(goal="blink", board="apollo510_evb", terms=["led", "blinky"])
         assert runner.device_calls == []               # no device attempt
 
     def test_device_tier_enabled_generates_map_when_missing(self, tmp_path):
-        pipe, runner, claude = make_pipeline(
+        pipe, runner, coder = make_pipeline(
             tmp_path, build_seq=["ok"], twister_seq=["pass.json"],
             device_seq=["pass.json"], device=True, hw_map=None,
             completions=[blinky_fit("")])
@@ -146,7 +146,7 @@ class TestIteratePipeline:
         assert next(s for s in report.stages if s.stage == "DEVICE").outcome == "green"
 
     def test_no_match_authors_test_then_twister_gates_it(self, tmp_path):
-        pipe, runner, claude = make_pipeline(
+        pipe, runner, coder = make_pipeline(
             tmp_path, build_seq=["ok"], twister_seq=["pass.json"],
             completions=[json.dumps(GOOD_TEST_FILES)])
         report = pipe.run(goal="verify the watchdog fires",
@@ -160,9 +160,9 @@ class TestIteratePipeline:
         assert "watchdog" in (suite / "testcase.yaml").read_text()
 
     def test_patch_requires_a_concrete_failure(self):
-        from rita.firmware.claude import FakeClaude
+        from rita.firmware.coder import FakeCoder
         with pytest.raises(ValueError):
-            FakeClaude().patch(None, Path("."))
+            FakeCoder().patch(None, Path("."))
 
 
 # --- Router work dispatch -> pipeline ---------------------------------------
@@ -174,7 +174,7 @@ class TestWorkDispatch:
         from rita.routing.router import route
         from rita.routing.vocabulary import Vocabulary
 
-        pipe, runner, claude = make_pipeline(
+        pipe, runner, coder = make_pipeline(
             tmp_path, build_seq=["ok"], twister_seq=["pass.json"],
             completions=[blinky_fit("")])
         d = route(Utterance.from_text("build blinky for the apollo510"),

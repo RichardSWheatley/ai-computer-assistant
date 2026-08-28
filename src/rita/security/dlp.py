@@ -12,7 +12,7 @@ import re
 from dataclasses import dataclass, field
 
 _PATTERNS = {
-    "anthropic_key": re.compile(r"sk-ant-[A-Za-z0-9_\-]{20,}"),
+    "llm_api_key": re.compile(r"sk-ant-[A-Za-z0-9_\-]{20,}"),
     "openai_key": re.compile(r"sk-[A-Za-z0-9]{32,}"),
     "aws_access_key": re.compile(r"AKIA[0-9A-Z]{16}"),
     "github_token": re.compile(r"gh[pousr]_[A-Za-z0-9]{30,}"),

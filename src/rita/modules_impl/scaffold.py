@@ -1,4 +1,4 @@
-"""scaffold module: application authoring behind RPC (wraps the claude seam)."""
+"""scaffold module: application authoring behind RPC (wraps the coder seam)."""
 
 from __future__ import annotations
 
@@ -14,10 +14,10 @@ def start(params, emit):
     return {"ok": True}
 
 
-def scaffold(params, emit):  # pragma: no cover - needs the claude CLI
-    from ..firmware.claude import ClaudeWorkerCli
+def scaffold(params, emit):  # pragma: no cover - needs the coding-agent CLI
+    from ..firmware.coder import CoderCli
 
-    cli = ClaudeWorkerCli(_STATE.get("workspace", "."),
+    cli = CoderCli(_STATE.get("workspace", "."),
                           mcp_config=params.get("mcp_config"))
     res = cli.scaffold(params["goal"], params["board"], Path(params["dest"]))
     return {"ok": res.ok, "app_dir": res.app_dir, "detail": res.detail}

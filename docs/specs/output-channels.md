@@ -11,7 +11,7 @@ response must split into:
 
 ## Design (`rita.ui.channels.split_response`)
 
-The brain (chat model / claude-worker prompts) is *asked* to emit both
+The brain (chat model / coder-worker prompts) is *asked* to emit both
 channels, but the **shell's deterministic strip is the guarantee** — it is
 applied unconditionally to whatever the brain returns:
 

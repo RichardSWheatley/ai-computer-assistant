@@ -8,7 +8,7 @@ Detection order (best-effort, no hard dependencies):
 
 The result drives acceleration backend selection and a model recommendation,
 so the assistant runs GPU-accelerated when VRAM exists and degrades gracefully
-to CPU + heavier Claude escalation when it doesn't.
+to CPU + heavier cloud escalation when it does not.
 """
 
 from __future__ import annotations
@@ -131,7 +131,7 @@ def recommend_model(hw: Hardware) -> dict:
     """Pick a sensible local model tier from available VRAM.
 
     Returns a dict describing the recommended local model and whether to lean
-    on Claude escalation. Quantized (Q4/Q5) sizes assumed.
+    on cloud escalation. Quantized (Q4/Q5) sizes assumed.
     """
     vram = hw.total_vram_mb
     if vram == 0:
@@ -139,18 +139,18 @@ def recommend_model(hw: Hardware) -> dict:
             "tier": "cpu/cloud",
             "local_model": "llama3.2:3b (CPU, slow)",
             "note": "No VRAM detected — run a tiny local model and escalate hard "
-                    "tasks to Claude. A GPU is strongly recommended.",
-            "lean_on_claude": True,
+                    "tasks to the cloud model. A GPU is strongly recommended.",
+            "lean_on_cloud": True,
         }
     if vram < 12_000:
         return {"tier": "entry", "local_model": "~7-8B Q4",
-                "note": "Lean on Claude for hard reasoning.", "lean_on_claude": True}
+                "note": "Lean on the cloud model for hard reasoning.", "lean_on_cloud": True}
     if vram < 24_000:
         return {"tier": "midrange", "local_model": "~14B Q4/Q5",
-                "note": "Comfortable local agent; Claude for the hardest tasks.",
-                "lean_on_claude": False}
+                "note": "Comfortable local agent; the cloud model for the hardest tasks.",
+                "lean_on_cloud": False}
     if vram < 48_000:
         return {"tier": "sweet-spot", "local_model": "~32B Q4 + small vision model",
-                "note": "Fast local agent across most tasks.", "lean_on_claude": False}
+                "note": "Fast local agent across most tasks.", "lean_on_cloud": False}
     return {"tier": "top", "local_model": "~70B-class",
-            "note": "Near-frontier quality fully local.", "lean_on_claude": False}
+            "note": "Near-frontier quality fully local.", "lean_on_cloud": False}

@@ -40,7 +40,7 @@ thin:
 - `sync(path)` — workspace pointing from the GUI; runs `sync_workspace`
   off-thread, persists `RitaConfig.workspace`, emits progress + a result
   line (boards, suites, Zephyr version — all read from the actual install).
-- `status()` — workspace path, Zephyr version, module count, claude CLI
+- `status()` — workspace path, Zephyr version, module count, coding-agent CLI
   presence: the GUI status bar's facts.
 
 ### The window
@@ -65,7 +65,7 @@ spacing, system font, monospace code pane):
 
 Entry points: `python -m rita.gui`; console script `rita-app` (windowed).
 
-### MCP wiring (folded in — the claude-worker must reach the workspace)
+### MCP wiring (folded in — the coder-worker must reach the workspace)
 
 `sync_workspace` additionally writes `~/.rita/mcp.json`:
 
@@ -75,8 +75,8 @@ Entry points: `python -m rita.gui`; console script `rita-app` (windowed).
   "args": ["-m", "rita", "mcp-serve", "--workspace", "<ws>"]}}}
 ```
 
-`Supervisor._make_claude()` passes it to `ClaudeWorkerCli` when the file
-exists — `claude -p` then sees the workspace through the MCP tools.
+`Supervisor._make_coder()` passes it to `CoderCli` when the file
+exists — the coder command then sees the workspace through the MCP tools.
 
 ## Acceptance criteria (each is a test)
 
@@ -91,6 +91,6 @@ exists — `claude -p` then sees the workspace through the MCP tools.
 - A completed task announces its outcome in the transcript unprompted.
 - `sync(path)` from the presenter writes boards.json + index + mcp.json
   and updates the persisted config.
-- `Supervisor` hands the mcp config to the claude-worker when present.
+- `Supervisor` hands the mcp config to the coder-worker when present.
 - Qt layer: constructing the window and wiring the presenter succeeds
   (smoke test, skipped when PySide6 isn't installed).

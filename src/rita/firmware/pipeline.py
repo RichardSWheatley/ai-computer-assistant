@@ -1,6 +1,6 @@
 """The iterate loop (Fix 3) — owned by the orchestrator, gated by twister.
 
-Claude does one step per invocation (patch a concrete failure); this
+The coding agent does one step per invocation (patch a concrete failure); this
 pipeline decides what runs, where, and when to stop:
 
     RESOLVE -> BUILD -> SIM_TEST -> DEVICE
@@ -20,7 +20,7 @@ from typing import Literal
 
 from ..config import RitaConfig
 from .boards import build_boards_json
-from .claude import ClaudeWorker
+from .coder import CoderWorker
 from .index import VerificationIndex
 from .resolve import Resolution, resolve_verification
 from .twister_results import FailureArtifact
@@ -70,12 +70,12 @@ class PipelineReport:
 
 
 class IteratePipeline:
-    def __init__(self, *, runner: ZephyrRunner, claude: ClaudeWorker,
+    def __init__(self, *, runner: ZephyrRunner, coder: CoderWorker,
                  index: VerificationIndex, cfg: RitaConfig,
                  workdir: str | Path, boards: dict | None = None,
                  static_checker=None, unit_runner=None, on_stage=None) -> None:
         self.runner = runner
-        self.claude = claude
+        self.coder = coder
         self.index = index
         self.cfg = cfg
         self.workdir = Path(workdir)
@@ -126,14 +126,14 @@ class IteratePipeline:
             app_dir = applications_root(self.cfg) / _app_slug(goal)
             notes = knowledge.notes_for(terms + goal.split())
             enriched = goal if not notes else f"{goal}\n\nZephyr notes:\n{notes}"
-            scaffolded = self.claude.scaffold(enriched, board, app_dir)
+            scaffolded = self.coder.scaffold(enriched, board, app_dir)
             if not scaffolded.ok:
                 self._record(report, StageResult("RESOLVE", "failed",
                                                  f"scaffold failed: {scaffolded.detail}"))
                 return report
         resolution = resolve_verification(
             goal=goal, board=board, terms=terms, index=self.index,
-            complete=self.claude.complete, write_dir=self.workdir / "authored",
+            complete=self.coder.complete, write_dir=self.workdir / "authored",
             workspace=self.cfg.workspace)
         report.resolution = resolution
         if resolution.method == "existing":
@@ -175,7 +175,7 @@ class IteratePipeline:
                             "not attempted: static gate never passed"))
                         report.outcome = "retries_exhausted"
                         return report
-                    self.claude.patch(sres.findings[0], build_target)
+                    self.coder.patch(sres.findings[0], build_target)
                     static_patches += 1
                     continue
                 self._record(report, StageResult(
@@ -206,7 +206,7 @@ class IteratePipeline:
                 if missing and not unit_authored:
                     try:
                         write_unity_tests(goal, list_functions(src_dir),
-                                          unit_dir, self.claude.complete)
+                                          unit_dir, self.coder.complete)
                     except ValueError as exc:
                         self._record(report, StageResult(
                             "UNIT_TEST", "failed",
@@ -233,7 +233,7 @@ class IteratePipeline:
                             "not attempted: unit tier never passed"))
                         report.outcome = "retries_exhausted"
                         return report
-                    self.claude.patch(artifact, app_dir)
+                    self.coder.patch(artifact, app_dir)
                     unit_patches += 1
                     continue
                 ures = self.unit_runner.run(src_dir, unit_dir)
@@ -253,7 +253,7 @@ class IteratePipeline:
                             "not attempted: unit tier never passed"))
                         report.outcome = "retries_exhausted"
                         return report
-                    self.claude.patch(ures.failures[0], app_dir)
+                    self.coder.patch(ures.failures[0], app_dir)
                     unit_patches += 1
                     continue
                 else:
@@ -277,7 +277,7 @@ class IteratePipeline:
                         "not attempted: final test never went green"))
                     report.outcome = "retries_exhausted"
                     return report
-                self.claude.patch(bres.failure, build_target)
+                self.coder.patch(bres.failure, build_target)
                 final_patches += 1
                 continue
             self._checkpoint(ctl, "FINAL_BUILD")
@@ -301,7 +301,7 @@ class IteratePipeline:
                     "not attempted: final test never went green"))
                 report.outcome = "retries_exhausted"
                 return report
-            self.claude.patch(tres.failures[0], build_target)
+            self.coder.patch(tres.failures[0], build_target)
             final_patches += 1
             # loop -> STATIC: every patch re-passes every gate.
 
@@ -334,7 +334,7 @@ class IteratePipeline:
                     failures=dres.failures))
                 report.outcome = "retries_exhausted"
                 return report
-            self.claude.patch(dres.failures[0], build_target)
+            self.coder.patch(dres.failures[0], build_target)
             device_patches += 1
             self._checkpoint(ctl, "DEVICE_PATCH")
 

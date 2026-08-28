@@ -39,7 +39,7 @@ Components:
 - **Voice** (optional): marks voice modules for registration.
 - **Workspace MCP** (optional): marks the MCP serving component.
 - **Capability modules** (individually selectable): zephyr-runner,
-  claude-worker, scaffold, voice-in, voice-out, cerberus, joulescope.
+  coder-worker, scaffold, voice-in, voice-out, cerberus, joulescope.
 
 Post-install, the installer runs
 `rita.exe modules install --only <selected>` — module **registration is

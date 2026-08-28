@@ -19,7 +19,7 @@ rita doctor
 Shows detected GPUs/VRAM, the chosen acceleration backend (CUDA / Metal / CPU),
 the per-OS perception + input backends, and a model recommendation.
 **If VRAM exists, it enables the local GPU model; if not, it falls back to a
-tiny CPU model + Claude escalation.**
+tiny CPU model + the cloud model escalation.**
 
 ## 3. List tools and run the loop (mock-safe)
 
@@ -38,7 +38,7 @@ Copy `plugins/hello/` to `plugins/<your-feature>/`, edit `plugin.toml` and
 | Want | Install | Notes |
 |---|---|---|
 | Local model (GPU) | `pip install -e ".[local-llm,gpu]"` + [Ollama](https://ollama.com) | Pull a model sized to your VRAM (see `rita doctor`) |
-| Claude escalation | `pip install -e ".[cloud]"` + `ANTHROPIC_API_KEY` | Hard / high-stakes steps only |
+| the cloud model escalation | `pip install -e ".[cloud]"` + `its API-key environment variables` | Hard / high-stakes steps only |
 | Screen capture | `pip install -e ".[perception]"` | `mss` + OCR |
 | Mouse/keyboard control | `pip install -e ".[control]"` | Real simulated input |
 | Windows a11y | `pip install -e ".[windows]"` | UI Automation |

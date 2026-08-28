@@ -164,7 +164,7 @@ class TestDevInstallAndStubs:
         from rita.modules.registry import ModuleRegistry
         installed = dev_install()
         names = {m.name for m in installed}
-        assert {"voice-in", "voice-out", "zephyr-runner", "claude-worker",
+        assert {"voice-in", "voice-out", "zephyr-runner", "coder-worker",
                 "scaffold", "cerberus", "joulescope"} <= names
         reg = ModuleRegistry(supervisor_version=SUP_VERSION)
         assert reg.current("joulescope")
@@ -193,7 +193,7 @@ class TestDevInstallAndStubs:
 class TestSupervisor:
     def make_supervisor(self, tmp_path):
         from rita.config import RitaConfig
-        from rita.firmware.claude import FakeClaude
+        from rita.firmware.coder import FakeCoder
         from rita.firmware.west import FakeWest
         from rita.supervisor import Supervisor
         from rita.voice.tts import FakeTTS
@@ -205,7 +205,7 @@ class TestSupervisor:
             tts=FakeTTS(),
             runner=FakeWest(build_seq=["ok"], twister_seq=["pass.json"],
                             fixtures_dir=TW),
-            claude=FakeClaude(completions=[fit]),
+            coder=FakeCoder(completions=[fit]),
             workdir=tmp_path / "work")
         return sup
 

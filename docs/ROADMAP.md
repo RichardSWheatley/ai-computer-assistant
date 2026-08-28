@@ -10,7 +10,7 @@ start here to move the project forward.
 |---|---|---|
 | Modular agent core, plugin system, VRAM-aware config | ✅ shipped | `feature/core-and-modularity` |
 | Polyglot worker boundary (Python⇄native RPC) | ✅ shipped | `feature/polyglot-worker` |
-| Operating modes + Claude/Ollama planners + hardware routing | ✅ shipped | `feature/llm-modes-and-planners` |
+| Operating modes + the cloud model/Ollama planners + hardware routing | ✅ shipped | `feature/llm-modes-and-planners` |
 | Local desktop control (capture, a11y, input, click-by-label) | ✅ shipped | `feature/local-desktop-control` |
 | Business: Graph (Outlook/Teams/Calendar) + PowerPoint | ✅ shipped (opt-in) | `feature/business-microsoft365` |
 | Security: trust/quarantine, injection defense, egress, DLP, audit | ✅ shipped | `feature/security-and-hardening` (tip) |
@@ -44,7 +44,7 @@ office docs) are opt-in.
 3. **AI imagery for decks** — generated hero/background images in PPTX.
    → `feature/deck-imagery`
 4. **Real on-device tuning** — exercise the Windows/macOS a11y traversals and the
-   Claude/Ollama planners against a real GPU box; calibrate. → on your hardware
+   the cloud model/Ollama planners against a real GPU box; calibrate. → on your hardware
 5. **Rust worker binary** — implement the worker protocol natively for the hot
    capture/input path + single-binary distribution. → `feature/rust-worker`
 
@@ -58,7 +58,7 @@ office docs) are opt-in.
 
 ## Branching & workflow
 
-- **No `claude/` branches.** Use descriptive `feature/<area>` branches.
+- **No `the cloud model/` branches.** Use descriptive `feature/<area>` branches.
 - Work is currently stacked on `feature/security-and-hardening` (the full
   project). Branch new work as `feature/<name>` from the tip, named for what it
   delivers.

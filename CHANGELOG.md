@@ -3,6 +3,32 @@
 All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/); versions follow semver.
 
+## [0.17.0] - 2026-08-28
+
+### Changed
+- **Vendor-neutral coding-agent seam**
+  (`docs/specs/coding-agent-seam.md`): which CLI codes for RITA is now
+  pure config data, like the assistant's spoken name. New
+  `RitaConfig.coder_command` (+ "Coding agent" field in Settings); no
+  vendor CLI name ships in the codebase. Unset means RITA answers work
+  and project handoffs with an honest "no coding agent is configured —
+  set it in Settings" message. `firmware/coder.py` owns the seam
+  (`CoderWorker` / `CoderCli` / `FakeCoder`); the module is
+  `coder-worker`; the status bar reports "coder ✓ / coder not
+  configured" from the configured command, not a hardcoded lookup.
+- The legacy cloud-planner path no longer ships a vendor client: a cloud
+  planner/backend is injected or absent (local/mock only), the vendor
+  SDK extra is gone, and the DLP/egress/sandbox defaults are
+  vendor-neutral (generic secret patterns still redact and filter).
+- Docs scrubbed to match; the repo working rules moved to
+  `docs/WORKING-RULES.md`.
+
+### Fixed
+- **A failed task now reports its reason**: `task_summary` for a FAILED
+  task includes the exception ("Task task-1 failed: …") instead of the
+  bare state — exhaustion and failure are reported outcomes, never
+  hidden.
+
 ## [0.16.3] - 2026-08-28
 
 ### Fixed
@@ -112,7 +138,7 @@ POSIX-only test assumptions:
   full coverage and rejects ztest-shaped output.
 - `FailureArtifact.kind` gains `"unit"`; sample-only runs report the unit
   stage `skipped: no authored code`. Knowledge topics `function-contracts`
-  and `unity-testing` brief Claude.
+  and `unity-testing` brief the coding agent.
 
 ## [0.14.0] - 2026-07-28
 
@@ -128,7 +154,7 @@ POSIX-only test assumptions:
   approve, 1 = request changes, 2 = block** — both non-zero verdicts gate,
   named in the artifact reason. Default = Head 1 `scan` (94 deterministic
   MISRA/CERT checks, keyless — matching the no-LLM-judges rule);
-  `cerberus_deep` opts into `analyze` (Oracle LLM — Claude's seat inside
+  `cerberus_deep` opts into `analyze` (Oracle LLM — the coding agent's seat inside
   CERBERUS — + Unity heads) using CERBERUS's own env credentials.
 - The cerberus RPC module falls back to the detected clone when no
   command is configured.
@@ -140,7 +166,7 @@ POSIX-only test assumptions:
 ### Added
 - **CERBERUS static-check gate** (`rita.firmware.static_check`): the flow
   is now ask → code → **STATIC** → build → twister → iterate → final
-  test. A new STATIC stage sits between Claude's code and the compiler,
+  test. A new STATIC stage sits between the coding agent's code and the compiler,
   and **every patch — static, compile, or test — re-enters at STATIC**,
   so patched code always re-passes the gate before rebuilding.
 - `StaticChecker` seam: `CerberusCli` runs the configured command
@@ -193,7 +219,7 @@ POSIX-only test assumptions:
   flash/debug, SDK), each citing its source and research date. Retrieval
   is deterministic keyword matching — no LLM. Facts about the user's
   install still come only from the workspace.
-- MCP tools `zephyr_howto(topic)` + `list_topics` — the claude-worker's
+- MCP tools `zephyr_howto(topic)` + `list_topics` — the coder-worker's
   source for conventions; chat answers "how do I…" questions from topic
   summaries.
 - Scaffold/test-writer prompts are enriched with matched topic notes
@@ -232,7 +258,7 @@ POSIX-only test assumptions:
   leading "Rita," still strips off).
 - **MCP wiring completed**: `sync` now writes `~/.rita/mcp.json`
   (interpreter-anchored `rita mcp-serve` invocation) and the supervisor
-  hands it to the claude-worker — `claude -p` actually reaches the
+  hands it to the coder-worker — the coder command actually reaches the
   workspace MCP server now.
 - Sync accepts either the workspace root or the `zephyr/` folder itself.
 - New optional extra `gui = ["PySide6-Essentials"]`; `TaskManager.tasks()`.
@@ -246,7 +272,7 @@ POSIX-only test assumptions:
   (EXTRAVERSION honored; a missing file is reported, never guessed) and
   recorded in `boards.json` alongside a sync timestamp.
 - MCP tool `workspace_info`: version, workspace path, board and indexed-
-  suite counts served to the claude-worker.
+  suite counts served to the coder-worker.
 - Chat answers workspace questions deterministically from synced data:
   "tell me about the apollo510" describes the real board (vendor, arch,
   twister platform, supported peripherals, connected port); "what zephyr
@@ -284,7 +310,7 @@ POSIX-only test assumptions:
 - Registry: instance caps and exclusive resource claims (zephyr-runner per
   serial port, joulescope max 1); crash isolation — a dead module fails its
   call with the stderr tail and the supervisor keeps working.
-- Shipped modules: voice-in, voice-out, zephyr-runner, claude-worker,
+- Shipped modules: voice-in, voice-out, zephyr-runner, coder-worker,
   scaffold; cerberus + joulescope as honest stubs. `modules` CLI
   (list / `install --dev`).
 - `Supervisor`: thin shell owning the router, TaskManager, PAUSE/STOP,
@@ -339,8 +365,8 @@ POSIX-only test assumptions:
   (kind, reason, log excerpt, file hints).
 - `ZephyrRunner` seam: `WestCli` real subprocess impl (runs where Zephyr is
   installed) + scripted `FakeWest` over fixture twister.json files.
-- `ClaudeWorker` seam: `ClaudeWorkerCli` (`claude -p` + workspace
-  `--mcp-config`, bounded timeout) + recording `FakeClaude`. `patch()`
+- `CoderWorker` seam: `CoderCli` (the coder command + workspace
+  `--mcp-config`, bounded timeout) + recording `FakeCoder`. `patch()`
   requires a concrete failure artifact — enforced, tested.
 - `handle_work_dispatch`: Fix 1 work dispatches now drive the pipeline.
 - Fixture twister results (pass / build-fail / test-fail).
@@ -357,9 +383,9 @@ POSIX-only test assumptions:
 - `boards.json` generation from `boards/**/board.yml` + twister platform
   yamls, merged with the twister hardware map; derived spoken aliases feed
   the Fix 1 router after the first sync.
-- Fit judge (`judge_fit`): Claude judges fit ONLY — one bounded call over
+- Fit judge (`judge_fit`): the coding agent judges fit ONLY — one bounded call over
   the index's top matches; cannot introduce non-candidates.
-- Test writer (`write_ztest`): no match -> Claude authors a ztest with a
+- Test writer (`write_ztest`): no match -> the coding agent authors a ztest with a
   validated `testcase.yaml` so twister gates it like everything else.
 - `resolve_verification`: the find-or-write pipeline entry.
 - **Workspace MCP server** (`aica.mcpserver`, `mcp-serve` CLI): stdio server
@@ -393,7 +419,7 @@ POSIX-only test assumptions:
 ## [0.1.1] - 2026-07-28
 
 ### Added
-- RITA process scaffolding per the directive: `BRIEF.md`, `CLAUDE.md`,
+- RITA process scaffolding per the directive: `BRIEF.md`, the working rules,
   `docs/DECISIONS-LOG.md`, `docs/specs/`.
 - `aica.home`: the `~/.rita/` data root (`RITA_HOME` override), path
   constants, and one-shot `~/.aica/` migration (incl. `boards.json`).

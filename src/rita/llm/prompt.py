@@ -1,7 +1,7 @@
 """Shared, injection-resistant prompt construction for planners.
 
 The user's GOAL is trusted; the SCREEN/ELEMENTS/HISTORY are untrusted data the
-agent observed, so they go inside an <untrusted_data> fence. Both the Claude and
+agent observed, so they go inside an <untrusted_data> fence. Both the cloud and
 Ollama planners use this so the control/data separation can't drift between them.
 """
 

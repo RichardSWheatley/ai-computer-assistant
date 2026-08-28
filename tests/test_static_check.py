@@ -21,7 +21,7 @@ def make_pipeline(tmp_path, *, static_seq=(), build_seq=("ok",),
                   twister_seq=("pass.json",), max_cycles=3,
                   cerberus_configured=True):
     from rita.config import RitaConfig
-    from rita.firmware.claude import FakeClaude
+    from rita.firmware.coder import FakeCoder
     from rita.firmware.index import VerificationIndex
     from rita.firmware.pipeline import IteratePipeline
     from rita.firmware.static_check import FakeCerberus
@@ -29,13 +29,13 @@ def make_pipeline(tmp_path, *, static_seq=(), build_seq=("ok",),
 
     runner = FakeWest(build_seq=list(build_seq), twister_seq=list(twister_seq),
                       fixtures_dir=TW)
-    claude = FakeClaude(completions=[blinky_fit()])
+    coder = FakeCoder(completions=[blinky_fit()])
     checker = FakeCerberus(script=list(static_seq)) if cerberus_configured else None
     cfg = RitaConfig(workspace=str(WS), max_patch_cycles=max_cycles)
-    pipe = IteratePipeline(runner=runner, claude=claude,
+    pipe = IteratePipeline(runner=runner, coder=coder,
                            index=VerificationIndex.build(WS), cfg=cfg,
                            workdir=tmp_path / "work", static_checker=checker)
-    return pipe, runner, claude, checker
+    return pipe, runner, coder, checker
 
 
 def run(pipe):
@@ -44,27 +44,27 @@ def run(pipe):
 
 
 class TestStaticGate:
-    def test_clean_static_is_green_without_claude(self, tmp_path):
-        pipe, runner, claude, checker = make_pipeline(
+    def test_clean_static_is_green_without_the_coder(self, tmp_path):
+        pipe, runner, coder, checker = make_pipeline(
             tmp_path, static_seq=["clean"])
         report = run(pipe)
         assert report.outcome == "green"
         stages = {s.stage: s.outcome for s in report.stages}
         assert stages["STATIC"] == "green"
-        assert claude.patches == []
+        assert coder.patches == []
 
     def test_findings_are_patched_then_repassed(self, tmp_path):
-        pipe, runner, claude, checker = make_pipeline(
+        pipe, runner, coder, checker = make_pipeline(
             tmp_path, static_seq=["findings", "clean"])
         report = run(pipe)
         assert report.outcome == "green"
-        assert len(claude.patches) == 1
-        assert claude.patches[0].kind == "static"
-        assert "uninitialized" in claude.patches[0].log_excerpt
+        assert len(coder.patches) == 1
+        assert coder.patches[0].kind == "static"
+        assert "uninitialized" in coder.patches[0].log_excerpt
         assert checker.calls == 2                       # re-checked after patch
 
     def test_persistent_findings_exhaust_and_build_never_runs(self, tmp_path):
-        pipe, runner, claude, checker = make_pipeline(
+        pipe, runner, coder, checker = make_pipeline(
             tmp_path, static_seq=["findings"] * 10, max_cycles=3)
         report = run(pipe)
         assert report.outcome == "retries_exhausted"
@@ -72,22 +72,22 @@ class TestStaticGate:
         assert static.outcome == "retries_exhausted"
         assert static.failures
         assert runner.build_calls == []                 # gate held the line
-        assert len(claude.patches) == 3
+        assert len(coder.patches) == 3
 
     def test_sim_patch_reenters_at_static(self, tmp_path):
         # code -> static ok -> build ok -> sim FAIL -> patch -> STATIC again
-        pipe, runner, claude, checker = make_pipeline(
+        pipe, runner, coder, checker = make_pipeline(
             tmp_path, static_seq=["clean", "clean"],
             build_seq=["ok", "ok"],
             twister_seq=["fail_test.json", "pass.json"])
         report = run(pipe)
         assert report.outcome == "green"
         assert checker.calls == 2                       # once per code version
-        kinds = [p.kind for p in claude.patches]
+        kinds = [p.kind for p in coder.patches]
         assert kinds == ["test"]
 
     def test_unconfigured_checker_is_skipped_never_silent(self, tmp_path):
-        pipe, runner, claude, checker = make_pipeline(
+        pipe, runner, coder, checker = make_pipeline(
             tmp_path, cerberus_configured=False)
         report = run(pipe)
         assert report.outcome == "green"

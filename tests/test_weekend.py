@@ -1,4 +1,4 @@
-"""Weekend path: the no-key doc CLI, and Claude-handles-everything routing
+"""Weekend path: the no-key doc CLI, and cloud-handles-everything routing
 when there's no local model (the no-GPU default)."""
 
 import json
@@ -33,23 +33,19 @@ def test_doc_cli_writes_all_three(tmp_path):
 
 
 def test_no_local_model_routes_everything_to_cloud(monkeypatch):
-    # Simulate a no-GPU machine: no local LLM, but a cloud (Claude) provider.
-    class FakeClaude:
+    # Simulate a no-GPU machine: no local LLM, but an injected cloud provider.
+    class FakeCloud:
         def __init__(self, model=None):
             self.model = model
 
         def plan(self, goal, state, tools, history):
             return ToolCall(tool="task_complete", reasoning="cloud")
 
-    import rita.llm.claude_provider as cp
-    monkeypatch.setattr(cp, "ClaudePlanner", FakeClaude)
-
-    cfg = Config(use_local_llm=False, use_cloud=True, mode="auto",
-                 cloud_model="claude-opus-4-8")
-    planner = build_default_planner(cfg)
+    cfg = Config(use_local_llm=False, use_cloud=True, mode="auto")
+    planner = build_default_planner(cfg, cloud_planner=FakeCloud())
 
     # No local model -> routine (light) steps must go to cloud, not MockLLM.
     assert planner.small is planner.cloud
     planner.plan("click ok", ScreenState(summary="s", elements=[]), [], [])
     assert planner.last_route == "local-small"   # == cloud here (small bound to cloud)
-    assert isinstance(planner.cloud, FakeClaude)
+    assert isinstance(planner.cloud, FakeCloud)

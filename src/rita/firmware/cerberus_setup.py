@@ -4,8 +4,8 @@ github.com/RichardSWheatley/cerberus (G.U.A.R.D.) is cloned into
 ~/.rita/cerberus by the installer's component, the GUI button, or
 `rita cerberus install`. Head 1 (`scan`, 94 deterministic MISRA/CERT
 checks) needs no API key — RITA's default gate. Deep mode (`analyze`,
-Oracle LLM + Unity tests — Claude's seat inside CERBERUS) is opt-in and
-reads its own env (CERBERUS_LLM_*/ANTHROPIC_API_KEY), passed through.
+Oracle LLM + Unity tests — the LLM seat inside CERBERUS) is opt-in and
+reads its own env (CERBERUS_LLM_*), passed through.
 """
 
 from __future__ import annotations

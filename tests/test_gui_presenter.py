@@ -25,7 +25,7 @@ def blinky_fit(_p: str = "") -> str:
 def make_presenter(tmp_path, *, workspace=str(WS), build_seq=("ok",),
                    twister_seq=("pass.json",), steppable=False):
     from rita.config import RitaConfig
-    from rita.firmware.claude import FakeClaude
+    from rita.firmware.coder import FakeCoder
     from rita.firmware.west import FakeWest
     from rita.gui.presenter import GuiPresenter
     from rita.supervisor import Supervisor
@@ -41,7 +41,7 @@ def make_presenter(tmp_path, *, workspace=str(WS), build_seq=("ok",),
         runner = gate
     sup = Supervisor(rita_cfg=RitaConfig(workspace=workspace),
                      config_path=tmp_path / "config", tts=FakeTTS(),
-                     runner=runner, claude=FakeClaude(completions=[blinky_fit()]),
+                     runner=runner, coder=FakeCoder(completions=[blinky_fit()]),
                      workdir=tmp_path / "work")
     p = GuiPresenter(sup)
     events = {"user": [], "reply": [], "screen": [], "tasks": []}
@@ -173,7 +173,7 @@ class TestMcpWiring:
         assert "mcp-serve" in server["args"]
         assert str(WS) in server["args"]
 
-    def test_supervisor_hands_mcp_config_to_claude_worker(self, tmp_path,
+    def test_supervisor_hands_mcp_config_to_coder_worker(self, tmp_path,
                                                           monkeypatch):
         monkeypatch.setenv("RITA_HOME", str(tmp_path / "rita"))
         from rita.config import RitaConfig
@@ -181,10 +181,11 @@ class TestMcpWiring:
         from rita.supervisor import Supervisor
         from rita.voice.tts import FakeTTS
         sync_workspace(WS)
-        sup = Supervisor(rita_cfg=RitaConfig(workspace=str(WS)),
+        sup = Supervisor(rita_cfg=RitaConfig(workspace=str(WS),
+                                             coder_command="agent -p"),
                          config_path=tmp_path / "config", tts=FakeTTS(),
                          workdir=tmp_path / "work")
-        worker = sup._make_claude()
+        worker = sup._make_coder()
         assert worker.mcp_config == str(tmp_path / "rita" / "mcp.json")
 
     def test_no_mcp_config_when_never_synced(self, tmp_path, monkeypatch):
@@ -192,10 +193,11 @@ class TestMcpWiring:
         from rita.config import RitaConfig
         from rita.supervisor import Supervisor
         from rita.voice.tts import FakeTTS
-        sup = Supervisor(rita_cfg=RitaConfig(workspace=str(WS)),
+        sup = Supervisor(rita_cfg=RitaConfig(workspace=str(WS),
+                                             coder_command="agent -p"),
                          config_path=tmp_path / "config", tts=FakeTTS(),
                          workdir=tmp_path / "work")
-        assert sup._make_claude().mcp_config is None
+        assert sup._make_coder().mcp_config is None
 
 
 class TestQtLayer:

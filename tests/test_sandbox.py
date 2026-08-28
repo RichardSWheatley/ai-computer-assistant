@@ -9,7 +9,7 @@ def test_sandboxed_env_drops_secrets_keeps_safe():
     base = {
         "PATH": "/usr/bin",
         "HOME": "/home/u",
-        "ANTHROPIC_API_KEY": "sk-ant-secret",
+        "VENDOR_API_KEY": "sk-secret",
         "AICA_GRAPH_CLIENT_ID": "abc",
         "MY_API_TOKEN": "t",
         "AWS_SECRET_ACCESS_KEY": "x",
@@ -17,7 +17,7 @@ def test_sandboxed_env_drops_secrets_keeps_safe():
     }
     env = sandboxed_env(SandboxPolicy(), base=base)
     assert env["PATH"] == "/usr/bin" and env["HOME"] == "/home/u"
-    assert "ANTHROPIC_API_KEY" not in env
+    assert "VENDOR_API_KEY" not in env
     assert "AICA_GRAPH_CLIENT_ID" not in env
     assert "MY_API_TOKEN" not in env
     assert "AWS_SECRET_ACCESS_KEY" not in env

@@ -24,6 +24,11 @@ class SettingsPage(QWidget):
         form = QFormLayout(card)
         self.name_edit = QLineEdit(cfg.assistant_name)
         form.addRow("Assistant name", self.name_edit)
+        self.coder_edit = QLineEdit(cfg.coder_command or "")
+        self.coder_edit.setPlaceholderText(
+            "coding agent CLI — a command that takes a prompt and can edit "
+            "files; empty = RITA can't code")
+        form.addRow("Coding agent", self.coder_edit)
         self.budget = QSpinBox()
         self.budget.setRange(1, 10)
         self.budget.setValue(cfg.max_patch_cycles)
@@ -55,6 +60,7 @@ class SettingsPage(QWidget):
     def _save(self) -> None:
         sup = self.presenter.sup
         sup.cfg.assistant_name = self.name_edit.text().strip() or "Rita"
+        sup.cfg.coder_command = self.coder_edit.text().strip() or None
         sup.cfg.max_patch_cycles = self.budget.value()
         sup.cfg.cerberus_command = self.cerberus_edit.text().strip() or None
         sup.cfg.cerberus_deep = self.cerberus_deep.isChecked()

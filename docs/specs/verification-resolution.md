@@ -16,12 +16,12 @@ Resolution order (`rita.firmware.resolve.resolve_verification`):
    compatibility, rank by requested peripheral/subsystem term overlap.
    **Pure data. No LLM.** The index lives at
    `~/.rita/verification-index.json`, next to `boards.json`.
-2. **Claude judges fit only.** The top matches go to Claude as a single
+2. **the coding agent judges fit only.** The top matches go to the coding agent as a single
    bounded call over each candidate's README + yaml: "does this verify
    *this* intent?" — answer is a choice + reason
-   (`rita.firmware.fit.judge_fit`). Claude picks among indexed candidates;
+   (`rita.firmware.fit.judge_fit`). the coding agent picks among indexed candidates;
    it cannot introduce new ones.
-3. **No match → Claude writes the test**
+3. **No match → the coding agent writes the test**
    (`rita.firmware.testwriter.write_ztest`): a proper ztest with a
    `testcase.yaml`, validated before acceptance, so it runs under twister
    like everything else.
@@ -55,7 +55,7 @@ first sync.
 ## Workspace MCP server (`rita.mcpserver`, `rita mcp-serve`)
 
 RITA hosts a stdio MCP server over the given Zephyr checkout so the
-claude-worker queries the workspace's code and intent through tools instead
+coder-worker queries the workspace's code and intent through tools instead
 of groping the filesystem. Tools (all read-only, workspace-rooted,
 path-traversal guarded):
 

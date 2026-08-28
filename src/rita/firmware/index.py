@@ -3,7 +3,7 @@
 Built at workspace sync from `zephyr/samples/**/sample.yaml` and
 `zephyr/tests/**/testcase.yaml`. `find()` filters by board compatibility and
 ranks by term overlap — the resolver asks the index first, and only then asks
-Claude to judge fit among what the index returned.
+the coding agent to judge fit among what the index returned.
 """
 
 from __future__ import annotations

@@ -1,6 +1,6 @@
 """Workspace MCP tool implementations: read-only, workspace-rooted, bounded.
 
-The claude-worker queries the Zephyr checkout through these instead of
+The coder-worker queries the Zephyr checkout through these instead of
 groping the filesystem: the verification index, board vocabulary, sample
 lookup, bounded reads, and bounded search. Every path is resolved against
 the workspace root and rejected if it escapes.

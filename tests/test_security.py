@@ -53,7 +53,7 @@ def test_fuse_neutralizes_element_labels():
 
 def test_egress_allows_allowlisted_and_subdomains():
     p = EgressPolicy()
-    assert p.allows("https://api.anthropic.com/v1/messages")
+    assert p.allows("https://graph.microsoft.com/v1.0/me")
     assert p.allows("https://foo.graph.microsoft.com/v1.0/me")
 
 
@@ -64,15 +64,15 @@ def test_egress_denies_unknown_host():
 
 def test_egress_local_only_denies_everything():
     p = EgressPolicy.local_only()
-    assert not p.allows("https://api.anthropic.com/v1/messages")
+    assert not p.allows("https://graph.microsoft.com/v1.0/me")
 
 
 # --- DLP -------------------------------------------------------------------
 
 def test_dlp_redacts_secrets():
     res = scan_outbound("token sk-ant-abcdefghijklmnopqrstuvwxyz0123 here")
-    assert not res.clean and "anthropic_key" in res.findings
-    assert "sk-ant-" not in res.redacted and "[REDACTED:anthropic_key]" in res.redacted
+    assert not res.clean and "llm_api_key" in res.findings
+    assert "sk-ant-" not in res.redacted and "[REDACTED:llm_api_key]" in res.redacted
 
 
 def test_dlp_clean_passthrough():

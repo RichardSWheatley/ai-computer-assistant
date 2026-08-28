@@ -2,7 +2,7 @@
 
 Code passes the static gate before it may build; every patch re-enters
 here. Findings are the same concrete `FailureArtifact` contract as every
-other gate, so Claude patches them without special handling — and never
+other gate, so the coding agent patches them without special handling — and never
 grades its own work.
 
 `CerberusCli` runs the configured command with the target directory
@@ -68,7 +68,7 @@ class CerberusCli:
     Accepts a command string (custom tools) or an argv list (the pinned
     `python -m cerberus.cli scan` invocation, which needs cwd=<clone> since
     the repo isn't pip-installed). Environment passes through, so deep mode
-    reads its own CERBERUS_LLM_* / ANTHROPIC_API_KEY settings.
+    reads its own CERBERUS_LLM_* environment settings.
     """
 
     def __init__(self, command: str | list[str], cwd: str | None = None,

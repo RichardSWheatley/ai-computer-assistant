@@ -104,7 +104,7 @@ MSPI_TEST_FILES = json.dumps({
 class TestScaffoldPlacement:
     def make_pipeline(self, tmp_path, apps_dir=None, completions=None):
         from rita.config import RitaConfig
-        from rita.firmware.claude import FakeClaude
+        from rita.firmware.coder import FakeCoder
         from rita.firmware.index import VerificationIndex
         from rita.firmware.pipeline import IteratePipeline
         from rita.firmware.west import FakeWest
@@ -112,20 +112,20 @@ class TestScaffoldPlacement:
                          applications_dir=str(apps_dir) if apps_dir else None)
         runner = FakeWest(build_seq=["ok"], twister_seq=["pass.json"],
                           fixtures_dir=TW)
-        claude = FakeClaude(completions=list(completions or [MSPI_TEST_FILES]))
-        pipe = IteratePipeline(runner=runner, claude=claude,
+        coder = FakeCoder(completions=list(completions or [MSPI_TEST_FILES]))
+        pipe = IteratePipeline(runner=runner, coder=coder,
                                index=VerificationIndex.build(WS), cfg=cfg,
                                workdir=tmp_path / "work")
-        return pipe, runner, claude
+        return pipe, runner, coder
 
     def test_scaffold_lands_in_applications_dir(self, tmp_path):
-        pipe, runner, claude = self.make_pipeline(tmp_path,
+        pipe, runner, coder = self.make_pipeline(tmp_path,
                                                   apps_dir=tmp_path / "apps")
         report = pipe.run(goal="an example for mspi psram in hex mode",
                           board="apollo510_evb", terms=["mspi", "psram"],
                           scaffold=True)
         assert report.outcome == "green"
-        app_dir = Path(claude.scaffolds_dirs[0])
+        app_dir = Path(coder.scaffolds_dirs[0])
         assert app_dir.is_relative_to(tmp_path / "apps")
         assert (app_dir / "CMakeLists.txt").exists()
 
@@ -138,11 +138,11 @@ class TestScaffoldPlacement:
         assert applications_root(cfg2) == Path("/elsewhere")
 
     def test_scaffold_prompt_carries_knowledge_notes(self, tmp_path):
-        pipe, runner, claude = self.make_pipeline(tmp_path,
+        pipe, runner, coder = self.make_pipeline(tmp_path,
                                                   apps_dir=tmp_path / "apps")
         pipe.run(goal="an example for mspi psram in hex mode",
                  board="apollo510_evb", terms=["mspi", "psram"], scaffold=True)
-        goal_seen = claude.scaffolds[0]
+        goal_seen = coder.scaffolds[0]
         assert "Zephyr notes" in goal_seen
         assert "mspi" in goal_seen.lower()
 

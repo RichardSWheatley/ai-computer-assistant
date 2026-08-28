@@ -2,7 +2,7 @@
 
 ## Problem
 
-Claude must not own the loop. It does exactly **one step per invocation**:
+the coding agent must not own the loop. It does exactly **one step per invocation**:
 given failure output, produce a patch (or, on request, scaffold an app /
 write a test — Fix 2). The orchestrator decides what runs, where, and when
 to stop. Gates decide success.
@@ -18,13 +18,13 @@ parameters before executing.
 ```
 1. RESOLVE    — the ask: router intake; pick the Zephyr suites that will
                 be the final test (find-or-write, Fix 2); scaffold if asked
-   (CODE)     — Claude codes to the goal under the parameter-contract rule
-2. STATIC     — CERBERUS on the code; findings -> Claude patches (max N=3)
+   (CODE)     — the coding agent codes to the goal under the parameter-contract rule
+2. STATIC     — CERBERUS on the code; findings -> the coding agent patches (max N=3)
                 (unconfigured -> reported as skipped, never silently green)
 3. UNIT_TEST  — EVERY function gets host-run Unity tests of its
                 input/output parameters (valid/boundary/invalid). A
                 deterministic scan names any function without tests ->
-                Claude adds them; then all tests must pass. (Not ztest.)
+                the coding agent adds them; then all tests must pass. (Not ztest.)
 4. FINAL_TEST — the Zephyr samples/tests via twister on native_sim
 5. DEVICE     — BLOCKED until the bench milestone; never faked green
 EVERY patch re-enters at STATIC. Budget exhausted at any stage -> STOP.
@@ -39,8 +39,8 @@ Rules (each enforced in code and covered by a test):
   default 3). Exhaustion is a **reported outcome**
   (`outcome="retries_exhausted"` with the surviving failures) — never
   hidden, never looped past.
-- **Claude is never invoked without a concrete failure artifact.**
-  `ClaudeWorker.patch(failure, workdir)` requires a non-empty
+- **the coding agent is never invoked without a concrete failure artifact.**
+  `CoderWorker.patch(failure, workdir)` requires a non-empty
   `FailureArtifact`; the pipeline only constructs artifacts from parsed
   gate results.
 - **`twister.json` is the gate result.** `parse_twister_json` is the only
@@ -57,10 +57,10 @@ Rules (each enforced in code and covered by a test):
   `WestCli` is the real subprocess implementation (runs on the user's
   machine, cwd = workspace); `FakeWest` is scripted and copies fixture
   `twister.json` files.
-- `ClaudeWorker` protocol: `complete` (fit/test authorship, Fix 2),
+- `CoderWorker` protocol: `complete` (fit/test authorship, Fix 2),
   `patch(failure, workdir)`, `scaffold(goal, board, dest)`.
-  `ClaudeWorkerCli` shells out to `claude -p` with `--mcp-config` pointing
-  at the workspace MCP server (Fix 2) and a bounded timeout. `FakeClaude`
+  `CoderCli` shells out to the coder command with `--mcp-config` pointing
+  at the workspace MCP server (Fix 2) and a bounded timeout. `FakeCoder`
   records every artifact it is handed.
 
 ## Report
@@ -73,7 +73,7 @@ bench milestone flips `device_tier_enabled`.
 
 ## Acceptance criteria (each is a test)
 
-- Green first try: no Claude involvement at all.
+- Green first try: no the coding agent involvement at all.
 - Compile failure -> exactly one patch call (with the artifact) -> green.
 - Persistent failure -> exactly `max_patch_cycles` patch calls, then
   `retries_exhausted` reported with the failure attached.

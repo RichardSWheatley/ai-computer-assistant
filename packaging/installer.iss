@@ -28,9 +28,9 @@ Name: "custom"; Description: "Custom installation"; Flags: iscustom
 [Components]
 Name: "core"; Description: "RITA core + GUI (required)"; Types: full custom; Flags: fixed
 Name: "voice"; Description: "Voice modules (wake word, speech in/out)"; Types: full
-Name: "mcpserve"; Description: "Workspace MCP server (claude-worker integration)"; Types: full
+Name: "mcpserve"; Description: "Workspace MCP server (coder-worker integration)"; Types: full
 Name: "mod_runner"; Description: "Module: zephyr-runner (build/twister/flash)"; Types: full
-Name: "mod_claude"; Description: "Module: claude-worker (the coding agent)"; Types: full
+Name: "mod_coder"; Description: "Module: coder-worker (the coding agent)"; Types: full
 Name: "mod_scaffold"; Description: "Module: scaffold (application authoring)"; Types: full
 Name: "mod_cerberus"; Description: "Module: CERBERUS static gate (clones github.com/RichardSWheatley/cerberus; needs git)"; Types: full
 Name: "mod_joulescope"; Description: "Module: joulescope (stub until bench milestone)"; Types: full
@@ -66,7 +66,7 @@ var
 begin
   names := '';
   if WizardIsComponentSelected('mod_runner') then names := names + 'zephyr-runner,';
-  if WizardIsComponentSelected('mod_claude') then names := names + 'claude-worker,';
+  if WizardIsComponentSelected('mod_coder') then names := names + 'coder-worker,';
   if WizardIsComponentSelected('mod_scaffold') then names := names + 'scaffold,';
   if WizardIsComponentSelected('voice') then names := names + 'voice-in,voice-out,';
   if WizardIsComponentSelected('mod_cerberus') then names := names + 'cerberus,';

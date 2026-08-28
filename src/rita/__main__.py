@@ -32,7 +32,7 @@ def cmd_doctor(_args) -> int:
     print(f"VRAM present    : {hw.has_vram}  (total {hw.total_vram_mb} MB)")
     print(f"acceleration    : {hw.acceleration}")
     print(f"recommended tier: {rec['tier']}  ->  {rec['local_model']}")
-    print(f"lean on Claude  : {rec['lean_on_claude']}")
+    print(f"lean on cloud   : {rec['lean_on_cloud']}")
     print(f"note            : {rec['note']}")
     print(f"os note         : {platform_support.notes()}")
     cfg = load_config()

@@ -15,9 +15,8 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from urllib.parse import urlparse
 
-# Sensible defaults for an assistant that uses Claude + Microsoft 365.
+# Sensible defaults for an assistant that uses a cloud LLM + Microsoft 365.
 DEFAULT_ALLOW = {
-    "api.anthropic.com",
     "graph.microsoft.com",
     "login.microsoftonline.com",
 }

@@ -2,7 +2,7 @@
 
 The version is read from the checkout's zephyr/VERSION file at sync; board
 answers in chat come from the synced boards.json; the MCP server serves the
-same facts to the claude-worker.
+same facts to the coder-worker.
 """
 
 from __future__ import annotations

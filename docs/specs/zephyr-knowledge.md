@@ -43,7 +43,7 @@ One markdown file per topic + `index.json`
 ### Consumers
 
 1. **MCP tools** `zephyr_howto(topic)` and `list_topics()` — the
-   claude-worker's source for conventions (alongside the workspace tools).
+   coder-worker's source for conventions (alongside the workspace tools).
 2. **Prompt enrichment**: the pipeline appends matched topic notes to the
    scaffold goal and the test-writer goal (patching already carries a
    concrete failure artifact).

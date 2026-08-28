@@ -1,6 +1,6 @@
 """Shared conversion from our informal ToolSchema params to JSON Schema.
 
-Both the Claude and Ollama planners turn the same `ToolSchema` objects into
+Both the cloud and Ollama planners turn the same `ToolSchema` objects into
 provider tool definitions; this is the one place the param-hint -> JSON-schema
 mapping lives so the two providers can't drift.
 """

@@ -1,8 +1,8 @@
 """Verification resolution (Fix 2): find-or-write, in that order.
 
-1. Ask the index (pure data).  2. Claude judges fit among the index's top
-matches.  3. No fit -> Claude writes a ztest, validated before acceptance.
-The resolver never skips a step and never lets Claude schedule anything.
+1. Ask the index (pure data).  2. The coding agent judges fit among the index's top
+matches.  3. No fit -> the agent writes a ztest, validated before acceptance.
+The resolver never skips a step and never lets the agent schedule anything.
 """
 
 from __future__ import annotations

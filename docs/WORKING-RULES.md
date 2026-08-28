@@ -16,9 +16,9 @@ Read `BRIEF.md` first, then the RITA directive's specs under `docs/specs/`.
 
 ## Architecture rules
 
-- The orchestrator owns control flow; gates own verification. Claude
-  (`claude -p`) codes when asked — it never routes, never schedules tests,
-  never grades its own work.
+- The orchestrator owns control flow; gates own verification. The coding
+  agent (the configured `coder_command` CLI) codes when asked — it never
+  routes, never schedules tests, never grades its own work.
 - Routing is deterministic matching over domain vocabulary; chat is the
   fallback. No LLM guesses intent.
 - Twister's `twister.json` is the gate result. Parse it; never scrape stdout.
@@ -30,7 +30,7 @@ Read `BRIEF.md` first, then the RITA directive's specs under `docs/specs/`.
   hardcoded.
 - The assistant's spoken name is config data (`~/.rita/config`), not code.
 - Zero required dependencies: heavy backends are optional extras, lazily
-  imported; every external process (west, twister, `claude -p`, MCP) sits
+  imported; every external process (west, twister, the coder CLI, MCP) sits
   behind a Protocol seam with a Fake and fixtures so the suite runs headless.
 
 ## Scope

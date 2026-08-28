@@ -30,7 +30,7 @@ _DEFAULT_ALLOW_ENV = {
 # Even if allow-listed by name, drop anything that looks like a secret.
 _SECRET_RE = re.compile(
     r"(KEY|TOKEN|SECRET|PASSWORD|PASSWD|CREDENTIAL|SESSION|COOKIE|AUTH|"
-    r"ANTHROPIC|AICA_GRAPH|RITA_GRAPH|AWS_|AZURE_|GCP_|OPENAI)", re.IGNORECASE)
+    r"AICA_GRAPH|RITA_GRAPH|AWS_|AZURE_|GCP_|OPENAI)", re.IGNORECASE)
 
 
 def _default_sandbox_dir() -> str:

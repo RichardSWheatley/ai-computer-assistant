@@ -10,7 +10,7 @@ The orchestrator depends on **abstract interfaces**, not concrete classes:
 
 | Interface | Responsibility | Swappable implementations |
 |---|---|---|
-| `LLMProvider` | plan / reason / tool-call | local (Ollama, llama.cpp), cloud (Claude) |
+| `LLMProvider` | plan / reason / tool-call | local (Ollama, llama.cpp), cloud (the cloud model) |
 | `Perception` | turn screen → grounded elements | a11y tree, vision model, OCR |
 | `Action` | mouse / keyboard / window | pyautogui, pydirectinput |
 | `MemoryStore` | store/recall, RAG | Chroma, sqlite-vec, faiss |

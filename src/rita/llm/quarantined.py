@@ -8,7 +8,7 @@ before use. So even if the Q-LLM were partially swayed, its output can't carry
 tool calls (it has none) and is treated as untrusted on the way back.
 
 Backends are thin callables `(system, user) -> str`, built from a local Ollama
-or the Claude client, and injectable for testing.
+or an injected cloud backend, and injectable for testing.
 """
 
 from __future__ import annotations
@@ -61,18 +61,5 @@ def make_ollama_backend(model: str = "llama3.1:8b", host: str | None = None,
     return backend
 
 
-def make_claude_backend(model: str = "claude-opus-4-8", client=None) -> Backend:
-    if client is None:  # pragma: no cover - needs the package + key
-        import anthropic
-        client = anthropic.Anthropic()
-
-    def backend(system: str, user: str) -> str:
-        msg = client.messages.create(
-            model=model, max_tokens=512, system=system,
-            messages=[{"role": "user", "content": user}])  # NB: no tools
-        for block in msg.content:
-            if getattr(block, "type", None) == "text":
-                return block.text
-        return ""
-
-    return backend
+# A cloud backend, like the cloud planner, is injected by the caller — no
+# vendor client ships with RITA. Any `(system, user) -> str` callable works.

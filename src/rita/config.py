@@ -1,7 +1,8 @@
 """Configuration, derived from a TOML file + detected hardware.
 
 Hardware drives defaults: if VRAM exists we enable the local GPU model and pick
-a size to match; otherwise we fall back to a tiny CPU model and lean on Claude.
+a size to match; otherwise we fall back to a tiny CPU model and lean on the
+cloud model.
 """
 
 from __future__ import annotations
@@ -17,12 +18,12 @@ from .hardware import Hardware, detect_hardware, recommend_model
 class Config:
     use_local_llm: bool = False
     use_cloud: bool = True
-    # Operating mode: "auto" (hardware-driven: local LLM when VRAM exists, Claude
-    # when none) or "local-only" (nothing leaves the machine). Default is auto.
+    # Operating mode: "auto" (hardware-driven: local LLM when VRAM exists, the
+    # cloud model when none) or "local-only" (nothing leaves the machine).
     mode: str = "auto"
     small_model: str = "llama3.2:3b"
     large_model: str | None = None
-    cloud_model: str = "claude-opus-4-8"
+    cloud_model: str | None = None   # cloud model id — config data, never code
     acceleration: str = "cpu"
     plugins_dir: str = "plugins"
     max_steps: int = 20
@@ -57,8 +58,13 @@ class RitaConfig:
     # present; otherwise the STATIC stage reports skipped.
     cerberus_command: str | None = None
     # Deep mode: `analyze` (Oracle LLM + Unity heads) instead of the
-    # deterministic keyless `scan`. Claude's seat inside CERBERUS.
+    # deterministic keyless `scan` (the LLM head lives inside CERBERUS).
     cerberus_deep: bool = False
+    # The coding-agent CLI RITA drives (scaffold/tests/fit/patches) — e.g. a
+    # command accepting `<cmd> <prompt> --output-format text`. Which CLI it
+    # is stays config data, like the assistant's name. Unset -> RITA cannot
+    # code and says so.
+    coder_command: str | None = None
     # Unit-tier compiler override. Unset -> host PATH compiler, else the
     # Zephyr SDK's toolchain (it ships gcc by default; LLVM detected too).
     host_cc: str | None = None
@@ -121,7 +127,7 @@ def load_config(path: str | Path | None = None,
     else:
         cfg.use_local_llm = True   # tiny CPU model
 
-    # Mode: default is cloud-default (heavy lifting -> Claude). local-only can be
+    # Mode: default is cloud-default (heavy lifting -> the cloud model). local-only can be
     # forced via arg, env (RITA_LOCAL_ONLY=1; legacy AICA_LOCAL_ONLY honored),
     # or the config file.
     if local_only is None:

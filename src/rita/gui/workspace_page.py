@@ -77,7 +77,7 @@ class WorkspacePage(QWidget):
                 self.sig_result.emit(
                     f"Synced {res.boards} boards and {res.entries} suites. "
                     f"Zephyr {st.zephyr_version or 'version unknown'}. "
-                    f"The claude-worker now sees this workspace over MCP.")
+                    f"The coder-worker now sees this workspace over MCP.")
             except Exception as exc:
                 self.sig_result.emit(f"Sync failed: {exc}")
             finally:

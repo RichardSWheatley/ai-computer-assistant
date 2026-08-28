@@ -2,10 +2,10 @@
 
 A **deterministic orchestrator** with a speech front end that drives
 firmware development on a **Zephyr workspace**. Formerly AICA; see
-[`BRIEF.md`](BRIEF.md) for the reframe and [`CLAUDE.md`](CLAUDE.md) for the
+[`BRIEF.md`](BRIEF.md) for the reframe and [`docs/WORKING-RULES.md`](docs/WORKING-RULES.md) for the
 working rules every change follows.
 
-RITA is **not an LLM agent**. Claude (`claude -p`) is one capability among
+RITA is **not an LLM agent**. the coding agent (the coder command) is one capability among
 several — it writes applications, tests, and patches when asked. It does not
 route, does not decide when tests run, and does not judge its own success:
 
@@ -21,10 +21,10 @@ route, does not decide when tests run, and does not judge its own success:
   green.
 - **Verification is find-or-write.** A static index over
   `samples/**/sample.yaml` + `tests/**/testcase.yaml` finds the suite that
-  proves an intent; Claude judges fit in one bounded call; no match means
-  Claude writes a proper ztest that twister gates like everything else.
+  proves an intent; the coding agent judges fit in one bounded call; no match means
+  the coding agent writes a proper ztest that twister gates like everything else.
 - **The workspace is served over MCP.** `rita mcp-serve` exposes the index,
-  board vocabulary, and bounded search/read tools so the claude-worker sees
+  board vocabulary, and bounded search/read tools so the coder-worker sees
   the checkout through structured tools.
 - **PAUSE / RESUME / STOP** at safe checkpoints (hardware operations are
   atomic), with pausable sentence-chunked speech.
@@ -51,7 +51,7 @@ rita mcp-serve --workspace ...                 # workspace MCP (needs .[mcp])
 ```
 
 The suite runs headless with zero required dependencies — every external
-process (`west`, twister, `claude -p`, MCP) sits behind a seam with fakes
+process (`west`, twister, the coder command, MCP) sits behind a seam with fakes
 and fixtures. Real builds need a Zephyr workspace + toolchain on your
 machine.
 

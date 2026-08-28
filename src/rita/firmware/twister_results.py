@@ -1,7 +1,7 @@
 """twister.json parsing — the ONLY source of gate truth (never stdout).
 
-A failed suite becomes a `FailureArtifact`: the concrete thing Claude is
-handed to produce a patch. No artifact, no Claude invocation — that
+A failed suite becomes a `FailureArtifact`: the concrete thing the coding agent is
+handed to produce a patch. No artifact, no coder invocation — that
 invariant starts here, because artifacts can only be built from parsed gate
 results.
 """

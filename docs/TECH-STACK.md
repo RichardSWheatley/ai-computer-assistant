@@ -24,7 +24,7 @@ platform-agnostic. Run `rita doctor` to see what's detected on each machine.
 |---|---|
 | Local model runtime | **Ollama** or **llama.cpp** (privacy, offline) |
 | Local multimodal (vision) | A local vision-language model for screen grounding |
-| Cloud (optional, hard reasoning) | A frontier model (e.g. Claude) with a **computer-use** tool API |
+| Cloud (optional, hard reasoning) | A frontier model (e.g. the cloud model) with a **computer-use** tool API |
 | Agent framework | Lightweight custom loop, or LangGraph / a small agent lib |
 | Model routing | Cheap/fast local for routine steps → cloud for hard ones |
 

@@ -52,7 +52,7 @@ Protocol methods every module serves: `hello` (handshake), `start`,
 - **Multiple instances** up to `max_instances`. Exclusivity keys make
   resource claims exclusive across live instances: one zephyr-runner per
   board serial port, one joulescope total (`max_instances = 1`),
-  claude-worker per task up to its cap.
+  coder-worker per task up to its cap.
 - **Crash isolation**: a dead or hung module is killed and surfaced as a
   failed call; the owning task goes FAILED with the module's stderr tail;
   the supervisor stays up and the registry accepts the next launch.
@@ -60,7 +60,7 @@ Protocol methods every module serves: `hello` (handshake), `start`,
 
 ## Modules shipped
 
-voice-in, voice-out, zephyr-runner, claude-worker, scaffold — thin wrappers
+voice-in, voice-out, zephyr-runner, coder-worker, scaffold — thin wrappers
 over the Fix 2/3/4 seams. cerberus and joulescope are **honest stubs**:
 valid manifests whose `start` reports "external tool/hardware not present"
 (never fake capability). `rita modules install --dev` writes the manifests

@@ -1,4 +1,4 @@
-"""Test authorship (Fix 2, step 3): no index match -> Claude writes the test.
+"""Test authorship (Fix 2, step 3): no index match -> the coding agent writes the test.
 
 The contract is strict: the completion must return a JSON object mapping
 relative paths to file contents, including a `testcase.yaml` that parses and

@@ -37,7 +37,7 @@ class StatusInfo:
     workspace: str | None
     zephyr_version: str | None
     modules: int
-    claude_cli: bool
+    coder_cli: bool                  # coding agent configured + resolvable
     sdk_version: str | None = None
 
 
@@ -148,6 +148,21 @@ class GuiPresenter:
         self.on_status(self.status())
         return result
 
+    def _coder_available(self) -> bool:
+        """The seam is honest: available only when a command is configured
+        AND its executable resolves (PATH or a real file)."""
+        cmd = self.sup.cfg.coder_command
+        if self.sup._coder is not None:
+            return True                       # injected worker (tests/modules)
+        if not cmd:
+            return False
+        from ..firmware.static_check import split_command
+
+        argv = split_command(cmd)
+        exe = argv[0] if argv else ""
+        return bool(exe) and (shutil.which(exe) is not None
+                              or Path(exe).exists())
+
     def status(self) -> StatusInfo:
         from ..firmware.workspace import read_sdk_info, read_workspace_info
 
@@ -160,7 +175,7 @@ class GuiPresenter:
             workspace=self.sup.cfg.workspace,
             zephyr_version=zephyr_version,
             modules=len(self.sup.registry.discover()),
-            claude_cli=shutil.which("claude") is not None,
+            coder_cli=self._coder_available(),
             sdk_version=sdk["version"] if sdk else None)
 
     def close(self) -> None:

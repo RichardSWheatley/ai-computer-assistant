@@ -126,7 +126,7 @@ class TestStore:
 def make_supervisor(tmp_path, *, build_seq=None, twister_seq=None,
                     completions=None):
     from rita.config import RitaConfig
-    from rita.firmware.claude import FakeClaude
+    from rita.firmware.coder import FakeCoder
     from rita.firmware.west import FakeWest
     from rita.supervisor import Supervisor
     from rita.voice.tts import FakeTTS
@@ -134,17 +134,17 @@ def make_supervisor(tmp_path, *, build_seq=None, twister_seq=None,
     runner = FakeWest(build_seq=list(build_seq or ["ok"] * 8),
                       twister_seq=list(twister_seq or ["pass.json"] * 8),
                       fixtures_dir=TW)
-    claude = FakeClaude(completions=list(completions or [blinky_fit()] * 8))
+    coder = FakeCoder(completions=list(completions or [blinky_fit()] * 8))
     return Supervisor(rita_cfg=RitaConfig(workspace=str(WS)),
                       config_path=tmp_path / "config", tts=FakeTTS(),
-                      runner=runner, claude=claude,
-                      workdir=tmp_path / "work"), runner, claude
+                      runner=runner, coder=coder,
+                      workdir=tmp_path / "work"), runner, coder
 
 
 class TestHandOffAndRun:
     def test_hand_off_runs_the_project_to_completion(self, tmp_path, monkeypatch):
         monkeypatch.setenv("RITA_HOME", str(tmp_path / "rita"))
-        sup, runner, claude = make_supervisor(
+        sup, runner, coder = make_supervisor(
             tmp_path, completions=[GOOD_PLAN] + [blinky_fit()] * 8)
         said = sup.hand_off("bring up blinky and document the board")
         assert "3" in said or "item" in said.lower()   # plan announced
@@ -164,7 +164,7 @@ class TestHandOffAndRun:
         monkeypatch.setenv("RITA_HOME", str(tmp_path / "rita"))
         # First item's build never passes -> exhausted -> item blocked;
         # dependent item blocked by cascade; independent chat item answered.
-        sup, runner, claude = make_supervisor(
+        sup, runner, coder = make_supervisor(
             tmp_path, build_seq=["fail_build.json"] * 20,
             completions=[GOOD_PLAN] + [blinky_fit()] * 8)
         sup.hand_off("goal")
@@ -181,18 +181,18 @@ class TestHandOffAndRun:
 
     def test_direct_goal_skips_the_planner_entirely(self, tmp_path, monkeypatch):
         monkeypatch.setenv("RITA_HOME", str(tmp_path / "rita"))
-        sup, runner, claude = make_supervisor(tmp_path)
+        sup, runner, coder = make_supervisor(tmp_path)
         sup.hand_off("build blinky for the apollo510")
         tid = sup.manager.latest_active()
         assert sup.manager.wait_state(tid, "DONE", timeout=15)
         # No plan JSON was requested: only fit-judge calls happened.
         assert all("json object" not in p.lower() or "candidate" in p.lower()
-                   for p in claude.prompts)
+                   for p in coder.prompts)
 
     def test_stop_mid_project_reports_partial(self, tmp_path, monkeypatch):
         monkeypatch.setenv("RITA_HOME", str(tmp_path / "rita"))
         from tests.test_pause_stop import SteppableWest
-        sup, runner, claude = make_supervisor(
+        sup, runner, coder = make_supervisor(
             tmp_path, completions=[GOOD_PLAN] + [blinky_fit()] * 8)
         gate = SteppableWest(runner)
         sup._runner = gate
@@ -225,7 +225,7 @@ class TestProjectRouting:
 
     def test_project_status_answerable_in_chat(self, tmp_path, monkeypatch):
         monkeypatch.setenv("RITA_HOME", str(tmp_path / "rita"))
-        sup, runner, claude = make_supervisor(
+        sup, runner, coder = make_supervisor(
             tmp_path, completions=[GOOD_PLAN] + [blinky_fit()] * 8)
         sup.hand_off("bring up blinky")
         tid = sup.manager.latest_active()
@@ -236,7 +236,7 @@ class TestProjectRouting:
     def test_shell_dispatches_project_kind_to_hand_off(self, tmp_path,
                                                        monkeypatch):
         monkeypatch.setenv("RITA_HOME", str(tmp_path / "rita"))
-        sup, runner, claude = make_supervisor(tmp_path)
+        sup, runner, coder = make_supervisor(tmp_path)
         said = sup.shell.handle_typed(
             "start a project: build blinky for the apollo510")
         assert "project" in said.lower() or "item" in said.lower()

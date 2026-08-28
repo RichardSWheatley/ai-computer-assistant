@@ -3,20 +3,20 @@
 ## The flow
 
 RITA's loop is: **ask → code → static check → unit test (TDD) → iterate →
-final test.** CERBERUS is the static gate, sitting between Claude's code
+final test.** CERBERUS is the static gate, sitting between the coding agent's code
 and the compiler/twister gates:
 
 ```
 RESOLVE (find-or-write / scaffold)
-   └─> STATIC (CERBERUS) ──findings──> Claude patches (bounded) ──┐
-   └─> BUILD  ──compile errors──> Claude patches (bounded) ───────┤
-   └─> SIM_TEST (twister) ──failures──> Claude patches (bounded) ─┤
+   └─> STATIC (CERBERUS) ──findings──> the coding agent patches (bounded) ──┐
+   └─> BUILD  ──compile errors──> the coding agent patches (bounded) ───────┤
+   └─> SIM_TEST (twister) ──failures──> the coding agent patches (bounded) ─┤
    └─> DEVICE (blocked on bench)                                  │
         every patch RE-ENTERS AT STATIC ◄─────────────────────────┘
 ```
 
 Patched code must re-pass the static gate before rebuilding — a patch that
-fixes a test but introduces a static finding never slips through. Claude's
+fixes a test but introduces a static finding never slips through. the coding agent's
 roles stay narrow: it codes (scaffold, tests, patches) and plays whatever
 part it has *inside* CERBERUS; it never grades its own work — CERBERUS,
 the compiler, and twister do.
@@ -25,8 +25,8 @@ the compiler, and twister do.
 
 CERBERUS is **github.com/RichardSWheatley/cerberus** ("G.U.A.R.D.", Python
 ≥3.9): Head 1 *Sentinel* — 94 deterministic MISRA C:2012 / CERT C checks,
-pure stdlib, **no API key**; Head 2 *Oracle* — LLM deep analysis (Claude's
-seat inside CERBERUS, `CERBERUS_LLM_PROVIDER=anthropic` default); Head 3
+pure stdlib, **no API key**; Head 2 *Oracle* — LLM deep analysis (the coding agent's
+seat inside CERBERUS, provider set by CERBERUS's own `CERBERUS_LLM_*` env); Head 3
 *Executioner* — Unity test generation (`setup_unity.sh`).
 
 - **Acquisition is part of RITA's install**: the repo is cloned to
@@ -37,9 +37,9 @@ seat inside CERBERUS, `CERBERUS_LLM_PROVIDER=anthropic` default); Head 3
   deterministic and keyless, matching the no-LLM-judges rule.
   `analyze --unity-dir <path>` is the opt-in deep mode
   (`RitaConfig.cerberus_deep`); its LLM credentials are CERBERUS's own env
-  (`CERBERUS_LLM_*` / `ANTHROPIC_API_KEY`), passed through untouched.
+  (`CERBERUS_LLM_*` / `its API-key environment variables`), passed through untouched.
 - **Verdicts by exit code**: 0 = approve; 1 = request changes; 2 = block.
-  Both non-zero verdicts gate (findings → Claude patches), with the
+  Both non-zero verdicts gate (findings → the coding agent patches), with the
   verdict named in the artifact reason.
 - Auto-detection order: explicit `cerberus_command` override → detected
   clone → skipped (visible, never silently green).
@@ -49,7 +49,7 @@ seat inside CERBERUS, `CERBERUS_LLM_PROVIDER=anthropic` default); Head 3
 - `rita.firmware.static_check.StaticChecker` protocol:
   `check(target: Path) -> StaticResult(ok, findings)`. Findings are
   `FailureArtifact`s with `kind="static"` — the same concrete-artifact
-  contract every other gate uses, so `claude.patch()` needs nothing new.
+  contract every other gate uses, so `coder.patch()` needs nothing new.
 - `CerberusCli(command)` — the real adapter: runs the configured command
   with the target directory appended. Exit 0 = clean. Output contract:
   JSON `{"findings": [{"file", "line", "severity", "message"}]}` is
@@ -68,7 +68,7 @@ seat inside CERBERUS, `CERBERUS_LLM_PROVIDER=anthropic` default); Head 3
 
 ## Acceptance criteria (each is a test)
 
-- Clean static run → stage green, no Claude involvement.
+- Clean static run → stage green, no the coding agent involvement.
 - Findings → exactly one patch per finding round (artifact kind
   `static`, message included) → re-check → green.
 - Persistent findings → `retries_exhausted` reported with the findings

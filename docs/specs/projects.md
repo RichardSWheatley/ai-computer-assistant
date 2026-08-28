@@ -18,7 +18,7 @@ HANDOFF   "start a project: <goal>"  (voice, prompt bar, or Projects page)
    │
 DECIDE    goal routes directly through the grammar?  ── yes ─► single item,
    │ no                                                 no AI involved
-PLAN      ONE bounded `claude -p` call. Strict JSON contract:
+PLAN      ONE bounded the coder command call. Strict JSON contract:
           items = [{title, command, depends_on, estimate, milestone}]
           Every `command` MUST be phrased in RITA's own grammar.
    │
@@ -61,7 +61,7 @@ REPORT    done / blocked / needs-you summary. Blocked is reported,
   store (deterministic).
 - **GUI**: a Projects page — handoff box, live item list with statuses,
   and the same persistent Pause/Stop bar.
-- Honesty rules: no claude CLI and a plan is needed → say so; items that
+- Honesty rules: no coding-agent CLI and a plan is needed → say so; items that
   need capabilities RITA doesn't have yet → `needs_user`, listed in the
   report, never silently dropped.
 

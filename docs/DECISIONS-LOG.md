@@ -1,7 +1,22 @@
 # Decisions log
 
 Compromises, proxies, and deferred decisions — with the reason and what would
-remove them. Newest first. (Required by the working rules in `CLAUDE.md`.)
+remove them. Newest first. (Required by the working rules in `docs/WORKING-RULES.md`.)
+
+## 2026-08-28 — Vendor-neutral coder seam
+
+- **No coding agent ships configured.** Out of the box RITA cannot code
+  until the user enters a command in Settings — the honest cost of
+  keeping vendor names out of the codebase entirely (the owner's call).
+  The status bar and work replies say exactly what to do.
+- **The coder CLI calling convention is fixed, not negotiated**
+  (`<cmd> <prompt> --output-format text [--mcp-config …]
+  [--permission-mode acceptEdits]`). Agents with a different surface
+  need a shim script; a per-flag mapping table would be config bloat
+  ahead of a demonstrated second agent.
+- **The legacy cloud planner/backend is injection-only now** — the
+  built-in vendor client and its SDK extra are deleted, not renamed:
+  an API client cannot be de-vendored honestly.
 
 ## 2026-08-28 — Windows CI
 
@@ -82,7 +97,7 @@ remove them. Newest first. (Required by the working rules in `CLAUDE.md`.)
   matching the one-step-per-invocation rule; batching findings into one
   artifact is a tuning option.
 - **STATIC re-entry applies to every patch** (including compile/test
-  patches), which can consume static budget on code Claude just changed —
+  patches), which can consume static budget on code the coding agent just changed —
   intentional: the gate's judgment outranks iteration speed.
 
 ## 2026-07-28 — Installer (Phase C)
@@ -147,7 +162,7 @@ remove them. Newest first. (Required by the working rules in `CLAUDE.md`.)
 
 ## 2026-07-28 — Phase 6 (Fix 6)
 
-- **The supervisor uses in-process seams (WestCli/ClaudeWorkerCli) for
+- **The supervisor uses in-process seams (WestCli/CoderCli) for
   pipeline work by default**; module processes are launched via the
   registry when installed. Full module-backed pipeline wiring (a
   ZephyrRunner proxy over RPC) is a hardening step for the packaged
@@ -186,9 +201,9 @@ remove them. Newest first. (Required by the working rules in `CLAUDE.md`.)
   `west build` catches that in seconds without burning a twister cycle.
 - **`WestCli` ignores twister's exit code on purpose** — `twister.json` is
   parsed as the gate result either way, per the never-scrape-stdout rule.
-- **Real `west`/`claude -p` paths are `pragma: no cover`** here: this
-  container has no Zephyr toolchain or claude CLI. The seams (`FakeWest`,
-  `FakeClaude`) exercise the identical parsing/loop logic; the subprocess
+- **Real `west`/the coder command paths are `pragma: no cover`** here: this
+  container has no Zephyr toolchain or coding-agent CLI. The seams (`FakeWest`,
+  `FakeCoder`) exercise the identical parsing/loop logic; the subprocess
   implementations run on the target machine. First bench milestone
   (docs/BENCH-PLAN.md, still to be scheduled) validates them for real.
 
@@ -203,7 +218,7 @@ remove them. Newest first. (Required by the working rules in `CLAUDE.md`.)
   `pip install .[firmware]` (pyyaml is tried first when present). Chosen to
   keep the zero-required-deps rule.
 - **Index ranking is bag-of-words term overlap** (tags/id/name/description/
-  depends_on). Good enough because Claude judges fit on the top matches
+  depends_on). Good enough because the coding agent judges fit on the top matches
   anyway; smarter ranking is a hardening option, not a widening need.
 
 ## 2026-07-28 — Phase 1 (Fix 1)

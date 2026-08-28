@@ -41,7 +41,7 @@ class SteppableWest:
 
 def make_pipeline(tmp_path, *, build_seq=("ok",), twister_seq=("pass.json",)):
     from rita.config import RitaConfig
-    from rita.firmware.claude import FakeClaude
+    from rita.firmware.coder import FakeCoder
     from rita.firmware.index import VerificationIndex
     from rita.firmware.pipeline import IteratePipeline
     from rita.firmware.west import FakeWest
@@ -49,9 +49,9 @@ def make_pipeline(tmp_path, *, build_seq=("ok",), twister_seq=("pass.json",)):
     fake = FakeWest(build_seq=list(build_seq), twister_seq=list(twister_seq),
                     fixtures_dir=TW)
     west = SteppableWest(fake)
-    claude = FakeClaude(completions=[blinky_fit()])
+    coder = FakeCoder(completions=[blinky_fit()])
     cfg = RitaConfig(workspace=str(WS))
-    pipe = IteratePipeline(runner=west, claude=claude,
+    pipe = IteratePipeline(runner=west, coder=coder,
                            index=VerificationIndex.build(WS), cfg=cfg,
                            workdir=tmp_path / "work")
     return pipe, west, fake

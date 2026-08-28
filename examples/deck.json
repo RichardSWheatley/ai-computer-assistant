@@ -7,7 +7,7 @@
     {"title": "What this is", "bullets": [
       "A locally-run AI assistant",
       "Generates decks, reports, and spreadsheets",
-      "Cloud brain (Claude) when there's no GPU"
+      "Cloud brain (the cloud model) when there's no GPU"
     ], "notes": "Talking points for the opener."},
     {"title": "Quarterly revenue", "chart": {
       "kind": "bar", "categories": ["Q1", "Q2", "Q3"],

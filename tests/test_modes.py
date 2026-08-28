@@ -1,7 +1,7 @@
 """Operating modes (hardware-driven):
 
 - AUTO: heavy work goes to the best LOCAL model when one exists (VRAM present),
-  and to Claude only when there is no local large model. Routine -> small local.
+  and to the cloud model only when there is no local large model. Routine -> small local.
 - LOCAL_ONLY: never touches the cloud (structurally guaranteed).
 """
 
@@ -47,7 +47,7 @@ def test_auto_prefers_local_large_for_heavy_when_vram():
 
 
 def test_auto_uses_cloud_for_heavy_when_no_local_large():
-    # No VRAM -> no local large model -> Claude is the default for heavy.
+    # No VRAM -> no local large model -> the cloud model is the default for heavy.
     small, cloud = Recorder("s"), Recorder("c")
     router = _auto(small=small, cloud=cloud)
     router.plan("design a database schema for billing", _state(), [], [])
