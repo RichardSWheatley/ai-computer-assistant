@@ -22,6 +22,17 @@ remove them. Newest first. (Required by the working rules in `docs/WORKING-RULES
   used by RITA's own test suite for speed and available to developers,
   never chosen automatically.
 
+## 2026-08-28 — Agent login: RITA opens it, the vendor owns it
+
+- **The login window is launched, not automated.** The coding agent's
+  OAuth flow is the vendor CLI's own interactive process; completing it
+  headlessly or storing its credentials inside RITA is out of scope (and
+  the wrong place for secrets). RITA's job is that the user never types
+  a command: one click opens the flow, diagnostics verify the result.
+- **Default login invocation is the agent run bare.** Interactive agent
+  CLIs prompt their own login when logged out; `coder_login_command`
+  covers CLIs where login is a distinct subcommand.
+
 ## 2026-08-28 — Verify the artifact, not the source
 
 - **Bundle-only breakage was invisible to the whole test suite.** Four

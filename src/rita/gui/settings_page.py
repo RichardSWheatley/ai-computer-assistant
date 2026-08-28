@@ -29,6 +29,11 @@ class SettingsPage(QWidget):
             "coding agent CLI — a command that takes a prompt and can edit "
             "files; empty = RITA can't code")
         form.addRow("Coding agent", self.coder_edit)
+        login = QPushButton("Log in coding agent")
+        login.setToolTip("Opens your agent's own login window — finish "
+                         "the login there; RITA verifies with 'check setup'.")
+        login.clicked.connect(lambda: self.presenter.login_coder())
+        form.addRow("", login)
         self.budget = QSpinBox()
         self.budget.setRange(1, 10)
         self.budget.setValue(cfg.max_patch_cycles)

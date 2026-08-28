@@ -27,6 +27,17 @@ data**, like the assistant's spoken name — the codebase names no vendor.
 - The legacy cloud-planner path loses its built-in vendor client: a cloud
   planner is injected or absent (local/mock only). No SDK import remains.
 
+## Login
+
+The agent's login is the vendor CLI's own interactive OAuth flow. RITA
+cannot complete it headlessly, but the user never types a command: the
+Settings page's **Log in coding agent** button opens the flow in its own
+console window (`coder_login_command` if set, else the agent run bare —
+an interactive CLI prompts its own login), and `check setup` verifies
+afterward with a live invocation. Every auth-failure message — task
+failures and diagnostics alike — points at that button, never at a
+terminal.
+
 ## Acceptance criteria
 
 - Supervisor with no `coder_command` and no injected worker answers work
@@ -38,3 +49,5 @@ data**, like the assistant's spoken name — the codebase names no vendor.
 - Injected workers (tests, module processes) bypass the config exactly as
   before.
 - `grep -ri` for the previous vendor names over the tracked tree is empty.
+- An auth failure anywhere names the Settings login button; launching it
+  with no coder configured is an honest message, not a crash.

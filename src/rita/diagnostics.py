@@ -93,9 +93,9 @@ def _coder_live(cfg: RitaConfig) -> Check:
         blob = f"{out} {err}".lower()
         hint = ""
         if any(h in blob for h in _AUTH_HINTS):
-            hint = (" — the agent isn't logged in: run it once yourself in a "
-                    "terminal and complete its login, then try again. RITA "
-                    "can't do the login for you.")
+            hint = (" — the agent isn't logged in: click 'Log in coding "
+                    "agent' on the Settings page (RITA opens the login "
+                    "window for you), then run this check again.")
         return Check(name, False,
                      f"exit {proc.returncode}. stdout: {out or '(empty)'} | "
                      f"stderr: {err or '(empty)'}{hint}")

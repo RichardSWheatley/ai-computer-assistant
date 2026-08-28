@@ -65,8 +65,12 @@ class RitaConfig:
     # is stays config data, like the assistant's name. Unset -> RITA cannot
     # code and says so.
     coder_command: str | None = None
-    # Unit-tier compiler override. Unset -> host PATH compiler, else the
-    # Zephyr SDK's toolchain (it ships gcc by default; LLVM detected too).
+    # Optional distinct login invocation for the coding agent (some CLIs
+    # use a subcommand). Unset -> the agent is launched bare, which
+    # prompts its own login. Opened by the Settings page's button.
+    coder_login_command: str | None = None
+    # Unit-tier compiler override. Unset -> arm-none-eabi-gcc resolved to
+    # match the Zephyr SDK's gcc (RITA downloads it when missing).
     host_cc: str | None = None
     max_patch_cycles: int = 3
     # Voice in the app: wake-word listening + spoken replies. Applied live

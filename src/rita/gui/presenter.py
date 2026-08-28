@@ -239,6 +239,13 @@ class GuiPresenter:
         self.on_status(self.status())
         return result
 
+    def login_coder(self) -> None:
+        """One click: open the agent's own login window and say what to
+        do next — the user never touches a terminal."""
+        from ..firmware.coder import launch_login
+
+        self._emit_reply(launch_login(self.sup.cfg))
+
     def _coder_available(self) -> bool:
         """The seam is honest: available only when a command is configured
         AND its executable resolves (PATH or a real file)."""

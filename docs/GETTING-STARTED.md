@@ -177,6 +177,10 @@ the same reason.
   executable is installed and on PATH. RITA never assumes a vendor.
 - **A work request answers "No coding agent is configured"** — same fix:
   Settings → Coding agent.
+- **A task fails with an authentication/OAuth error** — your agent's
+  login expired. Click **Settings → Log in coding agent**: RITA opens
+  the agent's own login window; finish it there, then say "check setup".
+  No terminal needed.
 - **Sync finds 0 boards** — you probably picked a folder above or below
   the workspace; choose the folder that contains `zephyr/` (RITA also
   accepts `zephyr/` itself).

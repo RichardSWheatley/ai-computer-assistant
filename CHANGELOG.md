@@ -3,6 +3,19 @@
 All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/); versions follow semver.
 
+## [0.21.0] - 2026-08-28
+
+### Added
+- **RITA owns the coding-agent login — no terminal, ever.** New
+  **Log in coding agent** button on the Settings page: RITA opens the
+  agent's own interactive login flow in its own console window
+  (`coder_login_command` override for CLIs with a distinct login
+  subcommand; default is the agent run bare, which prompts its login),
+  and `check setup` verifies afterward. Every auth-failure message —
+  task failures and the live diagnostic — now points at that button
+  instead of telling the user to run a terminal command, which violated
+  the product's core rule.
+
 ## [0.20.2] - 2026-08-28
 
 ### Fixed

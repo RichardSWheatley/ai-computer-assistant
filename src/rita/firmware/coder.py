@@ -15,6 +15,7 @@ indexed tools, not filesystem groping.
 from __future__ import annotations
 
 import json
+import os
 import subprocess
 from dataclasses import dataclass
 from pathlib import Path
@@ -34,6 +35,55 @@ class ScaffoldResult:
     ok: bool
     app_dir: str
     detail: str = ""
+
+
+def _is_windows() -> bool:
+    return os.name == "nt"
+
+
+def launch_login(cfg) -> str:
+    """Open the coding agent's OWN login flow in a visible console window.
+
+    The flow is the vendor CLI's interactive OAuth — RITA cannot complete
+    it headlessly, but the user never types a command: one click opens
+    the window, they finish the login there, and `check setup` verifies.
+    `coder_login_command` overrides for agents whose login is a distinct
+    subcommand; the default is the agent run bare, which prompts its own
+    login when logged out."""
+    from .static_check import resolve_argv, split_command
+
+    if cfg.coder_login_command:
+        argv = split_command(cfg.coder_login_command)
+    elif cfg.coder_command:
+        argv = split_command(cfg.coder_command)[:1]    # bare, interactive
+    else:
+        return ("No coding agent is configured yet — set its command on "
+                "the Settings page first, then log it in from here.")
+    try:
+        argv = resolve_argv(argv)
+    except FileNotFoundError as exc:
+        return str(exc)
+    cwd = cfg.workspace or str(Path.home())
+    try:
+        if _is_windows():
+            subprocess.Popen(argv, cwd=cwd,
+                             creationflags=subprocess.CREATE_NEW_CONSOLE)
+        else:                     # dev machines: best-effort terminal
+            try:
+                subprocess.Popen(["x-terminal-emulator", "-e", *argv],
+                                 cwd=cwd)
+            except OSError:
+                subprocess.Popen(argv, cwd=cwd)
+    except OSError as exc:
+        return f"I couldn't open the login window: {exc}"
+    return ("I opened a window with your coding agent — finish the login "
+            "there, then say 'check setup' and I'll verify it worked.")
+
+
+# Where auth failures send the user: RITA's button, never a terminal.
+LOGIN_HINT = (" — YOUR CODING AGENT IS NOT LOGGED IN: click 'Log in "
+              "coding agent' on the Settings page (RITA opens the login "
+              "window for you), finish the login there, then try again.")
 
 
 @runtime_checkable
@@ -137,9 +187,7 @@ class CoderCli:
         hint = ""
         if any(h in blob for h in ("authenticate", "oauth", "unauthorized",
                                    "login", "api key", "session expired")):
-            hint = (" — YOUR CODING AGENT IS NOT LOGGED IN: run it once in a "
-                    "terminal and complete its login, then try again. The "
-                    "login is interactive, so RITA cannot do it for you.")
+            hint = LOGIN_HINT
         return (f"the coding agent ({argv}) exited {proc.returncode}"
                 f"{note}. stdout: {out} | stderr: {err}{hint}")
 
