@@ -3,6 +3,15 @@
 Compromises, proxies, and deferred decisions — with the reason and what would
 remove them. Newest first. (Required by the working rules in `docs/WORKING-RULES.md`.)
 
+## 2026-08-28 — Voice runtime bundled (supersedes "not bundled")
+
+- **Voice deps ship in the installer now.** The Phase C decision to
+  install them on first use assumed a pip-capable runtime; a frozen
+  bundle has none, so the checkbox could never work on a real install.
+  Cost: a larger installer (faster-whisper/CTranslate2; torch is NOT
+  needed and stays excluded). The Whisper model download remains
+  first-use.
+
 ## 2026-08-28 — Voice in the GUI
 
 - **Fixed 5-second listen chunks, no VAD.** Wake latency is bounded by

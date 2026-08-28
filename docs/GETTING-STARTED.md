@@ -171,10 +171,11 @@ the same reason.
   accepts `zephyr/` itself).
 - **"SDK not found"** — set `ZEPHYR_SDK_INSTALL_DIR` or install the SDK
   in a standard location (`%PROGRAMFILES%`, home dir).
-- **No speech / no mic** — the Voice component needs an output device and
-  microphone; the first spoken turn downloads the Whisper model (one-time,
-  needs network). If deps are missing, enabling voice tells you exactly
-  which one. Voice can stay off — everything works typed.
+- **No speech / no mic** — the Voice runtime ships with the installer;
+  you still need an output device and microphone, and the first spoken
+  turn downloads the Whisper model (one-time, needs network). If
+  something is missing, enabling voice tells you exactly what. Voice can
+  stay off — everything works typed.
 - **You should NOT need to re-sync or reconfigure after an update** —
   your settings and synced workspace data live in `%USERPROFILE%\.rita`,
   which installs and uninstalls never touch. Run the new Setup right over

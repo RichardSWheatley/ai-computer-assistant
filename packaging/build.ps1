@@ -9,7 +9,7 @@ if (-not (Test-Path ".venv-build")) { py -m venv .venv-build }
 & .venv-build\Scripts\Activate.ps1
 
 pip install --upgrade pip | Out-Null
-pip install -e ".[gui,mcp,firmware]" pyinstaller
+pip install -e ".[gui,mcp,firmware,voice]" pyinstaller
 
 pyinstaller packaging\rita.spec --noconfirm --distpath dist
 

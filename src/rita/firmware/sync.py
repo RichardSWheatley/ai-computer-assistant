@@ -34,9 +34,19 @@ def _write_mcp_config(ws: Path) -> str:
     from ..home import mcp_config_path
 
     p = mcp_config_path()
+    if getattr(sys, "frozen", False):
+        # Packaged install: sys.executable is the GUI exe, which cannot run
+        # `-m rita`. The bundled console CLI sits next to it.
+        exe_dir = Path(sys.executable).parent
+        cli = exe_dir / "rita.exe"
+        if not cli.exists():
+            cli = exe_dir / "rita"
+        command, args = str(cli), ["mcp-serve", "--workspace", str(ws)]
+    else:
+        command = sys.executable
+        args = ["-m", "rita", "mcp-serve", "--workspace", str(ws)]
     p.write_text(json.dumps({"mcpServers": {"rita-workspace": {
-        "command": sys.executable,
-        "args": ["-m", "rita", "mcp-serve", "--workspace", str(ws)],
+        "command": command, "args": args,
     }}}, indent=1))
     return str(p)
 

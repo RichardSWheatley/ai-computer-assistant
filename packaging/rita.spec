@@ -28,14 +28,14 @@ gui_a = Analysis(
     pathex=[str(SRC)],
     datas=datas,
     hiddenimports=hiddenimports,
-    excludes=["torch", "faster_whisper", "sounddevice", "pyttsx3"],
+    excludes=["torch"],
 )
 cli_a = Analysis(
     [str(Path(SPECPATH) / "launch_cli.py")],
     pathex=[str(SRC)],
     datas=datas,
     hiddenimports=hiddenimports,
-    excludes=["PySide6", "torch", "faster_whisper", "sounddevice", "pyttsx3"],
+    excludes=["PySide6", "torch"],
 )
 
 MERGE((gui_a, "RitaApp", "RitaApp"), (cli_a, "rita", "rita"))

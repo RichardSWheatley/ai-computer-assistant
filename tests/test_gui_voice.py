@@ -115,6 +115,38 @@ class TestConfigResilience:
 
 
 class TestHonestUnavailability:
+    def test_default_backends_probe_deps_eagerly(self, monkeypatch, tmp_path):
+        # The error must land at enable time ("Voice isn't available"),
+        # never later from inside the listen thread ("Voice stopped").
+        import importlib.util
+
+        from rita.config import RitaConfig
+        from rita.gui.presenter import GuiPresenter
+        from rita.supervisor import Supervisor
+        from rita.voice.tts import FakeTTS
+
+        real_find = importlib.util.find_spec
+
+        def find_spec(name, *a, **k):
+            if name in ("sounddevice", "faster_whisper"):
+                return None
+            return real_find(name, *a, **k)
+
+        monkeypatch.setattr(importlib.util, "find_spec", find_spec)
+        sup = Supervisor(rita_cfg=RitaConfig(workspace=str(WS)),
+                         config_path=tmp_path / "config", tts=FakeTTS(),
+                         workdir=tmp_path / "work")
+        p = GuiPresenter(sup)                  # default (real) backends
+        replies = []
+        p.on_reply = replies.append
+        try:
+            assert p.start_voice() is False
+            assert p.voice_active is False
+            joined = " ".join(replies)
+            assert "sounddevice" in joined and "faster" in joined
+        finally:
+            p.close()
+
     def test_missing_deps_named_never_silent(self, tmp_path):
         from rita.config import RitaConfig
         from rita.gui.presenter import GuiPresenter

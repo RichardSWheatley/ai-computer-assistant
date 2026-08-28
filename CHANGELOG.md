@@ -3,6 +3,27 @@
 All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/); versions follow semver.
 
+## [0.18.2] - 2026-08-28
+
+### Fixed
+- **Packaged installs' mcp.json was unusable** — the real cause of the
+  live "test writer returned unparseable output" failure: it launched
+  the MCP server as `RitaApp.exe -m rita`, which a frozen GUI exe cannot
+  interpret, so the coding agent's MCP startup failed and it exited with
+  empty output. Frozen installs now point mcp.json at the bundled
+  console CLI (`rita.exe mcp-serve`). Re-sync once after updating to
+  rewrite the file.
+- **The coder seam reports agent failures concretely**: an agent that
+  exits nonzero or prints nothing raises "the coding agent (<cmd>)
+  exited N — <stderr>" instead of handing empty output downstream to
+  die as a JSON parse error.
+- **Voice runtime ships in the installer** ("installs on first use" was
+  impossible inside a frozen bundle): sounddevice, faster-whisper, and
+  pyttsx3 are now bundled (torch stays excluded — not needed). The
+  Whisper model still downloads on the first spoken turn. Missing-dep
+  probing is eager, so failure lands at enable time ("Voice isn't
+  available: missing voice packages: …"), never mid-listen.
+
 ## [0.18.1] - 2026-08-28
 
 ### Fixed

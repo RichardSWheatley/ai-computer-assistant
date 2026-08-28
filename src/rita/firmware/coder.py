@@ -98,8 +98,15 @@ class CoderCli:
         return subprocess.run(args, cwd=cwd, capture_output=True, text=True,
                               timeout=self.timeout)
 
-    def complete(self, prompt: str) -> str:  # pragma: no cover - needs the coding-agent CLI
+    def complete(self, prompt: str) -> str:
         proc = self._invoke(prompt, self.workspace, allow_edits=False)
+        out = (proc.stdout or "").strip()
+        if proc.returncode != 0 or not out:
+            err = (proc.stderr or "").strip()[-800:] or "no stderr"
+            raise RuntimeError(
+                f"the coding agent ({self.command[0]}) exited "
+                f"{proc.returncode} with "
+                f"{'no output' if not out else 'output'} — {err}")
         return proc.stdout
 
     def patch(self, failure: FailureArtifact, workdir: Path) -> PatchResult:  # pragma: no cover - needs the coding-agent CLI

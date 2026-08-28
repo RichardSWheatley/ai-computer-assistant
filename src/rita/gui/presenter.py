@@ -117,6 +117,16 @@ class GuiPresenter:
     # --- voice: the microphone lives in the app, not a CLI -------------------
 
     def _default_voice_backends(self):
+        # Probe deps EAGERLY so the failure lands at enable time ("Voice
+        # isn't available: …"), never later from inside the listen thread.
+        import importlib.util
+
+        missing = [name for name in ("sounddevice", "faster_whisper")
+                   if importlib.util.find_spec(name) is None]
+        if missing:
+            raise ImportError(
+                "missing voice packages: " + ", ".join(missing)
+                + " (reinstall with the Voice component)")
         from ..voice.mic import MicRecorder
         from ..voice.stt import WhisperSTT
         from ..voice.tts import Pyttsx3TTS

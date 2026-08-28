@@ -113,6 +113,62 @@ class TestWindowsLauncherShims:
         assert seen["args"][0] == "/resolved/west.exe"
 
 
+class TestCoderOutputHonesty:
+    """An agent that exits nonzero or prints nothing must fail NAMING the
+    agent and its stderr — never hand '' downstream to crash a JSON parse."""
+
+    def test_empty_output_raises_with_stderr(self, tmp_path, monkeypatch):
+        from rita.firmware import coder, static_check
+        monkeypatch.setattr(static_check.shutil, "which", lambda n: f"/x/{n}")
+
+        def fake_run(args, **kw):
+            class P:
+                returncode, stdout, stderr = 1, "", "login required"
+            return P()
+
+        monkeypatch.setattr(coder.subprocess, "run", fake_run)
+        cli = coder.CoderCli(tmp_path, ("agent", "-p"))
+        with pytest.raises(RuntimeError) as exc:
+            cli.complete("judge fit")
+        assert "coding agent" in str(exc.value)
+        assert "login required" in str(exc.value)
+
+    def test_good_output_passes_through(self, tmp_path, monkeypatch):
+        from rita.firmware import coder, static_check
+        monkeypatch.setattr(static_check.shutil, "which", lambda n: f"/x/{n}")
+
+        def fake_run(args, **kw):
+            class P:
+                returncode, stdout, stderr = 0, '{"fit": "none"}', ""
+            return P()
+
+        monkeypatch.setattr(coder.subprocess, "run", fake_run)
+        assert coder.CoderCli(tmp_path, ("agent", "-p")).complete("x") == \
+            '{"fit": "none"}'
+
+
+class TestFrozenMcpConfig:
+    def test_frozen_install_points_mcp_at_the_cli_exe(self, tmp_path,
+                                                      monkeypatch):
+        # In a packaged install sys.executable is the GUI exe, which can't
+        # run `-m rita`; mcp.json must point at the bundled console CLI.
+        import json as _json
+        import sys
+
+        from rita.firmware.sync import _write_mcp_config
+        monkeypatch.setenv("RITA_HOME", str(tmp_path / "rita"))
+        bundle = tmp_path / "app"
+        bundle.mkdir()
+        (bundle / "rita.exe").write_text("")
+        monkeypatch.setattr(sys, "frozen", True, raising=False)
+        monkeypatch.setattr(sys, "executable", str(bundle / "RitaApp.exe"))
+        _write_mcp_config(tmp_path / "ws")
+        cfg = _json.loads((tmp_path / "rita" / "mcp.json").read_text())
+        server = cfg["mcpServers"]["rita-workspace"]
+        assert server["command"] == str(bundle / "rita.exe")
+        assert server["args"][0] == "mcp-serve"
+
+
 class TestFailedTasksReportTheError:
     def test_task_summary_carries_the_exception(self, tmp_path):
         sup = make_supervisor(tmp_path)
