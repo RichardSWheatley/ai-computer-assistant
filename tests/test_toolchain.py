@@ -100,7 +100,8 @@ class TestInstall:
             tf.addfile(info, io.BytesIO(data))
         monkeypatch.setattr(toolchain, "_download",
                             lambda url, dest: dest.write_bytes(buf.getvalue()))
-        res = toolchain.install_arm_gcc(archive_suffix=".tar.gz")
+        res = toolchain.install_arm_gcc(release="13.2.rel1",
+                                archive_suffix=".tar.gz")
         assert res.ok, res.detail
         info = toolchain.detect_arm_gcc()
         assert info is not None and info.source == "rita"
@@ -113,7 +114,7 @@ class TestInstall:
             raise OSError("network down")
 
         monkeypatch.setattr(toolchain, "_download", boom)
-        res = toolchain.install_arm_gcc()
+        res = toolchain.install_arm_gcc(release="13.2.rel1")
         assert res.ok is False
         assert "network down" in res.detail
 
@@ -264,7 +265,44 @@ class TestVersionMatchesZephyr:
         toolchain.install_arm_gcc()
         assert urls and "12.2" in urls[0]
 
-    def test_install_default_release_when_no_sdk(self, tmp_path, monkeypatch):
+    def test_release_name_is_derived_not_table_limited(self):
+        # Arm's naming is uniform; a hardcoded table rots (it topped out
+        # at 14.2 while the owner's SDK is on gcc 14.3).
+        from rita.firmware import toolchain
+        assert toolchain.release_for((14, 3)) == "14.3.rel1"
+        assert toolchain.release_for((13, 2)) == "13.2.rel1"
+        assert toolchain.release_for((12, 2)) == "12.2.rel1"
+
+    def test_sdk_gcc_14_3_downloads_14_3(self, tmp_path, monkeypatch):
+        from rita.firmware import toolchain
+        monkeypatch.setenv("RITA_HOME", str(tmp_path / "rita"))
+        monkeypatch.setattr(toolchain, "zephyr_gcc_version", lambda: (14, 3))
+        urls = []
+
+        def fake_download(url, dest):
+            urls.append(url)
+            raise OSError("stop here — url captured")
+
+        monkeypatch.setattr(toolchain, "_download", fake_download)
+        toolchain.install_arm_gcc()
+        assert urls and "14.3.rel1" in urls[0]
+        assert "13.2" not in urls[0]
+
+    def test_unknown_sdk_version_refuses_to_guess(self, tmp_path, monkeypatch):
+        # NEVER a silent mismatched default: versions must match Zephyr's.
+        from rita.firmware import toolchain
+        monkeypatch.setenv("RITA_HOME", str(tmp_path / "rita"))
+        monkeypatch.setattr(toolchain, "zephyr_gcc_version", lambda: None)
+        called = []
+        monkeypatch.setattr(toolchain, "_download",
+                            lambda *a: called.append(a))
+        res = toolchain.install_arm_gcc()
+        assert res.ok is False
+        assert called == []                       # no download attempted
+        assert "guess" in res.detail.lower()
+        assert "--release" in res.detail          # the escape hatch, named
+
+    def test_explicit_release_still_wins(self, tmp_path, monkeypatch):
         from rita.firmware import toolchain
         monkeypatch.setenv("RITA_HOME", str(tmp_path / "rita"))
         monkeypatch.setattr(toolchain, "zephyr_gcc_version", lambda: None)
@@ -275,5 +313,83 @@ class TestVersionMatchesZephyr:
             raise OSError("stop")
 
         monkeypatch.setattr(toolchain, "_download", fake_download)
-        toolchain.install_arm_gcc()
-        assert urls and toolchain.DEFAULT_RELEASE in urls[0]
+        toolchain.install_arm_gcc(release="14.3.rel1")
+        assert urls and "14.3.rel1" in urls[0]
+
+
+class TestDownloadTls:
+    """Frozen apps don't reliably see the OS cert store: system trust is
+    tried first (corporate CAs keep working), RITA's bundled Mozilla set
+    (certifi) is the rescue. Verification is NEVER disabled."""
+
+    def _urlopen_recorder(self, monkeypatch, fail_first_with):
+        import io
+        import urllib.request
+        from rita.firmware import toolchain
+        calls = []
+
+        class R(io.BytesIO):
+            def __enter__(self): return self
+            def __exit__(self, *a): return False
+
+        def fake_urlopen(req, timeout=0, context=None):
+            calls.append(context)
+            if len(calls) == 1 and fail_first_with is not None:
+                raise fail_first_with
+            return R(b"payload")
+
+        monkeypatch.setattr(toolchain.urllib_request, "urlopen", fake_urlopen)
+        return calls
+
+    def test_cert_failure_retries_with_bundled_cas(self, tmp_path,
+                                                   monkeypatch):
+        import ssl
+        import urllib.error
+        from rita.firmware import toolchain
+        err = urllib.error.URLError(
+            ssl.SSLCertVerificationError("unable to get local issuer"))
+        calls = self._urlopen_recorder(monkeypatch, err)
+        toolchain._download("https://x/y.zip", tmp_path / "y.zip")
+        assert len(calls) == 2
+        assert calls[0] is None                    # system trust first
+        assert calls[1] is not None                # certifi context second
+        assert (tmp_path / "y.zip").read_bytes() == b"payload"
+
+    def test_non_tls_error_does_not_retry(self, tmp_path, monkeypatch):
+        import urllib.error
+        from rita.firmware import toolchain
+        err = urllib.error.HTTPError("https://x", 404, "nf", {}, None)
+        calls = self._urlopen_recorder(monkeypatch, err)
+        with pytest.raises(Exception):
+            toolchain._download("https://x/y.zip", tmp_path / "y.zip")
+        assert len(calls) == 1                     # no blind retry
+
+    def test_both_failing_names_both_attempts(self, tmp_path, monkeypatch):
+        import ssl
+        import urllib.error
+        from rita.firmware import toolchain
+
+        def always_fail(req, timeout=0, context=None):
+            raise urllib.error.URLError(
+                ssl.SSLCertVerificationError("no issuer"))
+
+        monkeypatch.setattr(toolchain.urllib_request, "urlopen", always_fail)
+        with pytest.raises(Exception) as exc:
+            toolchain._download("https://x/y.zip", tmp_path / "y.zip")
+        msg = str(exc.value).lower()
+        assert "system" in msg and "bundled" in msg
+        assert "intercept" in msg                  # the proxy/AV hint
+
+    def test_contexts_degrade_without_certifi(self, monkeypatch):
+        import builtins
+        from rita.firmware import toolchain
+        real_import = builtins.__import__
+
+        def no_certifi(name, *a, **k):
+            if name == "certifi":
+                raise ImportError("nope")
+            return real_import(name, *a, **k)
+
+        monkeypatch.setattr(builtins, "__import__", no_certifi)
+        ctxs = toolchain._ssl_contexts()
+        assert [name for name, _ in ctxs] == ["system"]

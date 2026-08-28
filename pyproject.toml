@@ -1,6 +1,6 @@
 [project]
 name = "rita"
-version = "0.22.0"
+version = "0.22.1"
 description = "RITA — Routing, Iteration, Testing, Automation: a deterministic orchestrator with a speech front end for Zephyr firmware work."
 readme = "README.md"
 requires-python = ">=3.11"
@@ -18,7 +18,7 @@ voice = ["faster-whisper", "sounddevice", "pyttsx3"]
 control = ["pyautogui", "pynput", "pyperclip", "pygetwindow"]
 windows = ["pywinauto", "uiautomation"]
 dev = ["pytest"]
-firmware = ["pyyaml"]                 # full YAML for workspace metadata (subset parser is built in)
+firmware = ["pyyaml", "certifi"]      # YAML for metadata; CA bundle for RITA's downloads
 mcp = ["mcp"]                         # the workspace MCP server (rita mcp-serve)
 gui = ["PySide6-Essentials"]          # the native Qt app (rita-app)
 

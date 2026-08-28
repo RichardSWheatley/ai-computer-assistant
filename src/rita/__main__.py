@@ -209,7 +209,7 @@ def cmd_toolchain(args) -> int:
     from .firmware.toolchain import detect_arm_gcc, install_arm_gcc
 
     if args.action == "install":
-        res = install_arm_gcc()
+        res = install_arm_gcc(release=getattr(args, "release", None))
         print(res.detail)
         return 0 if res.ok else 1
     info = detect_arm_gcc()
@@ -368,6 +368,9 @@ def main(argv: list[str] | None = None) -> int:
                              "(Zephyr's compiler family)")
     tc.add_argument("action", nargs="?", default="status",
                     choices=["status", "install"])
+    tc.add_argument("--release",
+                    help="exact Arm GNU release (e.g. 14.3.rel1); "
+                         "default = derived from your SDK's gcc")
 
     chk = sub.add_parser("check", help="report this install's setup")
     chk.add_argument("--deep", action="store_true",

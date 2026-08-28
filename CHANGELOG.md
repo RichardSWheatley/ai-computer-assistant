@@ -3,6 +3,32 @@
 All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/); versions follow semver.
 
+## [0.22.1] - 2026-08-28
+
+### Fixed
+Both halves of the owner's failed ARM toolchain install:
+
+- **The WRONG version could be downloaded.** The release table topped
+  out at gcc 14.2, so an SDK on gcc 14.3 silently fell back to a
+  DEFAULT of 13.2.rel1 — a mismatched toolchain, the exact thing the
+  one-toolchain rule forbids. Release names are now DERIVED from the
+  SDK's gcc (`release_for` → `{maj}.{min}.rel1`; naming verified live
+  against Arm's server incl. 14.3.rel1 on both hosts), and when the
+  SDK's gcc version can't be read RITA REFUSES to guess and says so
+  (explicit `rita toolchain install --release X.Y.rel1` remains the
+  escape hatch). After extraction the installed gcc is verified against
+  the SDK's version; a mismatch is a failure, never a success. The
+  `check setup` ARM-toolchain line now states the SDK's gcc version and
+  the release it maps to.
+- **TLS verification failed in the frozen app** ("unable to get local
+  issuer certificate"): frozen Python doesn't reliably see the Windows
+  cert store and RITA shipped no CAs. Downloads now try system trust
+  first (corporate/proxy CAs keep working), then RITA's bundled Mozilla
+  CA set (certifi, now collected into the bundle — the smoke test
+  asserts cacert.pem ships). If both fail, the error says a security
+  product/proxy is likely intercepting HTTPS and its certificate
+  belongs in Windows' store. Verification is never disabled.
+
 ## [0.22.0] - 2026-08-28
 
 ### Fixed

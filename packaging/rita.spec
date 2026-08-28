@@ -23,7 +23,7 @@ def bundle(pkg):
 
 extra_datas, extra_binaries, extra_hidden = [], [], []
 for _pkg in ("mcp", "sounddevice", "faster_whisper", "ctranslate2",
-             "huggingface_hub", "tokenizers", "pyttsx3"):
+             "huggingface_hub", "tokenizers", "pyttsx3", "certifi"):
     _d, _b, _h = bundle(_pkg)
     extra_datas += _d
     extra_binaries += _b

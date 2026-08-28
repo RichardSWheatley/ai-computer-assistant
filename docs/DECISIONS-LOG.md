@@ -3,6 +3,18 @@
 Compromises, proxies, and deferred decisions — with the reason and what would
 remove them. Newest first. (Required by the working rules in `docs/WORKING-RULES.md`.)
 
+## 2026-08-28 — Toolchain release derived; TLS trust order
+
+- **Release names are derived, not table-kept** — the table rotted in
+  one day (missed gcc 14.3) and its DEFAULT fallback violated the
+  version-match rule. Arm's `{maj}.{min}.rel1` naming is uniform
+  (verified live); an unknown SDK gcc version is a REFUSAL with an
+  explicit-release escape hatch, never a guess.
+- **System trust first, bundled certifi second** for RITA's downloads:
+  system-first keeps corporate/proxy CAs working; certifi rescues
+  frozen apps blind to the OS store. Both failing names the likely
+  TLS interception out loud. Verification is never disabled, ever.
+
 ## 2026-08-28 — Gates apply to code RITA writes
 
 - **In-tree samples are exempt from STATIC and from patching.** The

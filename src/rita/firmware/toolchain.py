@@ -15,21 +15,20 @@ import re
 import shutil
 import subprocess
 import sys
+import urllib.request as urllib_request
 from dataclasses import dataclass
 from pathlib import Path
 
 from .cerberus_setup import InstallResult
 
-# Arm GNU toolchain releases by gcc (major, minor) — the download RITA
-# performs when the machine has none. Chosen to MATCH Zephyr's gcc.
-RELEASES: dict[tuple[int, int], str] = {
-    (12, 2): "12.2.rel1",
-    (12, 3): "12.3.rel1",
-    (13, 2): "13.2.rel1",
-    (13, 3): "13.3.rel1",
-    (14, 2): "14.2.rel1",
-}
-DEFAULT_RELEASE = "13.2.rel1"        # when Zephyr's version is unknown
+def release_for(version: tuple[int, int]) -> str:
+    """Arm GNU release name for a gcc (major, minor) — the naming is
+    uniform (`{maj}.{min}.rel1`, verified against Arm's server), so it
+    is DERIVED, never table-limited: a hardcoded table rots (it once
+    topped out at 14.2 while the owner's SDK was on gcc 14.3, silently
+    downloading a mismatched default — the opposite of the rule that
+    RITA uses exactly Zephyr's compiler version)."""
+    return f"{version[0]}.{version[1]}.rel1"
 
 _BASE_URL = ("https://developer.arm.com/-/media/Files/downloads/gnu/"
              "{rel}/binrel/arm-gnu-toolchain-{rel}-{host}-arm-none-eabi{ext}")
@@ -159,12 +158,56 @@ def _host_tag() -> tuple[str, str]:
     return ("aarch64" if arch in ("aarch64", "arm64") else "x86_64"), ".tar.xz"
 
 
-def _download(url: str, dest: Path) -> None:  # pragma: no cover - network
-    import urllib.request
+def _ssl_contexts():
+    """(name, ssl context) attempts, in order: system trust first — it
+    honors the OS store and SSL_CERT_FILE, so corporate/proxy CAs keep
+    working — then RITA's bundled Mozilla CA set (certifi), the rescue
+    for frozen apps whose embedded OpenSSL can't see the OS store.
+    Verification is NEVER disabled."""
+    out = [("system", None)]
+    try:
+        import ssl
 
-    req = urllib.request.Request(url, headers={"User-Agent": "rita-installer"})
-    with urllib.request.urlopen(req, timeout=600) as r, dest.open("wb") as f:
-        shutil.copyfileobj(r, f)
+        import certifi
+
+        out.append(("bundled CAs",
+                    ssl.create_default_context(cafile=certifi.where())))
+    except Exception:
+        pass
+    return out
+
+
+def _is_cert_error(exc) -> bool:
+    import ssl
+    import urllib.error
+
+    if isinstance(exc, ssl.SSLCertVerificationError):
+        return True
+    if isinstance(exc, urllib.error.URLError):
+        return isinstance(getattr(exc, "reason", None),
+                          ssl.SSLCertVerificationError)
+    return False
+
+
+def _download(url: str, dest: Path) -> None:
+    req = urllib_request.Request(url, headers={"User-Agent": "rita-installer"})
+    contexts = _ssl_contexts()
+    last = None
+    for _name, ctx in contexts:
+        try:
+            with urllib_request.urlopen(req, timeout=600, context=ctx) as r,                     dest.open("wb") as f:
+                shutil.copyfileobj(r, f)
+            return
+        except Exception as exc:
+            if not _is_cert_error(exc):
+                raise
+            last = exc
+    raise OSError(
+        f"TLS certificate verification failed with the system "
+        f"certificates AND RITA's bundled CA set ({last}). A security "
+        f"product or proxy may be intercepting HTTPS — its certificate "
+        f"must be installed in Windows' certificate store. Verification "
+        f"is never disabled.")
 
 
 def install_arm_gcc(release: str | None = None,
@@ -179,9 +222,18 @@ def install_arm_gcc(release: str | None = None,
     import zipfile
 
     dest = _rita_toolchain_dir()
+    want = zephyr_gcc_version()
     if release is None:
-        want = zephyr_gcc_version()
-        release = RELEASES.get(want, DEFAULT_RELEASE) if want else DEFAULT_RELEASE
+        if want is None:
+            return InstallResult(
+                ok=False, path=str(dest),
+                detail="I can't read your Zephyr SDK's gcc version, so I "
+                       "won't guess a toolchain — the versions must match. "
+                       "Check that your SDK has arm-zephyr-eabi/bin, or "
+                       "install a specific release with "
+                       "`rita toolchain install --release 14.3.rel1` "
+                       "(use your SDK's gcc major.minor).")
+        release = release_for(want)
     host, ext = _host_tag()
     if archive_suffix:
         ext = archive_suffix
@@ -213,6 +265,14 @@ def install_arm_gcc(release: str | None = None,
                              detail="extracted, but bin/arm-none-eabi-gcc "
                                     "is missing — wrong archive layout?")
     ver = _gcc_version(info.cc)
+    if want is not None and ver is not None and ver != want:
+        return InstallResult(
+            ok=False, path=str(dest),
+            detail=f"downloaded gcc {ver[0]}.{ver[1]} but your Zephyr SDK "
+                   f"is on {want[0]}.{want[1]} — refusing the mismatch")
+    matched = (f", matching your Zephyr SDK's gcc {want[0]}.{want[1]}"
+               if want is not None else "")
     return InstallResult(ok=True, path=str(dest),
                          detail=f"Arm GNU toolchain {release} installed at "
-                                f"{dest} (gcc {ver or 'unverified'})")
+                                f"{dest} (gcc {ver or 'unverified'}"
+                                f"){matched}")

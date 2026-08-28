@@ -52,3 +52,10 @@ west remain the FINAL_TEST stage's business, unchanged.
   `rita toolchain install` / the Modules button.
 - The four CI failures are gone: unit-tier tests monkeypatch their
   toolchain surface instead of assuming the machine's contents.
+
+## Acquisition addendum (v0.22.1)
+
+The release is DERIVED from the Zephyr SDK's gcc (`{maj}.{min}.rel1` —
+Arm's uniform naming, verified live); an unreadable SDK version is a
+refusal, never a default. Downloads verify TLS via system trust first,
+then RITA's bundled certifi CAs; verification is never disabled.

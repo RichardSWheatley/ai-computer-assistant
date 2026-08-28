@@ -48,6 +48,11 @@ def main(argv: list[str]) -> int:
         return 1
 
     failures: list[str] = []
+    # RITA's downloads verify TLS against her bundled CA set when the
+    # frozen OpenSSL can't see the OS store — the bundle must SHIP it.
+    if not list(bundle.rglob("cacert.pem")):
+        failures.append("no cacert.pem in the bundle — certifi was not "
+                        "collected; frozen downloads can fail TLS verify")
     with tempfile.TemporaryDirectory(prefix="rita-smoke-") as tmp:
         env = {**os.environ, "RITA_HOME": tmp}
 
