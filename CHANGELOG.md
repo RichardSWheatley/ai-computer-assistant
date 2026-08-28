@@ -3,6 +3,19 @@
 All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/); versions follow semver.
 
+## [0.21.1] - 2026-08-28
+
+### Fixed
+- **The Modules page lost install errors.** All three install buttons
+  reported into one shared one-line label under the CERBERUS heading —
+  each message overwrote the last (the ARM toolchain error flashed and
+  was replaced by CERBERUS text), and an installer that RAISED was
+  silently swallowed. The card is now "Gates & toolchain" with an
+  append-only log naming each tool; worker exceptions land in it as
+  "<tool> install FAILED: …", every result is mirrored to the Chat
+  screen pane so a page switch can't lose it, and buttons re-enable for
+  a retry.
+
 ## [0.21.0] - 2026-08-28
 
 ### Added

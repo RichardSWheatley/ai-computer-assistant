@@ -6,13 +6,15 @@ import threading
 
 from PySide6.QtCore import Signal
 from PySide6.QtWidgets import (QFrame, QHBoxLayout, QLabel, QListWidget,
-                               QPushButton, QVBoxLayout, QWidget)
+                               QPlainTextEdit, QPushButton, QVBoxLayout,
+                               QWidget)
 
 from .presenter import GuiPresenter
 
 
 class ModulesPage(QWidget):
     sig_cerberus = Signal(str)
+    sig_log = Signal(str)
 
     def __init__(self, presenter: GuiPresenter) -> None:
         super().__init__()
@@ -31,10 +33,11 @@ class ModulesPage(QWidget):
         install.clicked.connect(self._install)
         v.addWidget(install)
 
-        # CERBERUS — the static gate; the repo is part of RITA's install.
+        # Gates & toolchain — acquisition lives here; every result is
+        # APPENDED to the log below, named by tool, never overwritten.
         card = QFrame(objectName="card")
         cv = QVBoxLayout(card)
-        cv.addWidget(QLabel("CERBERUS static gate"))
+        cv.addWidget(QLabel("Gates & toolchain"))
         self.cerberus_status = QLabel("", objectName="dim")
         self.cerberus_status.setWordWrap(True)
         cv.addWidget(self.cerberus_status)
@@ -54,10 +57,39 @@ class ModulesPage(QWidget):
         row.addWidget(self.toolchain_btn)
         row.addStretch(1)
         cv.addLayout(row)
+        self.log = QPlainTextEdit(objectName="screenPane", readOnly=True)
+        self.log.setPlaceholderText(
+            "Install results appear here — and in the Chat screen pane.")
+        self.log.setFixedHeight(120)
+        cv.addWidget(self.log)
         v.addWidget(card)
         self.sig_cerberus.connect(self.cerberus_status.setText)
+        self.sig_log.connect(self._append_log)
         self._refresh_cerberus()
         self.refresh()
+
+    def _append_log(self, text: str) -> None:
+        self.log.appendPlainText(text)
+        # Mirror to the chat screen pane so a result is never lost to a
+        # page switch.
+        self.presenter.on_screen(text)
+
+    def _run_install(self, name: str, button, fn, start_msg: str) -> None:
+        button.setEnabled(False)
+        self.sig_log.emit(f"{name}: {start_msg}")
+
+        def run() -> None:
+            try:
+                res = fn()
+                mark = "" if res.ok else " FAILED"
+                self.sig_log.emit(f"{name}{mark}: {res.detail}")
+            except Exception as exc:   # a raising installer must be SEEN
+                self.sig_log.emit(f"{name} install FAILED: "
+                                  f"{type(exc).__name__}: {exc}")
+            finally:
+                button.setEnabled(True)
+
+        threading.Thread(target=run, daemon=True).start()
 
     def refresh(self) -> None:
         self.listing.clear()
@@ -78,61 +110,45 @@ class ModulesPage(QWidget):
         dev_install()
         self.refresh()
 
-    def _refresh_cerberus(self) -> None:
+    @staticmethod
+    def _cerberus_summary() -> str:
         from ..firmware.cerberus_setup import detect_cerberus
 
         clone = detect_cerberus()
         if clone:
-            self.cerberus_status.setText(
-                f"Installed at {clone} — Head 1 (94 MISRA/CERT checks) gates "
-                f"every piece of generated code, no API key needed.")
-        else:
-            self.cerberus_status.setText(
-                "Not installed. Installing clones "
+            return (f"Installed at {clone} — Head 1 (94 MISRA/CERT checks) "
+                    f"gates every piece of generated code, no API key needed.")
+        return ("Not installed. Installing clones "
                 "github.com/RichardSWheatley/cerberus into ~/.rita (needs git).")
 
+    def _refresh_cerberus(self) -> None:
+        self.cerberus_status.setText(self._cerberus_summary())
+
     def _install_unity(self) -> None:
-        from ..firmware.unity import install_unity
+        def fn():
+            from ..firmware.unity import install_unity
 
-        self.unity_btn.setEnabled(False)
-        self.sig_cerberus.emit("Installing Unity (unit-test framework)…")
+            return install_unity()
 
-        def run() -> None:
-            try:
-                res = install_unity()
-                self.sig_cerberus.emit(res.detail)
-            finally:
-                self.unity_btn.setEnabled(True)
-
-        threading.Thread(target=run, daemon=True).start()
+        self._run_install("Unity", self.unity_btn, fn,
+                          "installing (unit-test framework)…")
 
     def _install_toolchain(self) -> None:
-        from ..firmware.toolchain import install_arm_gcc
+        def fn():
+            from ..firmware.toolchain import install_arm_gcc
 
-        self.toolchain_btn.setEnabled(False)
-        self.sig_cerberus.emit("Downloading the ARM toolchain (matching "
-                               "your Zephyr SDK's gcc)… this is large.")
+            return install_arm_gcc()
 
-        def run() -> None:
-            try:
-                res = install_arm_gcc()
-                self.sig_cerberus.emit(res.detail)
-            finally:
-                self.toolchain_btn.setEnabled(True)
-
-        threading.Thread(target=run, daemon=True).start()
+        self._run_install("ARM toolchain", self.toolchain_btn, fn,
+                          "downloading arm-none-eabi-gcc matched to your "
+                          "Zephyr SDK — large, takes a while…")
 
     def _install_cerberus(self) -> None:
-        from ..firmware.cerberus_setup import install_cerberus
+        def fn():
+            from ..firmware.cerberus_setup import install_cerberus
 
-        self.cerberus_btn.setEnabled(False)
-        self.sig_cerberus.emit("Installing CERBERUS…")
+            res = install_cerberus()
+            self.sig_cerberus.emit(self._cerberus_summary())
+            return res
 
-        def run() -> None:
-            try:
-                res = install_cerberus()
-                self.sig_cerberus.emit(res.detail)
-            finally:
-                self.cerberus_btn.setEnabled(True)
-
-        threading.Thread(target=run, daemon=True).start()
+        self._run_install("CERBERUS", self.cerberus_btn, fn, "installing…")
