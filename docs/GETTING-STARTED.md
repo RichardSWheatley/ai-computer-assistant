@@ -81,6 +81,23 @@ sample names — never an LLM guessing.
 | "how do I add a devicetree overlay" | Answers from the shipped Zephyr knowledge pack (each topic cites the official docs). |
 | "your name is now Vera" | Renames the assistant — it's config, persisted, and the wake word follows. |
 
+### Handing off whole projects
+
+The **Projects** page (or `"start a project: …"` / `"take on …"` in
+chat) hands RITA a goal instead of a single command:
+
+| You say | What RITA does |
+|---|---|
+| "start a project: build blinky for the apollo510" | The goal already routes as one command — RITA runs it herself, **no AI planning involved**. |
+| "start a project: bring up the mspi psram example and characterize it" | An AI gets **one bounded call** to draft the item list — titles, commands, dependencies, estimates, milestones — as **pure data in RITA's own command grammar**. RITA validates every item by routing it, then **executes the items herself**, dependency-ordered, each work item through the full gates (CERBERUS → unit tests → final test). The AI schedules nothing and executes nothing. |
+| "how is the project going" | Live status from the persisted project: items done, running, blocked, waiting on you. |
+
+An item the AI phrases outside RITA's grammar is flagged **needs you** —
+kept visible on the Projects page, never guessed at. An item whose
+dependency failed is blocked by cascade and reported. Every transition is
+persisted to `~\.rita\projects.json`, so a restart shows exactly where
+things stand, and Pause/Stop work between items just like within one.
+
 ### The two panes and the two buttons
 
 Conversation stays in the transcript — **at most two spoken sentences per
@@ -101,6 +118,8 @@ cancels at a safe boundary and reports what completed.
 | `%USERPROFILE%\.rita\boards.json` + `verification-index.json` | synced facts about *your* workspace |
 | `%USERPROFILE%\.rita\modules\` | installed capability modules (versioned; updates drop a folder and flip `current`) |
 | `%USERPROFILE%\.rita\work\task-N\` | each task's build output — `twister.json` in there is the gate verdict |
+| `%USERPROFILE%\.rita\projects.json` | handed-off projects: every item's status, saved on every transition |
+| `%USERPROFILE%\.rita\work\proj-N\item-M\` | per-item build output for project work items |
 | `<workspace>\applications\` | applications RITA scaffolds for you (configurable in Settings) |
 
 ## 6. The gates: CERBERUS and per-function unit tests

@@ -35,6 +35,22 @@ INTERROGATIVE_PREFIXES = (
 ARTIFACT_TOKENS = {"application", "app", "program", "firmware", "project",
                    "example", "sample", "test"}
 
+# Project handoff patterns; group 1 is the goal handed to RITA.
+PROJECT_PATTERNS = (
+    re.compile(r"^(?:start|create|plan|begin)(?: a| the)? project(?: to)?[:,]?\s+(.+)$"),
+    re.compile(r"^take on\s+(.+)$"),
+    re.compile(r"^hand(?:ing)? off\s+(.+)$"),
+)
+
+
+def project_goal(norm: str) -> str | None:
+    for pat in PROJECT_PATTERNS:
+        m = pat.match(norm)
+        if m:
+            return m.group(1)
+    return None
+
+
 # Rename patterns over normalized text; group 1 is the new name.
 RENAME_PATTERNS = (
     re.compile(r"\byour name is (?:now )?(\w+)"),

@@ -47,7 +47,8 @@ class Supervisor:
         self.shell = RouterShell(
             vocab or Vocabulary.load(), config_path=config_path,
             work=self.handle_work, chat=self.handle_chat,
-            control=make_control_handler(self.manager, self.speaker))
+            control=make_control_handler(self.manager, self.speaker),
+            project=self.hand_off)
 
     # --- capability wiring (module process when installed, seam otherwise) --
 
@@ -150,9 +151,81 @@ class Supervisor:
                 self._facts["boards_data"] = {"boards": {}}
         return self._facts["boards_data"]
 
+    # --- projects: hand off -> plan (data) -> RITA executes -------------------
+
+    def _make_item_pipeline(self, project_id: str):
+        from .firmware.pipeline import IteratePipeline
+
+        def factory(item_id: str) -> IteratePipeline:
+            return IteratePipeline(
+                runner=self._make_runner(), claude=self._make_claude(),
+                index=self._make_index(), cfg=self.cfg,
+                workdir=self.workdir / project_id / item_id,
+                static_checker=self._make_static_checker(),
+                unit_runner=self._make_unit_runner())
+
+        return factory
+
+    def hand_off(self, goal: str) -> str:
+        """Hand RITA a task: she figures it out herself, or gets an AI to
+        write the plan — then SHE completes the items through her gates."""
+        from .projects.model import ProjectStore
+        from .projects.planner import PlanError, plan_project, quick_plan
+        from .projects.runner import run_project
+
+        if not self.cfg.workspace:
+            return ("No Zephyr workspace is configured yet — point me at one "
+                    "on the Workspace page first.")
+        store = ProjectStore()
+        project = quick_plan(goal, self.shell.vocab, store)
+        if project is None:
+            try:
+                project = plan_project(goal, self._make_claude().complete,
+                                       self.shell.vocab, store)
+            except PlanError as exc:
+                return (f"I couldn't get a usable plan for that: {exc}. "
+                        f"Rephrase it, or break it up for me.")
+        store.save(project)
+
+        factory = self._make_item_pipeline(project.id)
+        self.manager.submit(
+            f"project: {project.goal[:40]}",
+            lambda ctl: run_project(project, store,
+                                    pipeline_factory=factory,
+                                    chat=self.handle_chat,
+                                    vocab=self.shell.vocab, ctl=ctl))
+        titles = "; ".join(i.title for i in project.items[:6])
+        flagged = sum(1 for i in project.items if i.status == "needs_user")
+        note = (f" {flagged} item(s) need you — they're outside what I can "
+                f"do myself." if flagged else "")
+        return (f"Project {project.id}: {len(project.items)} items — "
+                f"{titles}. I'll work through them and report.{note}")
+
+    def _project_status(self) -> str | None:
+        from .projects.model import ProjectStore
+
+        projects = ProjectStore().all()
+        if not projects:
+            return "No projects yet — hand one off with 'start a project: …'."
+        p = projects[-1]
+        counts: dict[str, int] = {}
+        for i in p.items:
+            counts[i.status] = counts.get(i.status, 0) + 1
+        done = counts.get("done", 0) + counts.get("answered", 0)
+        parts = [f"{done} of {len(p.items)} items done"]
+        for status in ("running", "blocked", "needs_user", "pending", "stopped"):
+            if counts.get(status):
+                parts.append(f"{counts[status]} {status.replace('_', ' ')}")
+        return f"Project {p.id} ({p.goal[:40]}): " + ", ".join(parts) + "."
+
     def handle_chat(self, text: str) -> str:
         data = self._boards_data()
         norm = text.lower()
+
+        if "project" in norm:
+            status = self._project_status()
+            if status:
+                return status
 
         # Questions about a known board answer from its real metadata.
         board = self.shell.vocab.find_board(norm)
@@ -193,9 +266,12 @@ class Supervisor:
 
     def task_summary(self, tid: str) -> str:
         from .firmware.pipeline import describe
+        from .projects.runner import ProjectResult, describe_project
 
         rep = self.manager.report(tid)
         if rep.state == "DONE" and rep.result is not None:
+            if isinstance(rep.result, ProjectResult):
+                return describe_project(rep.result)
             return describe(rep.result)
         if rep.state == "STOPPED":
             done = ", ".join(rep.completed_stages) or "nothing"

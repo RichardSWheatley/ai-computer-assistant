@@ -3,6 +3,28 @@
 Compromises, proxies, and deferred decisions — with the reason and what would
 remove them. Newest first. (Required by the working rules in `CLAUDE.md`.)
 
+## 2026-08-28 — Projects (handoff + planning + execution)
+
+- **`quick_plan` requires a verb-grounded route** (`verb` /
+  `verb+entity`), not `entity_only`: "bring up blinky and document the
+  board" merely *mentions* a known sample and must go to the planner,
+  while "build blinky for the apollo510" runs directly. The proxy: a
+  verb-grounded compound goal ("build blinky and document the board")
+  still quick-plans as one item. Removed by conjunction splitting in the
+  grammar if it ever bites in practice.
+- **One bounded planning call, no repair loop.** A garbage or oversized
+  plan is a loud `PlanError` back to the user ("rephrase or break it
+  up"), not a re-prompt cycle — consistent with bounded-retries, but a
+  single retry with the parse error quoted would be a reasonable
+  hardening later.
+- **The Projects page polls the store on a 1 s QTimer** instead of a
+  presenter push channel. The store is a small JSON file and the page is
+  a view over persisted truth (what a restart would show), so polling is
+  honest and simple; a push signal would remove the (invisible) 1 s lag.
+- **Item estimates/milestones are carried, not enforced.** They're
+  display data from the plan; RITA doesn't schedule against wall-clock
+  time. A real scheduler would need its own spec.
+
 ## 2026-07-28 — Per-function unit tier
 
 - **The owner's TDD definition is adopted verbatim**: code to the goal,

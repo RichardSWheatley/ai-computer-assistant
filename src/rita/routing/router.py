@@ -39,6 +39,13 @@ def route(utt: Utterance, vocab: Vocabulary, assistant_name: str = "Rita") -> Di
         return Dispatch(kind="rename", argument=new_name, matched_by="control",
                         residual=norm)
 
+    # Handoff phrases BEFORE verb matching: "create a project to ..." must
+    # not be swallowed by the scaffold verb "create".
+    goal = grammar.project_goal(norm)
+    if goal:
+        return Dispatch(kind="project", argument=goal, matched_by="control",
+                        residual=norm)
+
     if grammar.is_interrogative(norm):
         return Dispatch(kind="chat", matched_by="fallback", residual=norm)
 

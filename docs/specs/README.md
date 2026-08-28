@@ -14,5 +14,6 @@ One spec per directive fix, written before its tests and implementation:
 | `zephyr-knowledge.md` | Shipped Zephyr conventions + SDK awareness | **done** |
 | `installer.md` | Modular Windows installer + module-run host | **done** |
 | `static-check.md` | CERBERUS static-check gate in the loop | **done** |
+| `projects.md` | Task handoff: AI plans (data only), RITA executes | **done** |
 
 Update the status column as each lands.

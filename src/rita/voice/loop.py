@@ -58,7 +58,8 @@ class RouterShell:
                  require_wake: bool = True,
                  work: Callable[[Dispatch], str] | None = None,
                  chat: Callable[[str], str] | None = None,
-                 control: Callable[[Dispatch], str] | None = None) -> None:
+                 control: Callable[[Dispatch], str] | None = None,
+                 project: Callable[[str], str] | None = None) -> None:
         self.vocab = vocab or Vocabulary.load()
         self.config_path = config_path
         self.cfg = load_rita_config(config_path)
@@ -68,6 +69,7 @@ class RouterShell:
         self.work = work
         self.chat = chat
         self.control = control
+        self.project = project
 
     def handle(self, utt: Utterance | str) -> str:
         if isinstance(utt, str):
@@ -106,6 +108,10 @@ class RouterShell:
             if self.control is not None:
                 return self.control(d)
             return f"Noted: {d.argument}."
+        if d.kind == "project":
+            if self.project is not None:
+                return self.project(d.argument)
+            return "Project handoff isn't wired up in this shell."
         if d.kind == "work":
             if self.work is not None:
                 return self.work(d)

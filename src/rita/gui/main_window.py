@@ -1,6 +1,7 @@
 """RitaWindow: the native shell around the headless presenter.
 
-Layout: sidebar (Chat / Workspace / Modules / Settings) + stacked pages.
+Layout: sidebar (Chat / Projects / Workspace / Modules / Settings) +
+stacked pages.
 The chat page shows the two output channels as two visible panes —
 transcript (speech) and a monospace screen pane (code/diffs/logs) — with
 the prompt bar below and the persistent PAUSE / RESUME / STOP control bar
@@ -53,12 +54,15 @@ class RitaWindow(QMainWindow):
         layout.addWidget(self._build_sidebar())
         self.pages = QStackedWidget()
         self.pages.addWidget(self._build_chat_page())
+        from .projects_page import ProjectsPage
         from .workspace_page import WorkspacePage
         from .modules_page import ModulesPage
         from .settings_page import SettingsPage
+        self.projects_page = ProjectsPage(presenter)
         self.workspace_page = WorkspacePage(presenter)
         self.modules_page = ModulesPage(presenter)
         self.settings_page = SettingsPage(presenter)
+        self.pages.addWidget(self.projects_page)
         self.pages.addWidget(self.workspace_page)
         self.pages.addWidget(self.modules_page)
         self.pages.addWidget(self.settings_page)
@@ -71,7 +75,7 @@ class RitaWindow(QMainWindow):
 
         # First run: no workspace yet -> land on the Workspace page.
         if not presenter.sup.cfg.workspace:
-            self._nav_buttons[1].click()
+            self._nav_buttons[2].click()
 
     # --- chrome ---------------------------------------------------------------
 
@@ -88,7 +92,8 @@ class RitaWindow(QMainWindow):
         v.addSpacing(18)
         self._nav_buttons: list[QPushButton] = []
         group = QButtonGroup(bar)
-        for i, label in enumerate(("Chat", "Workspace", "Modules", "Settings")):
+        for i, label in enumerate(("Chat", "Projects", "Workspace", "Modules",
+                                   "Settings")):
             b = QPushButton(label, objectName="navButton")
             b.setCheckable(True)
             b.clicked.connect(lambda _=False, idx=i: self.pages.setCurrentIndex(idx))

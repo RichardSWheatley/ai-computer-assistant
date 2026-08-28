@@ -354,14 +354,18 @@ def describe(report: PipelineReport) -> str:
     return "The pipeline hit an infrastructure problem; details are on screen."
 
 
-def handle_work_dispatch(dispatch, pipeline: IteratePipeline) -> str:
-    """Router work dispatch -> pipeline run -> spoken summary (Fix 1 -> Fix 3)."""
+def dispatch_params(dispatch) -> dict:
+    """Map a routed work dispatch to pipeline run() parameters."""
     e = dispatch.entities
     board = e.board or "native_sim"
     terms = [t for t in (e.sample, e.peripheral) if t]
     if not terms:
         terms = [t for t in dispatch.residual.split() if len(t) > 2]
-    report = pipeline.run(goal=dispatch.residual or "firmware work",
-                          board=board, terms=terms,
-                          scaffold=dispatch.verb == "scaffold")
+    return {"goal": dispatch.residual or "firmware work", "board": board,
+            "terms": terms, "scaffold": dispatch.verb == "scaffold"}
+
+
+def handle_work_dispatch(dispatch, pipeline: IteratePipeline) -> str:
+    """Router work dispatch -> pipeline run -> spoken summary (Fix 1 -> Fix 3)."""
+    report = pipeline.run(**dispatch_params(dispatch))
     return describe(report)

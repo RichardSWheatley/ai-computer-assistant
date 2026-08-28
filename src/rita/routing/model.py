@@ -12,7 +12,7 @@ from typing import Literal
 
 _TOKEN_RE = re.compile(r"[a-z0-9_]+")
 
-Kind = Literal["wake_only", "work", "chat", "control", "rename"]
+Kind = Literal["wake_only", "work", "chat", "control", "rename", "project"]
 Verb = Literal["build", "flash", "measure", "run_samples", "report", "scaffold"]
 MatchedBy = Literal["verb", "verb+entity", "entity_only", "control", "fallback"]
 

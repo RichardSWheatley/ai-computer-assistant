@@ -3,6 +3,33 @@
 All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/); versions follow semver.
 
+## [0.16.0] - 2026-08-28
+
+### Added
+- **Projects: hand whole tasks off to RITA** (`docs/specs/projects.md`).
+  "start a project: …" / "take on …" / "hand off …" route
+  deterministically to a handoff (checked before verb matching, so
+  "create a project to…" is never mistaken for scaffolding). A goal that
+  already routes as a verb-grounded command becomes a one-item project
+  RITA runs **with no AI involved**; a genuinely multi-step goal gets
+  **one bounded AI call** that returns the plan as **pure data** — items
+  phrased in RITA's own command grammar with dependencies, estimates,
+  and milestones — validated by routing every command. Unroutable items
+  are flagged `needs_user`, never guessed at; garbage or oversized plans
+  are rejected loudly (`PlanError`). **RITA executes every item herself**
+  through the full gate pipeline (CERBERUS → per-function unit tests →
+  final test), dependency-ordered, with cascade blocking, per-item
+  workdirs (`work/<proj>/<item>/`), pause/stop checkpoints between
+  items, and every transition persisted to `~/.rita/projects.json`
+  (restart-safe). The AI authors data; it never routes, schedules, or
+  executes — same as everywhere else in RITA.
+- **Projects page** in the GUI: a handoff box (feeds the same route as
+  typing the command) and a live item list read from the persisted
+  store. "how is the project going" answers with live counts in chat.
+- 16 new tests (planner, store round-trip, runner completion/cascade/
+  stop, routing, chat status); written first and confirmed failing
+  (16 failed) before implementation. Full suite: 339 passed.
+
 ## [0.15.1] - 2026-07-28
 
 ### Changed
