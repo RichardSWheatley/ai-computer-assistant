@@ -18,6 +18,7 @@ from __future__ import annotations
 import json
 import os
 import shlex
+import shutil
 import subprocess
 from dataclasses import dataclass
 from pathlib import Path
@@ -62,6 +63,24 @@ def split_command(command: str) -> list[str]:
     return shlex.split(command)
 
 
+def resolve_argv(argv: list[str]) -> list[str]:
+    """Resolve argv[0] to a real executable path via shutil.which.
+
+    Windows CreateProcess does not search PATHEXT the way a shell does, so
+    npm/pip launcher shims (.cmd/.bat) fail with a bare WinError 2 unless
+    resolved first. A command that truly isn't installed fails NAMING the
+    executable, so the task report says what to fix."""
+    if not argv:
+        raise ValueError("empty command")
+    exe = argv[0]
+    found = shutil.which(exe) or (exe if Path(exe).exists() else None)
+    if found is None:
+        raise FileNotFoundError(
+            f"'{exe}' was not found on PATH. Install it, or correct the "
+            f"configured command in Settings.")
+    return [found, *argv[1:]]
+
+
 class CerberusCli:
     """Run the CERBERUS command over a target directory.
 
@@ -80,7 +99,7 @@ class CerberusCli:
         self.timeout = timeout
 
     def check(self, target: Path) -> StaticResult:
-        argv = [*self.argv, str(Path(target).resolve())]
+        argv = [*resolve_argv(self.argv), str(Path(target).resolve())]
         proc = subprocess.run(argv, capture_output=True, text=True,
                               timeout=self.timeout, cwd=self.cwd)
         if proc.returncode == 0:

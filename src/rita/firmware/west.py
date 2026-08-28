@@ -45,8 +45,11 @@ class WestCli:
         self.west = west
         self.timeout = timeout
 
-    def _run(self, args: list[str]) -> subprocess.CompletedProcess:  # pragma: no cover
-        return subprocess.run([self.west, *args], cwd=self.workspace,
+    def _run(self, args: list[str]) -> subprocess.CompletedProcess:
+        from .static_check import resolve_argv
+
+        return subprocess.run([*resolve_argv([self.west]), *args],
+                              cwd=self.workspace,
                               capture_output=True, text=True,
                               timeout=self.timeout)
 

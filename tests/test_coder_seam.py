@@ -58,6 +58,61 @@ class TestCommandAsConfig:
         assert sup._make_coder() is fake
 
 
+class TestWindowsLauncherShims:
+    """npm/pip CLIs on Windows are .cmd shims; CreateProcess won't resolve
+    a bare name the way a shell does. Every external command resolves its
+    executable through shutil.which at invocation — and a missing one
+    fails naming the executable, never with a bare WinError 2."""
+
+    def test_resolve_argv_resolves_argv0_keeps_args(self, monkeypatch):
+        from rita.firmware import static_check
+        monkeypatch.setattr(static_check.shutil, "which",
+                            lambda n: f"/resolved/{n}.cmd")
+        assert static_check.resolve_argv(["agent", "-p"]) == \
+            ["/resolved/agent.cmd", "-p"]
+
+    def test_resolve_argv_missing_names_the_executable(self, monkeypatch):
+        from rita.firmware import static_check
+        monkeypatch.setattr(static_check.shutil, "which", lambda n: None)
+        with pytest.raises(FileNotFoundError, match="agent"):
+            static_check.resolve_argv(["agent", "-p"])
+
+    def test_coder_cli_invokes_the_resolved_executable(self, tmp_path,
+                                                       monkeypatch):
+        from rita.firmware import coder, static_check
+        monkeypatch.setattr(static_check.shutil, "which",
+                            lambda n: f"/resolved/{n}.cmd")
+        seen = {}
+
+        def fake_run(args, **kw):
+            seen["args"] = args
+            class P:  # minimal CompletedProcess stand-in
+                returncode, stdout, stderr = 0, "ok", ""
+            return P()
+
+        monkeypatch.setattr(coder.subprocess, "run", fake_run)
+        cli = coder.CoderCli(tmp_path, ("agent", "-p"))
+        cli.complete("hello")
+        assert seen["args"][0] == "/resolved/agent.cmd"
+
+    def test_west_cli_invokes_the_resolved_executable(self, tmp_path,
+                                                      monkeypatch):
+        from rita.firmware import static_check, west
+        monkeypatch.setattr(static_check.shutil, "which",
+                            lambda n: f"/resolved/{n}.exe")
+        seen = {}
+
+        def fake_run(args, **kw):
+            seen["args"] = args
+            class P:
+                returncode, stdout, stderr = 0, "", ""
+            return P()
+
+        monkeypatch.setattr(west.subprocess, "run", fake_run)
+        west.WestCli(tmp_path)._run(["build"])
+        assert seen["args"][0] == "/resolved/west.exe"
+
+
 class TestFailedTasksReportTheError:
     def test_task_summary_carries_the_exception(self, tmp_path):
         sup = make_supervisor(tmp_path)

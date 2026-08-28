@@ -3,6 +3,19 @@
 All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/); versions follow semver.
 
+## [0.18.1] - 2026-08-28
+
+### Fixed
+- **Windows launcher shims resolve now** — the real cause of the live
+  "Task failed: FileNotFoundError [WinError 2]": npm/pip CLIs on Windows
+  are `.cmd`/`.bat` shims, and CreateProcess doesn't search PATHEXT the
+  way a shell does, so launching the configured coder command (or west /
+  a custom CERBERUS command) by bare name failed even though it works in
+  a terminal. Every external command now resolves its executable through
+  `shutil.which` at invocation (`resolve_argv`), and a genuinely missing
+  one fails naming the executable and pointing at Settings — never a
+  bare WinError.
+
 ## [0.18.0] - 2026-08-28
 
 ### Added

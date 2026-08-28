@@ -86,8 +86,11 @@ class CoderCli:
         self.timeout = timeout
 
     def _invoke(self, prompt: str, cwd: Path, *,
-                allow_edits: bool) -> subprocess.CompletedProcess:  # pragma: no cover - needs the coding-agent CLI
-        args = [*self.command, prompt, "--output-format", "text"]
+                allow_edits: bool) -> subprocess.CompletedProcess:
+        from .static_check import resolve_argv
+
+        args = [*resolve_argv(list(self.command)), prompt,
+                "--output-format", "text"]
         if self.mcp_config:
             args += ["--mcp-config", self.mcp_config]
         if allow_edits:
