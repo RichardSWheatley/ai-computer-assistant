@@ -152,11 +152,12 @@ After CERBERUS, **every single function RITA writes gets unit-tested for
 its input and output parameters** — valid values, boundaries, and invalid
 values the function must reject (the coding contract requires every
 function to restrict or validate its parameters before executing). These
-are host-run **Unity** tests (the framework is cloned at install, like
-CERBERUS). The compiler comes from your PATH when one is there, otherwise
-**from your Zephyr SDK** — the SDK ships gcc by default (its LLVM bundle
-is detected too), so no extra install is needed. A deterministic scan
-fails the stage naming any function without tests.
+are **Unity** tests (the framework is cloned at install, like CERBERUS),
+compiled with **arm-none-eabi-gcc at your Zephyr SDK's gcc version** and
+executed under `qemu-system-arm` — the same compiler family your firmware
+uses, never a foreign one. If the toolchain is missing, RITA downloads
+the matching release herself. A deterministic scan fails the stage naming
+any function without tests.
 Only when CERBERUS and the unit tier are both green does the **final
 test** run: the relevant Zephyr samples/tests under twister.
 
