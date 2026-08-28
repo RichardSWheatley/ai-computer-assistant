@@ -52,7 +52,8 @@ def strip_quotes(text: str) -> str:
 
 class GuiPresenter:
     def __init__(self, supervisor: Supervisor,
-                 poll_interval: float = 0.05) -> None:
+                 poll_interval: float = 0.05,
+                 voice_backends=None) -> None:
         self.sup = supervisor
         self.on_user = _noop      # (text) echoed user entry, unquoted
         self.on_reply = _noop     # (speech) speech-channel text
@@ -62,6 +63,10 @@ class GuiPresenter:
         self._poll = poll_interval
         self._seen_states: dict[str, str] = {}
         self._closing = threading.Event()
+        # Voice: injectable () -> (recorder, stt, tts|None); real ones lazy.
+        self._voice_backends = voice_backends or self._default_voice_backends
+        self._voice_stop = threading.Event()
+        self._voice_thread: threading.Thread | None = None
         threading.Thread(target=self._watch_tasks, daemon=True,
                          name="gui-task-watch").start()
 
@@ -108,6 +113,82 @@ class GuiPresenter:
 
     def stop(self) -> None:
         self._control("stop")
+
+    # --- voice: the microphone lives in the app, not a CLI -------------------
+
+    def _default_voice_backends(self):
+        from ..voice.mic import MicRecorder
+        from ..voice.stt import WhisperSTT
+        from ..voice.tts import Pyttsx3TTS
+
+        try:
+            tts = Pyttsx3TTS()
+        except Exception:
+            tts = None                 # listening still works, replies on screen
+        return MicRecorder(seconds=5.0), WhisperSTT(model="base"), tts
+
+    def start_voice(self) -> bool:
+        """Begin wake-word listening on a background thread. Honest about
+        unavailability: a missing backend is reported by name, never silent."""
+        if self.voice_active:
+            return True
+        try:
+            recorder, stt, tts = self._voice_backends()
+        except Exception as exc:
+            self._emit_reply(f"Voice isn't available: {exc}. Install the "
+                             f"Voice component, then turn voice on again.")
+            return False
+        if tts is not None and self.sup.speaker is None:
+            from ..core.tasks import make_control_handler
+            from ..voice.tts import PausableSpeaker
+
+            self.sup.speaker = PausableSpeaker(tts)
+            self.sup.shell.control = make_control_handler(self.sup.manager,
+                                                          self.sup.speaker)
+        self._voice_stop.clear()
+        self._voice_thread = threading.Thread(
+            target=self._listen, args=(recorder, stt), daemon=True,
+            name="gui-voice-listen")
+        self._voice_thread.start()
+        return True
+
+    def stop_voice(self) -> None:
+        self._voice_stop.set()
+
+    @property
+    def voice_active(self) -> bool:
+        return self._voice_thread is not None and self._voice_thread.is_alive() \
+            and not self._voice_stop.is_set()
+
+    def _listen(self, recorder, stt) -> None:
+        from ..voice.loop import _STOP_PHRASES
+        from ..voice.stt import to_utterance
+
+        while not self._voice_stop.is_set():
+            try:
+                wav = recorder.record()
+                utt = to_utterance(stt, wav)
+            except Exception as exc:
+                self._emit_reply(f"Voice stopped: {exc}")
+                break
+            if self._voice_stop.is_set():
+                break
+            heard = utt.text.strip()
+            if not heard:
+                self._voice_stop.wait(0.05)
+                continue
+            if heard.lower().strip(" .!?") in _STOP_PHRASES:
+                # Back to sleep; the mic keeps waiting for the wake word.
+                self.sup.shell.awake = not self.sup.shell.require_wake
+                self.on_user(f"🎤 {heard}")
+                self._emit_reply("Going quiet — say my name when you need me.")
+                continue
+            said = self.sup.shell.handle(utt)
+            if said:                    # asleep/ignored turns leave no trace
+                self.on_user(f"🎤 {heard}")
+                self._emit_reply(said)
+            else:
+                self._voice_stop.wait(0.05)
 
     # --- task announcements --------------------------------------------------
 
@@ -179,4 +260,5 @@ class GuiPresenter:
             sdk_version=sdk["version"] if sdk else None)
 
     def close(self) -> None:
+        self._voice_stop.set()
         self._closing.set()

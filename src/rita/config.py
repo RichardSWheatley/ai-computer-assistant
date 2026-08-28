@@ -69,6 +69,9 @@ class RitaConfig:
     # Zephyr SDK's toolchain (it ships gcc by default; LLVM detected too).
     host_cc: str | None = None
     max_patch_cycles: int = 3
+    # Voice in the app: wake-word listening + spoken replies. Applied live
+    # from the Settings page; deps install with the Voice component.
+    voice_enabled: bool = False
     # Device tier stays off until the bench milestone proves flash/serial/harness.
     device_tier_enabled: bool = False
 
@@ -79,7 +82,14 @@ def load_rita_config(path: str | Path | None = None) -> RitaConfig:
     p = Path(path) if path else config_path()
     cfg = RitaConfig()
     if p.exists():
-        data = tomllib.loads(p.read_text())
+        try:
+            data = tomllib.loads(p.read_text())
+        except tomllib.TOMLDecodeError:
+            # A config an older build wrote badly (e.g. raw Windows
+            # backslashes) must not wedge the app: keep the evidence,
+            # start from defaults, let the user re-save their settings.
+            p.replace(p.with_suffix(".bad"))
+            return cfg
         for k, v in data.get("rita", data).items():
             if hasattr(cfg, k):
                 setattr(cfg, k, v)

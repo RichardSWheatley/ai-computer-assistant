@@ -3,6 +3,29 @@
 All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/); versions follow semver.
 
+## [0.18.0] - 2026-08-28
+
+### Added
+- **The microphone lands in the app** (`docs/specs/voice-in-gui.md`):
+  the Settings "Enable voice" checkbox is real now — persisted
+  (`voice_enabled`), applied live, and re-armed on launch. Listening
+  runs on a background thread inside the GUI: wake word ("hello Rita" /
+  the configured name) → the same deterministic router as typed input →
+  replies through the two-channel split (≤2 spoken sentences via the
+  pausable speaker; code/logs to the screen pane). Heard speech is
+  echoed in the transcript (🎤); utterances RITA ignored while asleep
+  leave no trace. "stop listening"/"goodbye" put the wake gate back to
+  sleep with the mic still armed. Missing voice deps are reported by
+  name — the checkbox never silently pretends. 7 tests written first
+  (7 failed) covering wake, sleep, stop phrases, thread stop, config
+  round-trip, and honest unavailability.
+
+### Fixed
+- **A corrupt config no longer wedges the app**: a config written badly
+  by an older build (raw Windows backslashes) is backed up to
+  `config.bad` and RITA starts from defaults instead of crashing — one
+  re-save in Settings recovers, no reinstall, no re-sync.
+
 ## [0.17.0] - 2026-08-28
 
 ### Changed

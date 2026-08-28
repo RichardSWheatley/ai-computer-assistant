@@ -77,6 +77,10 @@ class RitaWindow(QMainWindow):
         if not presenter.sup.cfg.workspace:
             self._nav_buttons[2].click()
 
+        # Voice was left on last session: start listening right away.
+        if presenter.sup.cfg.voice_enabled:
+            presenter.start_voice()
+
     # --- chrome ---------------------------------------------------------------
 
     def _build_sidebar(self) -> QWidget:

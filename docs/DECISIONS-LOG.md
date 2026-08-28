@@ -3,6 +3,18 @@
 Compromises, proxies, and deferred decisions — with the reason and what would
 remove them. Newest first. (Required by the working rules in `docs/WORKING-RULES.md`.)
 
+## 2026-08-28 — Voice in the GUI
+
+- **Fixed 5-second listen chunks, no VAD.** Wake latency is bounded by
+  the chunk length and a wake word straddling a chunk boundary can be
+  missed once — the long-logged fixed-window compromise, now user-facing.
+  A VAD-segmented recorder remains the hardening path.
+- **Whisper downloads its model on first spoken turn** (one-time,
+  network) — kept out of the installer for size, same as the other voice
+  runtime deps.
+- **A TTS engine that fails to construct degrades to listening-only**
+  (replies stay on screen) rather than blocking voice input.
+
 ## 2026-08-28 — Vendor-neutral coder seam
 
 - **No coding agent ships configured.** Out of the box RITA cannot code

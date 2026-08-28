@@ -46,6 +46,7 @@ class SettingsPage(QWidget):
             "unit-test compiler — empty = host PATH, else your Zephyr SDK's gcc")
         form.addRow("C compiler", self.host_cc_edit)
         self.voice = QCheckBox("Enable voice (wake word + speech)")
+        self.voice.setChecked(cfg.voice_enabled)
         form.addRow("", self.voice)
         note = QLabel("The device tier stays off until the bench milestone — "
                       "it is never faked green.", objectName="dim")
@@ -65,7 +66,15 @@ class SettingsPage(QWidget):
         sup.cfg.cerberus_command = self.cerberus_edit.text().strip() or None
         sup.cfg.cerberus_deep = self.cerberus_deep.isChecked()
         sup.cfg.host_cc = self.host_cc_edit.text().strip() or None
+        sup.cfg.voice_enabled = self.voice.isChecked()
         save_rita_config(sup.cfg, sup.config_path)
+        # Apply voice live — no restart. start_voice reports honestly if
+        # the deps are missing (and the config stays set for next launch).
+        if sup.cfg.voice_enabled:
+            if not self.presenter.start_voice():
+                self.voice.setChecked(False)
+        else:
+            self.presenter.stop_voice()
         from ..routing.wake import WakeGate
 
         sup.shell.cfg = sup.cfg

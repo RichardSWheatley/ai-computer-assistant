@@ -63,9 +63,13 @@ Zephyr version, and SDK. **Re-sync after `west update`.**
 ## 4. Talking to RITA
 
 Type into the prompt bar on the **Chat** page — put commands in quotes if
-you like; RITA strips them and routes the contents. With Voice enabled,
-say **"hello Rita"** (or just "Rita") to wake her; typed input never
-needs a wake word. Routing is deterministic grammar over *your* board and
+you like; RITA strips them and routes the contents. Turn on **Settings →
+Enable voice** and RITA listens in the app: say **"hello Rita"** (or just
+"Rita") to wake her, speak your command, and she answers out loud (at
+most two sentences — code and logs stay on screen). Say "stop listening"
+to put her back to sleep; the mic keeps waiting for the wake word. The
+setting persists and re-arms on launch. Typed input never needs a wake
+word. Routing is deterministic grammar over *your* board and
 sample names — never an LLM guessing.
 
 ### Workflow examples
@@ -169,7 +173,13 @@ the same reason.
   in a standard location (`%PROGRAMFILES%`, home dir).
 - **No speech / no mic** — the Voice component needs an output device and
   microphone; the first spoken turn downloads the Whisper model (one-time,
-  needs network). Voice can stay off — everything works typed.
+  needs network). If deps are missing, enabling voice tells you exactly
+  which one. Voice can stay off — everything works typed.
+- **You should NOT need to re-sync or reconfigure after an update** —
+  your settings and synced workspace data live in `%USERPROFILE%\.rita`,
+  which installs and uninstalls never touch. Run the new Setup right over
+  the old install (no uninstall needed). If an old build corrupted the
+  config, RITA now backs it up as `config.bad` and starts clean once.
 - **A work request says "that pipeline isn't wired up yet" or asks for
   sync** — sync a workspace first (Workspace page).
 - **A task ends "retries exhausted"** — that's RITA stopping at its patch
