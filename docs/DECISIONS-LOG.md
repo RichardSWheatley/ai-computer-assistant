@@ -3,6 +3,17 @@
 Compromises, proxies, and deferred decisions — with the reason and what would
 remove them. Newest first. (Required by the working rules in `docs/WORKING-RULES.md`.)
 
+## 2026-08-28 — SDK gcc sets the version, never compiles
+
+- **arm-zephyr-eabi is excluded from compile candidates** per the owner:
+  it is Zephyr's build of gcc, not a standalone toolchain. It remains
+  the source of truth for WHICH version to fetch.
+- **Exact patch match is impossible from Arm's site** (verified: Arm
+  standalone releases report X.Y.1, Zephyr SDKs X.Y.0 — the same GCC
+  X.Y branch one snapshot apart), so the match contract is the GCC
+  branch (major.minor), with the patch difference disclosed in the
+  install detail and diagnostics rather than hidden.
+
 ## 2026-08-28 — Toolchain release derived; TLS trust order
 
 - **Release names are derived, not table-kept** — the table rotted in

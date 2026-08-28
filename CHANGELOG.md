@@ -3,6 +3,18 @@
 All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/); versions follow semver.
 
+## [0.22.2] - 2026-08-28
+
+### Changed
+- **The SDK's arm-zephyr-eabi-gcc is never used to compile unit tests**
+  (the owner's rule: it is built FOR Zephyr, not a standalone compiler).
+  It now only tells RITA which version to fetch; the unit tier always
+  compiles with Arm's standalone arm-none-eabi release on the SAME GCC
+  branch. Patch-level honesty stated everywhere it matters: Zephyr SDKs
+  report X.Y.0 (built at the GCC tag), Arm's standalone builds report
+  X.Y.1 (the branch snapshot) — same GCC X.Y branch; RITA matches on
+  X.Y and says so (e.g. SDK gcc 14.3.0 → Arm GNU 14.3.rel1).
+
 ## [0.22.1] - 2026-08-28
 
 ### Fixed

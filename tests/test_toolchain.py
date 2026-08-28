@@ -53,7 +53,11 @@ class TestDetectionOrder:
         assert info.source == "gnuarmemb"
         assert info.cc == str(gnu)
 
-    def test_zephyr_sdk_last(self, tmp_path, monkeypatch):
+    def test_sdk_toolchain_is_never_used_to_compile(self, tmp_path,
+                                                    monkeypatch):
+        # The owner's rule: arm-zephyr-eabi is built FOR Zephyr and is not
+        # a standalone compiler. It sets the WANTED version only — with
+        # nothing else installed, detection is honestly empty.
         from rita.firmware import toolchain
         monkeypatch.setenv("RITA_HOME", str(tmp_path / "rita"))
         monkeypatch.delenv("GNUARMEMB_TOOLCHAIN_PATH", raising=False)
@@ -63,9 +67,7 @@ class TestDetectionOrder:
         _fake_gcc(sdk / "arm-zephyr-eabi" / "bin", "arm-zephyr-eabi-gcc")
         monkeypatch.setenv("ZEPHYR_SDK_INSTALL_DIR", str(sdk))
         monkeypatch.setattr(toolchain.shutil, "which", lambda n: None)
-        info = toolchain.detect_arm_gcc()
-        assert info.source == "sdk"
-        assert "arm-zephyr-eabi-gcc" in info.cc
+        assert toolchain.detect_arm_gcc() is None
 
     def test_unrelated_native_compilers_are_ignored(self, tmp_path,
                                                     monkeypatch):
@@ -220,6 +222,7 @@ class TestVersionMatchesZephyr:
         sdk, sdk_gcc, _ = self._sdk(tmp_path, "13.2.1")
         monkeypatch.setenv("ZEPHYR_SDK_INSTALL_DIR", str(sdk))
         own = _fake_gcc(tmp_path / "rita" / "toolchains" / "arm-none-eabi" / "bin")
+        # sdk_gcc sets the wanted version; it is NEVER itself a candidate.
         versions = {own.as_posix(): (12, 2), sdk_gcc.as_posix(): (13, 2),
                     "/usr/bin/arm-none-eabi-gcc": (13, 2)}
         monkeypatch.setattr(toolchain, "_gcc_version",

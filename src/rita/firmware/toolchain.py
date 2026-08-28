@@ -100,9 +100,9 @@ def _candidates() -> list[tuple[str, Path]]:
             if cand.is_file():
                 out.append(("gnuarmemb", cand))
                 break
-    sdk = _sdk_arm_gcc()
-    if sdk:
-        out.append(("sdk", sdk))
+    # The SDK's arm-zephyr-eabi-gcc is deliberately NOT a candidate: it is
+    # built FOR Zephyr, not a standalone compiler (the owner's rule). It
+    # only sets the WANTED version via zephyr_gcc_version().
     return out
 
 
@@ -270,8 +270,10 @@ def install_arm_gcc(release: str | None = None,
             ok=False, path=str(dest),
             detail=f"downloaded gcc {ver[0]}.{ver[1]} but your Zephyr SDK "
                    f"is on {want[0]}.{want[1]} — refusing the mismatch")
-    matched = (f", matching your Zephyr SDK's gcc {want[0]}.{want[1]}"
-               if want is not None else "")
+    matched = (f", matching your Zephyr SDK's gcc {want[0]}.{want[1]} "
+               f"(Arm's standalone builds report {want[0]}.{want[1]}.1 — "
+               f"same GCC {want[0]}.{want[1]} branch as the SDK's "
+               f"{want[0]}.{want[1]}.0)" if want is not None else "")
     return InstallResult(ok=True, path=str(dest),
                          detail=f"Arm GNU toolchain {release} installed at "
                                 f"{dest} (gcc {ver or 'unverified'}"
