@@ -94,7 +94,10 @@ def save_rita_config(cfg: RitaConfig, path: str | Path | None = None) -> None:
         elif isinstance(v, (int, float)):
             lines.append(f"{k} = {v}")
         else:
-            lines.append(f'{k} = "{v}"')
+            # TOML basic strings need \ and " escaped — Windows paths
+            # (C:\zephyrproject) otherwise produce an unloadable config.
+            escaped = str(v).replace("\\", "\\\\").replace('"', '\\"')
+            lines.append(f'{k} = "{escaped}"')
     p.write_text("\n".join(lines) + "\n")
 
 

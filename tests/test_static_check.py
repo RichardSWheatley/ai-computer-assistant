@@ -102,7 +102,7 @@ class TestCerberusCli:
     def _fake_cerberus(self, tmp_path, body: str) -> str:
         script = tmp_path / "fake_cerberus.py"
         script.write_text(body)
-        return f"{sys.executable} {script}"
+        return f'"{sys.executable}" "{script}"'
 
     def test_exit_zero_is_clean(self, tmp_path):
         from rita.firmware.static_check import CerberusCli

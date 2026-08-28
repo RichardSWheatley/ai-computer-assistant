@@ -20,7 +20,10 @@ from .twister_results import FailureArtifact
 
 UNITY_REPO_URL = "https://github.com/ThrowTheSwitch/Unity"
 
-_FAIL_RE = re.compile(r"^(?P<file>[^:\n]+):(?P<line>\d+):(?P<test>\w+):FAIL:?\s*(?P<msg>.*)$",
+# The file group tolerates a Windows drive prefix (C:\...); \r?$ tolerates
+# CRLF output from Windows-built test binaries.
+_FAIL_RE = re.compile(r"^(?P<file>(?:[A-Za-z]:)?[^:\n]+):(?P<line>\d+)"
+                      r":(?P<test>\w+):FAIL:?\s*(?P<msg>.*?)\r?$",
                       re.MULTILINE)
 _SUMMARY_RE = re.compile(r"(\d+)\s+Tests\s+(\d+)\s+Failures", re.IGNORECASE)
 

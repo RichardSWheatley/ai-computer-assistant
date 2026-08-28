@@ -133,9 +133,9 @@ class TestScaffoldPlacement:
         from rita.config import RitaConfig
         from rita.firmware.pipeline import applications_root
         cfg = RitaConfig(workspace="/w")
-        assert str(applications_root(cfg)) == os.path.join("/w", "applications")
+        assert applications_root(cfg) == Path("/w") / "applications"
         cfg2 = RitaConfig(workspace="/w", applications_dir="/elsewhere")
-        assert str(applications_root(cfg2)) == "/elsewhere"
+        assert applications_root(cfg2) == Path("/elsewhere")
 
     def test_scaffold_prompt_carries_knowledge_notes(self, tmp_path):
         pipe, runner, claude = self.make_pipeline(tmp_path,

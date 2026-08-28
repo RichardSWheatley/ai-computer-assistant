@@ -190,9 +190,11 @@ class TestCompilerDiscovery:
 
     def test_explicit_wins_over_everything(self, tmp_path, monkeypatch):
         from rita.firmware.unity import find_compiler
-        info = find_compiler("/usr/bin/gcc")
+        mycc = tmp_path / "mycc"       # existence is what qualifies it
+        mycc.write_text("")
+        info = find_compiler(str(mycc))
         assert info.source == "explicit"
-        assert info.path == "/usr/bin/gcc"
+        assert info.path == str(mycc)
 
     def test_nothing_anywhere_names_both_places(self, tmp_path, monkeypatch):
         from rita.firmware import unity
@@ -207,6 +209,9 @@ class TestCompilerDiscovery:
         assert "path" in result.reason.lower()
         assert "sdk" in result.reason.lower()
 
+    @pytest.mark.skipif(sys.platform == "win32", reason=(
+        "the fake SDK gcc is a /bin/sh wrapper; on Windows the SDK ships "
+        "real .exe toolchains — discovery is covered by the tests above"))
     def test_end_to_end_through_the_sdk_compiler(self, tmp_path, monkeypatch):
         # No PATH compilers; the SDK's gcc compiles + runs the unit tests.
         from rita.firmware import unity

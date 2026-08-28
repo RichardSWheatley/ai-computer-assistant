@@ -16,6 +16,7 @@ exact CERBERUS interface is pinned down.
 from __future__ import annotations
 
 import json
+import os
 import shlex
 import subprocess
 from dataclasses import dataclass
@@ -52,6 +53,15 @@ def _artifact(target: Path, *, message: str, file: str | None = None,
 _VERDICTS = {1: "request changes", 2: "block"}
 
 
+def split_command(command: str) -> list[str]:
+    """Split a configured command string into argv, cross-platform.
+    POSIX shlex eats Windows path backslashes (C:\\tools -> C:tools), so
+    on Windows split in non-POSIX mode and strip the quotes it keeps."""
+    if os.name == "nt":
+        return [t.strip('"') for t in shlex.split(command, posix=False)]
+    return shlex.split(command)
+
+
 class CerberusCli:
     """Run the CERBERUS command over a target directory.
 
@@ -64,7 +74,7 @@ class CerberusCli:
     def __init__(self, command: str | list[str], cwd: str | None = None,
                  timeout: float = 600.0) -> None:
         self.command = command if isinstance(command, str) else ""
-        self.argv = (shlex.split(command) if isinstance(command, str)
+        self.argv = (split_command(command) if isinstance(command, str)
                      else list(command))
         self.cwd = cwd
         self.timeout = timeout

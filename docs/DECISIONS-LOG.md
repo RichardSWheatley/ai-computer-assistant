@@ -3,6 +3,17 @@
 Compromises, proxies, and deferred decisions — with the reason and what would
 remove them. Newest first. (Required by the working rules in `CLAUDE.md`.)
 
+## 2026-08-28 — Windows CI
+
+- **The SDK end-to-end unit-compile test is skipped on Windows.** Its
+  fake SDK gcc is a `/bin/sh` wrapper, which Windows cannot execute; a
+  real Windows fake would need an actual PE binary. Discovery of the
+  SDK's `.exe` toolchain names is still tested everywhere. Removed if we
+  ever ship a tiny prebuilt echo-compiler fixture for Windows.
+- **Windows verification is CI-only.** The dev container is Linux, so
+  Windows behavior is proven by running the installer workflow's test
+  job on a windows runner, not locally.
+
 ## 2026-08-28 — Projects (handoff + planning + execution)
 
 - **`quick_plan` requires a verb-grounded route** (`verb` /

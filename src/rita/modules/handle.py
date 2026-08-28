@@ -153,7 +153,10 @@ class ModuleHandle:
 
     @property
     def alive(self) -> bool:
-        return self.proc.poll() is None
+        # A module whose protocol stream has ended can't serve calls, even
+        # if the OS hasn't reaped the process yet (Windows: EOF can land
+        # before poll() notices the exit).
+        return not self._dead and self.proc.poll() is None
 
     def stderr_tail(self) -> str:
         return "\n".join(self._stderr)

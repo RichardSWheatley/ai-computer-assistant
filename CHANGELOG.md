@@ -3,6 +3,33 @@
 All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/); versions follow semver.
 
+## [0.16.2] - 2026-08-28
+
+### Fixed
+First run of the test suite on a real Windows machine (the installer
+workflow) caught 10 failures — two real product bugs and a batch of
+POSIX-only test assumptions:
+
+- **Config files with Windows paths were unloadable**: the hand-written
+  TOML serializer wrote `\` unescaped, so `workspace = "C:\zephyrproject"`
+  produced a config `tomllib` rejects. Strings now escape `\` and `"`.
+- **`cerberus_command` was mangled on Windows**: POSIX `shlex.split` eats
+  path backslashes (`C:\tools` → `C:tools`). New `split_command()` splits
+  non-POSIX on Windows and strips kept quotes.
+- Unity failure lines with a `C:\` drive prefix (and CRLF endings) now
+  parse — a failing unit test on Windows was previously reported green
+  with its failure artifact lost.
+- `ModuleHandle.alive` is False once the protocol stream has ended, even
+  before the OS reaps the process (Windows EOF-vs-poll race in crash
+  isolation).
+- Test-suite portability: fake-command fixtures quote their paths, the
+  explicit-compiler test uses a temp file instead of `/usr/bin/gcc`,
+  path assertions compare `Path` objects, and the fake-SDK end-to-end
+  compile test (a `/bin/sh` wrapper) is skipped on Windows with the
+  reason stated.
+- Installer workflow: `actions/checkout@v5` / `setup-python@v6` (Node 20
+  deprecation).
+
 ## [0.16.1] - 2026-08-28
 
 ### Fixed
