@@ -283,6 +283,17 @@ def cmd_workflow(args) -> int:
 
 
 def main(argv: list[str] | None = None) -> int:
+    # A console tool must survive ANY console encoding: Windows terminals
+    # are cp1252, and a diagnostic that crashes while PRINTING the
+    # diagnostic (e.g. a → in a check detail) helps nobody. Degrade
+    # unencodable characters instead of dying.
+    for stream in (sys.stdout, sys.stderr):
+        if hasattr(stream, "reconfigure"):
+            try:
+                stream.reconfigure(errors="replace")
+            except Exception:
+                pass
+
     parser = argparse.ArgumentParser(prog="rita",
                                      description="RITA: deterministic firmware orchestrator with a speech front end")
     sub = parser.add_subparsers(dest="cmd", required=True)

@@ -3,6 +3,18 @@
 All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/); versions follow semver.
 
+## [0.20.2] - 2026-08-28
+
+### Fixed
+- **`rita check` crashed on Windows consoles** (cp1252): the new ARM
+  toolchain guidance contains a `→`, and printing it raised
+  UnicodeEncodeError before any output landed — the diagnostic died
+  while printing the diagnostic. The CLI now reconfigures its streams
+  with errors="replace" so unencodable characters degrade instead of
+  crashing, reproduced and fixed under a forced cp1252 stream. The
+  bundle smoke test also prints the frozen exe's stderr, so a crash
+  there can never be invisible again.
+
 ## [0.20.1] - 2026-08-28
 
 ### Fixed

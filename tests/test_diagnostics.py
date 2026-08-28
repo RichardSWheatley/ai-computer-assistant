@@ -270,3 +270,29 @@ class TestPackagedDependencies:
         assert "mcp" in spec and "collect_all" in spec
         for pkg in ("sounddevice", "faster_whisper"):
             assert pkg in spec, pkg
+
+
+class TestCliSurvivesAnyConsoleEncoding:
+    """Windows consoles are cp1252; a check detail containing a character
+    outside it (e.g. →) must degrade, never crash the diagnostic."""
+
+    def test_check_prints_under_cp1252_with_toolchain_absent(self, tmp_path):
+        import os
+        import subprocess
+        import sys
+
+        script = (
+            "import rita.firmware.toolchain as tc\n"
+            "tc.shutil.which = lambda n: None\n"
+            "from rita.__main__ import main\n"
+            "raise SystemExit(main(['check']))\n")
+        env = {**os.environ, "PYTHONIOENCODING": "cp1252",
+               "RITA_HOME": str(tmp_path / "rita"),
+               "GNUARMEMB_TOOLCHAIN_PATH": "", "ZEPHYR_SDK_INSTALL_DIR": "",
+               "HOME": str(tmp_path), "USERPROFILE": str(tmp_path)}
+        p = subprocess.run([sys.executable, "-c", script], env=env,
+                           capture_output=True, timeout=120)
+        out = p.stdout.decode("cp1252", errors="replace")
+        err = p.stderr.decode("cp1252", errors="replace")
+        assert "UnicodeEncodeError" not in err, err[-500:]
+        assert "ARM toolchain" in out          # the report still lands

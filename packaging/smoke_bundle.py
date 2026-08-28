@@ -110,8 +110,11 @@ def main(argv: list[str]) -> int:
         args = [cli, "check"] + (["--require", require] if require else [])
         p = _run(args, env)
         print(p.stdout)
+        if p.stderr.strip():
+            print("stderr:", p.stderr[-800:])
         if p.returncode != 0:
-            failures.append("`rita check` reported required checks failing")
+            failures.append("`rita check` failed: "
+                            f"{(p.stdout or p.stderr)[-500:]}")
         if "ARM toolchain" not in p.stdout:
             failures.append("`rita check` says nothing about the ARM "
                             "toolchain — the unit tier's compiler is "
