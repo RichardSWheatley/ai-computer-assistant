@@ -155,7 +155,11 @@ class TestCerberusCli:
 
 
 class TestSupervisorWiring:
-    def test_supervisor_builds_checker_from_config(self, tmp_path):
+    def test_supervisor_builds_checker_from_config(self, tmp_path,
+                                                   monkeypatch):
+        # Isolate: a machine (or dev box) WITH ~/.rita/cerberus must not
+        # change what this test observes.
+        monkeypatch.setenv("RITA_HOME", str(tmp_path / "rita"))
         from rita.config import RitaConfig
         from rita.firmware.static_check import CerberusCli
         from rita.supervisor import Supervisor

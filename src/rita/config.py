@@ -76,6 +76,9 @@ class RitaConfig:
     # Voice in the app: wake-word listening + spoken replies. Applied live
     # from the Settings page; deps install with the Voice component.
     voice_enabled: bool = False
+    # First-run autonomy: on launch RITA installs every missing piece she
+    # can (CERBERUS, Unity, ARM toolchain, modules, sync) by herself.
+    auto_setup: bool = True
     # Device tier stays off until the bench milestone proves flash/serial/harness.
     device_tier_enabled: bool = False
 

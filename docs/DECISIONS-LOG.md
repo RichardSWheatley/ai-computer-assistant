@@ -3,6 +3,21 @@
 Compromises, proxies, and deferred decisions — with the reason and what would
 remove them. Newest first. (Required by the working rules in `docs/WORKING-RULES.md`.)
 
+## 2026-08-28 — Self-setup autonomy
+
+- **Auto-setup is ON by default and downloads without asking** (CERBERUS,
+  Unity, the ~150 MB toolchain). The owner's product verdict outranks
+  download prudence: launching RITA IS the setup. The toggle exists for
+  metered connections.
+- **AGENTS.md is generated, deterministic, and disposable** — regenerated
+  every run from synced data; the agent may read it, RITA never reads it
+  back. Agent-authored knowledge lives separately under
+  knowledge/learned with provenance marked, so curated pack content and
+  agent answers are never confused.
+- **Learned answers are trusted as data, not verified**: they're served
+  with their agent-authored provenance visible. Verification (e.g.
+  citing docs) is a hardening option, not withheld functionality.
+
 ## 2026-08-28 — Release picked by probing Arm's server
 
 - **Existence beats derivation**: the derived `{maj}.{min}.relN` name is

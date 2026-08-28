@@ -165,6 +165,92 @@ class Supervisor:
                 self._facts["boards_data"] = {"boards": {}}
         return self._facts["boards_data"]
 
+    # --- self-setup: RITA installs her own missing pieces --------------------
+
+    def _setup_steps(self):
+        """(name, fix) for every FIXABLE gap. Detection at call time so
+        tests and reruns see current state."""
+        from .firmware import cerberus_setup as cs
+        from .firmware import toolchain as tc
+        from .firmware import unity as un
+        from .home import mcp_config_path
+
+        steps = []
+        if not self.registry.discover():
+            from .modules.install import dev_install
+
+            steps.append(("modules", lambda: (
+                f"registered {len(dev_install())} capability modules")))
+        if cs.detect_cerberus() is None:
+            steps.append(("CERBERUS", lambda: cs.install_cerberus().detail))
+        if un.detect_unity() is None:
+            steps.append(("Unity", lambda: un.install_unity().detail))
+        if tc.detect_arm_gcc() is None and tc.zephyr_gcc_version() is not None:
+            steps.append(("ARM toolchain",
+                          lambda: tc.install_arm_gcc().detail))
+        if self.cfg.workspace and not mcp_config_path().exists():
+            from .firmware.sync import sync_workspace
+
+            steps.append(("workspace sync", lambda: (
+                f"synced {sync_workspace(self.cfg.workspace).boards} boards")))
+        return steps
+
+    def _human_setup_items(self):
+        items = []
+        if not self.cfg.workspace:
+            items.append("pick your Zephyr workspace on the Workspace page")
+        if not self.cfg.coder_command and self._coder is None:
+            items.append("enter your coding agent's command on the "
+                         "Settings page (then log it in from there)")
+        return items
+
+    def auto_setup(self) -> str:
+        """OpenClaw rule: launching RITA IS the setup. Everything fixable
+        is fixed by RITA herself, as a task; only genuinely-human steps
+        are handed back, named."""
+        steps = self._setup_steps()
+        human = self._human_setup_items()
+        if not steps:
+            msg = "Everything I can set up is already in place — I'm ready."
+            if human:
+                msg += " Still needs you: " + "; ".join(human) + "."
+            return msg
+
+        def run(ctl=None):
+            lines = []
+            for name, fix in steps:
+                try:
+                    lines.append(f"{name}: {fix()}")
+                except Exception as exc:
+                    lines.append(f"{name} FAILED: {type(exc).__name__}: {exc}")
+                if ctl is not None:
+                    ctl.checkpoint(f"SETUP:{name}")
+            if human:
+                lines.append("Still needs you: " + "; ".join(human) + ".")
+            return "Setup finished.\n" + "\n".join(lines)
+
+        self.manager.submit("setup", run)
+        names = ", ".join(n for n, _ in steps)
+        msg = (f"Setting myself up — missing: {names}. Downloads may take "
+               f"a while; I'll report as I go.")
+        if human:
+            msg += " Meanwhile: " + "; ".join(human) + "."
+        return msg
+
+    def _learn(self, question: str) -> str:
+        """Ask the coding agent a Zephyr question ONCE; remember the
+        answer as markdown and serve it deterministically ever after."""
+        from .firmware import knowledge
+
+        coder = self._make_coder()
+        answer = coder.complete(
+            "Answer this Zephyr development question concisely and "
+            "concretely (name the Kconfig options, APIs, and commands): "
+            + question)
+        path = knowledge.save_learned(question, answer)
+        return (f"I asked the coding agent and I'll remember it "
+                f"(saved to {Path(path).name}): {answer.strip()[:400]}")
+
     # --- projects: hand off -> plan (data) -> RITA executes -------------------
 
     def _make_item_pipeline(self, project_id: str):
@@ -242,6 +328,9 @@ class Supervisor:
         # own setup without a terminal. A report, never a task.
         from .routing import grammar as _grammar
 
+        if _grammar.is_setup(normalize(text)):
+            return self.auto_setup()
+
         if _grammar.is_diagnostic(normalize(text)):
             from .diagnostics import report
 
@@ -275,6 +364,15 @@ class Supervisor:
             summary = knowledge.summary_for(norm.split())
             if summary:
                 return summary
+            # Unknown: ask the coding agent ONCE and remember the answer.
+            if self._make_coder() is not None:
+                question = text.strip()
+                self.manager.submit(f"learn: {norm[:40]}",
+                                    lambda ctl: self._learn(question))
+                return ("I don't know that one yet — I'm asking the coding "
+                        "agent now and I'll remember the answer.")
+            return ("I don't know that one, and no coding agent is "
+                    "configured to ask — set one on the Settings page.")
 
         # Zephyr version questions answer from the install's VERSION file.
         if "zephyr" in norm and "version" in norm:
@@ -297,6 +395,8 @@ class Supervisor:
 
         rep = self.manager.report(tid)
         if rep.state == "DONE" and rep.result is not None:
+            if isinstance(rep.result, str):        # setup / learn tasks
+                return rep.result
             if isinstance(rep.result, ProjectResult):
                 return describe_project(rep.result)
             return describe(rep.result)

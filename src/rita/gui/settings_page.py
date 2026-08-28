@@ -50,6 +50,10 @@ class SettingsPage(QWidget):
         self.host_cc_edit.setPlaceholderText(
             "unit-test compiler — empty = host PATH, else your Zephyr SDK's gcc")
         form.addRow("C compiler", self.host_cc_edit)
+        self.autosetup = QCheckBox(
+            "Set up missing pieces automatically on launch")
+        self.autosetup.setChecked(cfg.auto_setup)
+        form.addRow("", self.autosetup)
         self.voice = QCheckBox("Enable voice (wake word + speech)")
         self.voice.setChecked(cfg.voice_enabled)
         form.addRow("", self.voice)
@@ -79,6 +83,7 @@ class SettingsPage(QWidget):
         sup.cfg.cerberus_deep = self.cerberus_deep.isChecked()
         sup.cfg.host_cc = self.host_cc_edit.text().strip() or None
         sup.cfg.voice_enabled = self.voice.isChecked()
+        sup.cfg.auto_setup = self.autosetup.isChecked()
         save_rita_config(sup.cfg, sup.config_path)
         # Apply voice live — no restart. start_voice reports honestly if
         # the deps are missing (and the config stays set for next launch).

@@ -77,6 +77,10 @@ def toolchains_dir() -> Path:
     return _sub("toolchains")
 
 
+def learned_dir() -> Path:
+    return rita_home() / "knowledge" / "learned"
+
+
 def modules_dir() -> Path:
     return _sub("modules")
 

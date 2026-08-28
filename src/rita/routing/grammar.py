@@ -43,6 +43,19 @@ PROJECT_PATTERNS = (
 )
 
 
+# Self-SETUP phrases: RITA installs her own missing pieces.
+SETUP_PATTERNS = (
+    re.compile(r"^set yourself up$"),
+    re.compile(r"^finish (?:the )?setup$"),
+    re.compile(r"^get ready$"),
+    re.compile(r"^fix (?:your|the) setup$"),
+)
+
+
+def is_setup(norm: str) -> bool:
+    return any(p.match(norm) for p in SETUP_PATTERNS)
+
+
 # Self-check phrases: a report, never a task.
 DIAGNOSTIC_PATTERNS = (
     re.compile(r"^(?:run |do )?(?:a )?diagnostics?$"),

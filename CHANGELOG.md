@@ -3,6 +3,37 @@
 All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/); versions follow semver.
 
+## [0.23.0] - 2026-08-28
+
+### Added — launching RITA IS the setup (the OpenClaw rule)
+The owner's verdict on first-run: too much to do ahead of time; RITA
+should ask the agent and update her own files at runtime. Now she does:
+
+- **Self-setup** (`docs/specs/self-setup.md`): on launch (and on
+  "set yourself up" / "finish setup" / "get ready" / "fix your setup"),
+  RITA detects every fixable gap and fixes it herself as a managed task
+  — registers modules, installs CERBERUS, Unity, and the ARM toolchain,
+  runs the workspace sync — reporting each step honestly and naming the
+  only things that genuinely need a human: pick the workspace, enter
+  the coding agent's command once, complete its login. Settings toggle
+  ("Set up missing pieces automatically on launch", default ON).
+- **Runtime agent context**: RITA writes `AGENTS.md` (the open
+  agent-context convention) into every directory the coding agent works
+  in — scaffolded apps and authored-test dirs, refreshed each run —
+  carrying the goal, the target board's REAL synced facts, the
+  restrict-or-validate coding contract, the gate sequence, and the
+  relevant knowledge notes. Deterministic content; never written into
+  upstream workspace directories.
+- **Learned knowledge**: a "how do I …" RITA can't answer no longer
+  dead-ends — she asks the coding agent once, saves the answer as
+  markdown under `~/.rita/knowledge/learned/` (marked agent-authored,
+  dated), and answers deterministically from that file ever after.
+  12 tests written first (12 failed).
+
+### Fixed
+- Two tests leaked into the real `~/.rita` (they'd fail on any machine
+  with CERBERUS installed) — now isolated.
+
 ## [0.22.4] - 2026-08-28
 
 ### Fixed

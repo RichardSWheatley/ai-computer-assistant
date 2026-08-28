@@ -239,6 +239,19 @@ class GuiPresenter:
         self.on_status(self.status())
         return result
 
+    def maybe_auto_setup(self) -> None:
+        """OpenClaw rule: launching RITA IS the setup. When the toggle is
+        on and fixable gaps exist, RITA announces them and fixes them
+        herself — the user does nothing."""
+        if not self.sup.cfg.auto_setup:
+            return
+        try:
+            gaps = self.sup._setup_steps()
+        except Exception:
+            return
+        if gaps:
+            self._emit_reply(self.sup.auto_setup())
+
     def login_coder(self) -> None:
         """One click: open the agent's own login window and say what to
         do next — the user never touches a terminal."""

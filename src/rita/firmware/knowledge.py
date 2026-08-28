@@ -21,6 +21,56 @@ def _index() -> dict:
     return json.loads((_ROOT / "index.json").read_text())["topics"]
 
 
+def _learned() -> dict:
+    """Agent-authored topics RITA saved at runtime (~/.rita/knowledge/
+    learned/*.md). Scanned fresh each call — they change at runtime."""
+    from ..home import learned_dir
+
+    out: dict[str, dict] = {}
+    d = learned_dir()
+    if not d.is_dir():
+        return out
+    for f in sorted(d.glob("*.md")):
+        try:
+            lines = f.read_text().splitlines()
+        except OSError:
+            continue
+        title = lines[0].lstrip("# ").strip() if lines else f.stem
+        keywords: list[str] = []
+        for ln in lines[:5]:
+            if ln.lower().startswith("keywords:"):
+                keywords = ln.split(":", 1)[1].split()
+        body = "\n".join(
+            ln for ln in lines
+            if not ln.lower().startswith(("keywords:", "source:"))
+            and not ln.startswith("# ")).strip()
+        out[f"learned/{f.stem}"] = {"title": title, "keywords": keywords,
+                                    "summary": body[:400], "body": body,
+                                    "path": str(f)}
+    return out
+
+
+def save_learned(question: str, answer: str) -> Path:
+    """Persist an agent-authored answer as markdown; served forever after."""
+    import datetime
+    import re as _re
+
+    from ..home import learned_dir
+
+    d = learned_dir()
+    d.mkdir(parents=True, exist_ok=True)
+    tokens = [t for t in _re.findall(r"[a-z0-9]+", question.lower())
+              if len(t) > 2 and t not in ("how", "the", "and", "for", "you")]
+    slug = "-".join(tokens[:6]) or "topic"
+    path = d / f"{slug}.md"
+    path.write_text(
+        f"# {question.strip()}\n"
+        f"keywords: {' '.join(tokens)}\n"
+        f"source: agent-authored {datetime.date.today().isoformat()}\n\n"
+        f"{answer.strip()}\n")
+    return path
+
+
 def list_topics() -> list[dict]:
     return [{"topic": name, **meta} for name, meta in _index().items()]
 
@@ -36,7 +86,7 @@ def match_topics(terms: Sequence[str], limit: int = 3) -> list[str]:
     """Topics ranked by keyword overlap with the given terms. Pure data."""
     want = {t.lower() for t in terms if t}
     scored: list[tuple[int, str]] = []
-    for name, meta in _index().items():
+    for name, meta in {**_index(), **_learned()}.items():
         keywords = {k.lower() for k in meta.get("keywords", [])}
         keywords.add(name.lower())
         score = len(want & keywords)
@@ -51,7 +101,7 @@ def summary_for(terms: Sequence[str]) -> str | None:
     matched = match_topics(terms, limit=1)
     if not matched:
         return None
-    meta = _index()[matched[0]]
+    meta = {**_index(), **_learned()}[matched[0]]
     return f"{meta['title']}: {meta['summary']}"
 
 
@@ -60,8 +110,10 @@ def notes_for(terms: Sequence[str], max_chars: int = 6000) -> str:
     authorship). Whole topics are included until the budget runs out."""
     parts: list[str] = []
     used = 0
+    learned = _learned()
     for name in match_topics(terms, limit=4):
-        text = get_topic(name) or ""
+        text = (learned[name].get("body", "") if name in learned
+                else get_topic(name)) or ""
         if used + len(text) > max_chars:
             remaining = max_chars - used
             if remaining < 200:

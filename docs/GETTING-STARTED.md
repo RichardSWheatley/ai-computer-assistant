@@ -42,10 +42,16 @@ never touches your `%USERPROFILE%\.rita` data or your Zephyr workspace.
 checkout): `powershell -File packaging\build.ps1` → produces
 `dist\installer\RITA-Setup-<version>.exe`.
 
-## 3. First run: point RITA at your Zephyr folder
+## 3. First run: RITA sets herself up
 
-Launch **RITA** from the Start menu. On first run it opens the
-**Workspace** page:
+Launch **RITA** from the Start menu. Anything installable that's missing
+— CERBERUS, Unity, the ARM toolchain, her capability modules — **RITA
+installs herself, unprompted**, reporting each step in the chat (turn
+this off in Settings if you're on a metered connection; "set yourself
+up" re-runs it any time). Only three things genuinely need you, and she
+names them:
+
+1. **Point her at your workspace** — she opens the **Workspace** page:
 
 1. Click **Browse…** and choose your workspace folder — the one that
    *contains* `zephyr/` (e.g. `C:\zephyrproject`). Choosing the `zephyr`

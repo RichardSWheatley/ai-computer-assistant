@@ -135,8 +135,12 @@ class IteratePipeline:
         app_dir = self.workdir / "app"
         if scaffold:
             from . import knowledge
+            from .agentmd import write_agent_context
 
             app_dir = applications_root(self.cfg) / _app_slug(goal)
+            # The agent's context, written where the agent works (the
+            # open AGENTS.md convention) — refreshed every run.
+            write_agent_context(app_dir, goal=goal, board=board, terms=terms)
             notes = knowledge.notes_for(terms + goal.split())
             enriched = goal if not notes else f"{goal}\n\nZephyr notes:\n{notes}"
             scaffolded = self.coder.scaffold(enriched, board, app_dir)
@@ -153,6 +157,10 @@ class IteratePipeline:
             suite_dir = Path(self.cfg.workspace) / resolution.entry.path
         else:
             suite_dir = self.workdir / "authored"
+            from .agentmd import write_agent_context
+
+            write_agent_context(suite_dir, goal=goal, board=board,
+                                terms=terms)
         build_target = app_dir if scaffold else suite_dir
         # Gates and patches apply to code RITA WRITES (scaffolded apps,
         # authored tests) — never to unmodified upstream workspace code.

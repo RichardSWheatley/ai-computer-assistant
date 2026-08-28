@@ -15,14 +15,18 @@ PACKAGING = REPO / "packaging"
 
 
 class TestModuleRun:
-    def test_module_run_speaks_the_protocol(self):
+    def test_module_run_speaks_the_protocol(self, tmp_path):
         # A real child process: rita module-run cerberus must handshake and
-        # answer with the stub's honest status.
+        # answer with the stub's honest status. RITA_HOME is isolated so a
+        # machine WITH a real CERBERUS clone doesn't change the answer.
+        import os
+
         from rita.modules import rpc
         proc = subprocess.Popen(
             [sys.executable, "-m", "rita", "module-run", "cerberus"],
             stdin=subprocess.PIPE, stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE)
+            stderr=subprocess.PIPE,
+            env={**os.environ, "RITA_HOME": str(tmp_path / "rita")})
         try:
             proc.stdin.write(rpc.encode_request(1, "hello", {}))
             proc.stdin.flush()

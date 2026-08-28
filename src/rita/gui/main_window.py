@@ -81,6 +81,9 @@ class RitaWindow(QMainWindow):
         if presenter.sup.cfg.voice_enabled:
             presenter.start_voice()
 
+        # Launching RITA IS the setup: fix every fixable gap unprompted.
+        presenter.maybe_auto_setup()
+
     # --- chrome ---------------------------------------------------------------
 
     def _build_sidebar(self) -> QWidget:
