@@ -11,7 +11,7 @@ developers.
 |---|---|---|
 | Windows 10/11 (64-bit) | first-supported OS (macOS/Linux later) | — |
 | A working Zephyr workspace | RITA operates **on** it; it learns your boards, samples, and Zephyr version from this folder | `west build` already works for you in it |
-| Zephyr SDK installed | real-board builds **and** the unit-tier C compiler (the SDK ships gcc by default) | RITA's status bar shows "SDK \<version\>" when found |
+| Zephyr SDK installed | real-board builds; its gcc version also decides which ARM toolchain RITA uses for unit tests | RITA's status bar shows "SDK \<version\>" when found |
 | A coding-agent CLI | any installed CLI that takes a prompt and can edit files; RITA drives it for scaffolding, test-writing, and patches. Enter its command on the **Settings** page ("Coding agent") | RITA's status bar shows "coder ✓" |
 
 Without a coding agent configured, RITA still routes, syncs, indexes, and
@@ -76,7 +76,7 @@ sample names — never an LLM guessing.
 
 | You say | What RITA does |
 |---|---|
-| **"Rita, please build me an example for MSPI that communicates with a PSRAM on MSPI0 in hex mode."** | Codes the application in `<workspace>\applications\` (every function restricts or validates its input/output parameters) → **CERBERUS** static check → **unit tests**: every single function gets host-run Unity tests of its parameters — valid, boundary, invalid — all green before moving on → iterates as needed (every patch re-passes every gate) → **final test**: the relevant Zephyr samples/tests under twister → reports. |
+| **"Rita, please build me an example for MSPI that communicates with a PSRAM on MSPI0 in hex mode."** | Codes the application in `<workspace>\applications\` (every function restricts or validates its input/output parameters) → **CERBERUS** static check → **unit tests**: every single function gets Unity tests of its parameters, compiled with your Zephyr SDK's ARM gcc and run under QEMU — valid, boundary, invalid — all green before moving on → iterates as needed (every patch re-passes every gate) → **final test**: the relevant Zephyr samples/tests under twister → reports. |
 | "build blinky" | Resolves `samples/basic/blinky` from the index, builds, twister-gates it. |
 | "flash blinky to the apollo510" | Sim-first pipeline; the device step stays **blocked** until the bench milestone — RITA says so instead of pretending. |
 | "run the samples" / "report on the last run" | Pipeline verbs, same gates. |
@@ -125,6 +125,16 @@ cancels at a safe boundary and reports what completed.
 | `%USERPROFILE%\.rita\projects.json` | handed-off projects: every item's status, saved on every transition |
 | `%USERPROFILE%\.rita\work\proj-N\item-M\` | per-item build output for project work items |
 | `<workspace>\applications\` | applications RITA scaffolds for you (configurable in Settings) |
+
+### One toolchain
+
+The per-function unit tests are compiled with **arm-none-eabi-gcc** — the
+same GCC family and version as your Zephyr SDK — and run under
+`qemu-system-arm` (bundled with the SDK). If the toolchain isn't on the
+machine, RITA downloads the matching release herself (Modules → Install
+ARM toolchain; the installer also does this once). Nothing foreign — no
+LLVM, no MinGW — and `"check setup"` shows exactly which gcc is in use
+and whether it matches your SDK's.
 
 ## 6. The gates: CERBERUS and per-function unit tests
 

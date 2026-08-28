@@ -3,6 +3,42 @@
 All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/); versions follow semver.
 
+## [0.20.0] - 2026-08-28
+
+### Changed
+- **One toolchain: the unit tier compiles with Zephyr's ARM GCC**
+  (`docs/specs/unit-tier-toolchain.md`), per the owner's rule — whatever
+  compiler Zephyr uses, RITA uses, at the SAME gcc version. No more
+  host-compiler hunting, no LLVM/MinGW suggestions. `find_compiler`
+  resolves arm-none-eabi-gcc via the new `firmware/toolchain.py`
+  (order: RITA's own install → PATH → GNUARMEMB_TOOLCHAIN_PATH → the
+  SDK's arm-zephyr-eabi-gcc), preferring the candidate whose gcc version
+  MATCHES the Zephyr SDK's, and surfacing a mismatch instead of hiding
+  it. Unrelated native compilers on the machine are never picked up.
+- **RITA installs the toolchain herself when missing** — `rita toolchain
+  install`, a Modules-page button, and a presence-guarded installer step
+  download the Arm GNU release matching the SDK's gcc version into
+  `~/.rita/toolchains/` (same acquisition contract as CERBERUS/Unity).
+  Verified for real: the download, extraction, and gcc --version check
+  ran end to end in development.
+- **Unit tests execute under qemu-system-arm** (ARM binaries can't run
+  on a PC): compiled directly — no Zephyr headers, no CMake, no west —
+  with `-mcpu=arm926ej-s --specs=rdimon.specs`, run on the versatilepb
+  machine with semihosting, output parsed exactly as before. Proven end
+  to end with RITA's own downloaded toolchain: 2 tests, 1 deliberate
+  failure detected. QEMU comes from PATH or the Zephyr SDK's host tools;
+  missing pieces are honest `unavailable` reasons naming the fix.
+  `host_cc` remains an explicit native override (runs directly).
+- Diagnostics gain an **ARM toolchain** check (resolved gcc, source,
+  version match vs the SDK, and the QEMU used); the bundle smoke test
+  requires the check to be present.
+
+### Fixed
+- The 4 red CI tests: they assumed the runner had no compiler, but
+  GitHub's Windows runner ships clang. Discovery tests now monkeypatch
+  their toolchain surface, and by design an unrelated native compiler
+  can never be selected.
+
 ## [0.19.1] - 2026-08-28
 
 ### Fixed

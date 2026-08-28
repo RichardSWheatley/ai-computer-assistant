@@ -205,6 +205,31 @@ def cmd_sync(args) -> int:
     return 0
 
 
+def cmd_toolchain(args) -> int:
+    from .firmware.toolchain import detect_arm_gcc, install_arm_gcc
+
+    if args.action == "install":
+        res = install_arm_gcc()
+        print(res.detail)
+        return 0 if res.ok else 1
+    info = detect_arm_gcc()
+    if info is None:
+        print("no ARM toolchain found — `rita toolchain install` downloads "
+              "the release matching your Zephyr SDK's gcc")
+        return 1
+    from .firmware.toolchain import zephyr_gcc_version
+
+    ver = ".".join(map(str, info.version)) if info.version else "unknown"
+    if info.mismatch:
+        match = "MISMATCH vs Zephyr SDK"
+    elif zephyr_gcc_version() is not None:
+        match = "matches Zephyr's gcc"
+    else:
+        match = "no Zephyr SDK gcc to match"
+    print(f"{info.cc} (gcc {ver}, from {info.source}; {match})")
+    return 0
+
+
 def cmd_check(args) -> int:
     """Setup report. Also the packaged-build smoke test: CI runs this from
     the frozen bundle so bundle-only breakage (a package PyInstaller
@@ -327,6 +352,12 @@ def main(argv: list[str] | None = None) -> int:
                      choices=["status", "install"])
     uni.add_argument("--url", help="override the Unity repo URL")
 
+    tc = sub.add_parser("toolchain",
+                        help="install or inspect the ARM toolchain "
+                             "(Zephyr's compiler family)")
+    tc.add_argument("action", nargs="?", default="status",
+                    choices=["status", "install"])
+
     chk = sub.add_parser("check", help="report this install's setup")
     chk.add_argument("--deep", action="store_true",
                      help="also run the coding agent for real")
@@ -336,7 +367,7 @@ def main(argv: list[str] | None = None) -> int:
 
     args = parser.parse_args(argv)
     return {"doctor": cmd_doctor, "plugins": cmd_plugins, "run": cmd_run,
-            "check": cmd_check,
+            "check": cmd_check, "toolchain": cmd_toolchain,
             "doc": cmd_doc, "workflow": cmd_workflow, "talk": cmd_talk,
             "sync": cmd_sync, "mcp-serve": cmd_mcp_serve,
             "modules": cmd_modules, "module-run": cmd_module_run,

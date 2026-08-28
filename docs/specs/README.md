@@ -18,5 +18,6 @@ One spec per directive fix, written before its tests and implementation:
 | `coding-agent-seam.md` | Vendor-neutral coder seam; command is config | **done** |
 | `voice-in-gui.md` | The microphone lands in the app (no CLI) | **done** |
 | `diagnostics.md` | In-app setup checks + packaged-bundle verification | **done** |
+| `unit-tier-toolchain.md` | Unit tier on Zephyr's ARM gcc; RITA installs it | **done** |
 
 Update the status column as each lands.

@@ -112,6 +112,10 @@ def main(argv: list[str]) -> int:
         print(p.stdout)
         if p.returncode != 0:
             failures.append("`rita check` reported required checks failing")
+        if "ARM toolchain" not in p.stdout:
+            failures.append("`rita check` says nothing about the ARM "
+                            "toolchain — the unit tier's compiler is "
+                            "unaccounted for")
 
     if failures:
         print("\nBUNDLE SMOKE TEST FAILED:")

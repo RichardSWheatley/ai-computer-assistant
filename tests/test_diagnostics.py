@@ -229,52 +229,6 @@ class TestStaleMcpConfigIsNotOk:
         assert "sync" in mcp.detail.lower()
 
 
-class TestHostCompilerOnWindows:
-    """SDK toolchains are cross compilers: on Windows they emit ELF, which
-    Windows cannot execute — offering one guarantees a confusing failure
-    at run time instead of an actionable message now."""
-
-    def test_sdk_toolchain_is_not_offered_as_a_host_compiler(self, tmp_path,
-                                                             monkeypatch):
-        from rita.firmware import unity
-        sdk = tmp_path / "zephyr-sdk-1.0.1"
-        gccdir = sdk / "x86_64-zephyr-elf" / "bin"
-        gccdir.mkdir(parents=True)
-        (gccdir / "x86_64-zephyr-elf-gcc.exe").write_text("")
-        (sdk / "sdk_version").write_text("1.0.1")
-        monkeypatch.setenv("ZEPHYR_SDK_INSTALL_DIR", str(sdk))
-        monkeypatch.setattr(unity.shutil, "which", lambda _n: None)
-        monkeypatch.setattr(unity, "_is_windows", lambda: True)
-        assert unity.find_compiler(None) is None
-
-    def test_well_known_windows_llvm_is_found(self, tmp_path, monkeypatch):
-        from rita.firmware import unity
-        llvm = tmp_path / "LLVM" / "bin"
-        llvm.mkdir(parents=True)
-        clang = llvm / "clang.exe"
-        clang.write_text("")
-        monkeypatch.setattr(unity.shutil, "which", lambda _n: None)
-        monkeypatch.setattr(unity, "_is_windows", lambda: True)
-        monkeypatch.setattr(unity, "_WINDOWS_COMPILER_DIRS", [llvm])
-        info = unity.find_compiler(None)
-        assert info is not None and info.source == "host"
-        assert info.path == str(clang)
-
-    def test_diagnostic_explains_what_to_install(self, tmp_path, monkeypatch):
-        monkeypatch.setenv("RITA_HOME", str(tmp_path / "rita"))
-        from rita import diagnostics
-        from rita.firmware import unity
-        monkeypatch.setattr(unity, "detect_unity", lambda *a, **k: tmp_path)
-        monkeypatch.setattr(unity, "find_compiler", lambda *a, **k: None)
-        monkeypatch.setattr(diagnostics, "_is_windows", lambda: True)
-        from rita.config import RitaConfig
-        check = {c.name: c for c in diagnostics.run_checks(RitaConfig())}["Unity"]
-        assert check.ok is False
-        detail = check.detail.lower()
-        assert "clang" in detail or "mingw" in detail    # names the fix
-        assert "cross" in detail or "elf" in detail      # says why
-
-
 class TestMcpSdkCompat:
     """mcp 2.x renamed FastMCP to MCPServer. Importing the old name under
     2.x killed the server, which killed the agent that launches it."""

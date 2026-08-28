@@ -58,6 +58,9 @@ Filename: "{app}\rita.exe"; Parameters: "cerberus install"; Components: mod_cerb
 Filename: "{app}\rita.exe"; Parameters: "unity install"; \
     Check: not UnityPresent; \
     Flags: runhidden; StatusMsg: "Downloading Unity (unit-test framework)..."
+Filename: "{app}\rita.exe"; Parameters: "toolchain install"; \
+    Check: not ToolchainPresent; \
+    Flags: runhidden; StatusMsg: "Downloading the ARM toolchain (matches your Zephyr SDK's gcc)..."
 Filename: "{app}\RitaApp.exe"; Description: "Launch RITA"; Flags: postinstall nowait skipifsilent
 
 [UninstallDelete]
@@ -81,6 +84,14 @@ begin
     or FileExists(RitaHome + '\unity\unity.c')
     or FileExists(RitaHome + '\cerberus\unity\src\unity.c')
     or FileExists(RitaHome + '\cerberus\unity\unity.c');
+end;
+
+function ToolchainPresent: Boolean;
+begin
+  { RITA's own install, or any arm gcc the machine already has via PATH/SDK
+    - the app detects those at run time, so only install when truly absent. }
+  Result := FileExists(RitaHome + '\toolchains\arm-none-eabi\bin\arm-none-eabi-gcc.exe')
+    or FileExists(ExpandConstant('{%ZEPHYR_SDK_INSTALL_DIR}') + '\arm-zephyr-eabi\bin\arm-zephyr-eabi-gcc.exe');
 end;
 
 function SelectedModules(Param: string): string;

@@ -17,6 +17,13 @@ from pathlib import Path
 import pytest
 
 FIXTURES = Path(__file__).parent / "fixtures"
+
+# Behavior tests pin the explicit NATIVE override (the documented host_cc
+# escape hatch): fast and machine-independent. The default ARM+QEMU path
+# is covered end-to-end in test_toolchain.py.
+import shutil as _shutil
+
+NATIVE_CC = _shutil.which("cc") or _shutil.which("gcc") or _shutil.which("clang")
 MINI_UNITY = FIXTURES / "mini_unity"
 WS = FIXTURES / "zephyr_ws"
 TW = FIXTURES / "twister"
@@ -107,7 +114,7 @@ class TestHostUnity:
     def test_green_suite_passes(self, tmp_path):
         from rita.firmware.unity import HostUnity
         app = make_app(tmp_path)
-        result = HostUnity(unity_src=MINI_UNITY).run(app / "src",
+        result = HostUnity(unity_src=MINI_UNITY, cc=NATIVE_CC).run(app / "src",
                                                      app / "tests" / "unit")
         assert result.ok is True
         assert result.passed == 5 and result.failed == 0
@@ -115,7 +122,7 @@ class TestHostUnity:
     def test_failing_assertion_is_a_parsed_artifact(self, tmp_path):
         from rita.firmware.unity import HostUnity
         app = make_app(tmp_path, tests_c=FAILING_TESTS_C)
-        result = HostUnity(unity_src=MINI_UNITY).run(app / "src",
+        result = HostUnity(unity_src=MINI_UNITY, cc=NATIVE_CC).run(app / "src",
                                                      app / "tests" / "unit")
         assert result.ok is False
         f = result.failures[0]
@@ -126,7 +133,7 @@ class TestHostUnity:
     def test_compile_error_is_a_concrete_artifact(self, tmp_path):
         from rita.firmware.unity import HostUnity
         app = make_app(tmp_path, tests_c='#include "unity.h"\nthis is not C\n')
-        result = HostUnity(unity_src=MINI_UNITY).run(app / "src",
+        result = HostUnity(unity_src=MINI_UNITY, cc=NATIVE_CC).run(app / "src",
                                                      app / "tests" / "unit")
         assert result.ok is False
         assert result.failures[0].kind == "unit"
@@ -144,85 +151,51 @@ class TestHostUnity:
 # --- Compiler discovery: host PATH first, then the Zephyr SDK ----------------
 
 class TestCompilerDiscovery:
-    def make_sdk(self, tmp_path, *, gcc=True, llvm=False) -> Path:
-        sdk = tmp_path / "zephyr-sdk-0.17.0"
-        (sdk / "sdk_version").parent.mkdir(parents=True, exist_ok=True)
-        (sdk / "sdk_version").write_text("0.17.0")
-        if gcc:
-            gcc_bin = sdk / "x86_64-zephyr-elf" / "bin"
-            gcc_bin.mkdir(parents=True)
-            wrapper = gcc_bin / "x86_64-zephyr-elf-gcc"
-            wrapper.write_text('#!/bin/sh\nexec /usr/bin/cc "$@"\n')
-            wrapper.chmod(0o755)
-        if llvm:
-            llvm_bin = sdk / "llvm" / "bin"
-            llvm_bin.mkdir(parents=True)
-            clang = llvm_bin / "clang"
-            clang.write_text('#!/bin/sh\nexec /usr/bin/cc "$@"\n')
-            clang.chmod(0o755)
-        return sdk
+    """The unit tier's compiler comes from the ARM toolchain resolver —
+    Zephyr's compiler family — never an unrelated native compiler."""
 
-    def test_host_path_compiler_preferred(self, tmp_path, monkeypatch):
-        from rita.firmware.unity import find_compiler
-        sdk = self.make_sdk(tmp_path)
-        monkeypatch.setenv("ZEPHYR_SDK_INSTALL_DIR", str(sdk))
-        info = find_compiler(None)
-        assert info.source == "host"                 # cc on PATH wins
-
-    def test_sdk_gcc_found_when_no_host_compiler(self, tmp_path, monkeypatch):
-        from rita.firmware import unity
-        sdk = self.make_sdk(tmp_path)
-        monkeypatch.setenv("ZEPHYR_SDK_INSTALL_DIR", str(sdk))
-        monkeypatch.setattr(unity.shutil, "which", lambda _n: None)
+    def test_default_delegates_to_the_arm_toolchain(self, monkeypatch,
+                                                    tmp_path):
+        from rita.firmware import toolchain, unity
+        monkeypatch.setattr(
+            toolchain, "detect_arm_gcc",
+            lambda: toolchain.ToolchainInfo(
+                cc=str(tmp_path / "arm-none-eabi-gcc"), source="path",
+                root=str(tmp_path)))
         info = unity.find_compiler(None)
-        assert info is not None
-        assert info.source == "sdk"
-        assert "x86_64-zephyr-elf-gcc" in info.path
+        assert info.source == "arm"
+        assert "arm-none-eabi-gcc" in info.path
 
-    def test_sdk_llvm_bundle_detected(self, tmp_path, monkeypatch):
-        from rita.firmware import unity
-        sdk = self.make_sdk(tmp_path, gcc=False, llvm=True)
-        monkeypatch.setenv("ZEPHYR_SDK_INSTALL_DIR", str(sdk))
-        monkeypatch.setattr(unity.shutil, "which", lambda _n: None)
-        info = unity.find_compiler(None)
-        assert info.source == "sdk"
-        assert "clang" in info.path
-
-    def test_explicit_wins_over_everything(self, tmp_path, monkeypatch):
+    def test_explicit_native_override_wins(self, tmp_path):
         from rita.firmware.unity import find_compiler
-        mycc = tmp_path / "mycc"       # existence is what qualifies it
+        mycc = tmp_path / "mycc"
         mycc.write_text("")
         info = find_compiler(str(mycc))
         assert info.source == "explicit"
-        assert info.path == str(mycc)
 
-    def test_nothing_anywhere_names_both_places(self, tmp_path, monkeypatch):
-        from rita.firmware import unity
-        monkeypatch.delenv("ZEPHYR_SDK_INSTALL_DIR", raising=False)
-        monkeypatch.setenv("HOME", str(tmp_path))
-        monkeypatch.setenv("USERPROFILE", str(tmp_path))
-        monkeypatch.setattr(unity.shutil, "which", lambda _n: None)
+    def test_no_toolchain_reason_names_the_install(self, monkeypatch,
+                                                   tmp_path):
+        from rita.firmware import toolchain, unity
+        monkeypatch.setattr(toolchain, "detect_arm_gcc", lambda: None)
         app = make_app(tmp_path)
         result = unity.HostUnity(unity_src=MINI_UNITY).run(
             app / "src", app / "tests" / "unit")
         assert result.unavailable
-        assert "path" in result.reason.lower()
-        assert "sdk" in result.reason.lower()
+        assert "arm-none-eabi-gcc" in result.reason
+        assert "toolchain" in result.reason.lower()
 
-    @pytest.mark.skipif(sys.platform == "win32", reason=(
-        "the fake SDK gcc is a /bin/sh wrapper; on Windows the SDK ships "
-        "real .exe toolchains — discovery is covered by the tests above"))
-    def test_end_to_end_through_the_sdk_compiler(self, tmp_path, monkeypatch):
-        # No PATH compilers; the SDK's gcc compiles + runs the unit tests.
-        from rita.firmware import unity
-        sdk = self.make_sdk(tmp_path)
-        monkeypatch.setenv("ZEPHYR_SDK_INSTALL_DIR", str(sdk))
-        monkeypatch.setattr(unity.shutil, "which", lambda _n: None)
+    def test_missing_qemu_is_reported_not_faked(self, monkeypatch, tmp_path):
+        from rita.firmware import toolchain, unity
+        monkeypatch.setattr(
+            toolchain, "detect_arm_gcc",
+            lambda: toolchain.ToolchainInfo(cc="/x/arm-none-eabi-gcc",
+                                            source="path", root="/x"))
+        monkeypatch.setattr(toolchain, "detect_qemu", lambda: None)
         app = make_app(tmp_path)
         result = unity.HostUnity(unity_src=MINI_UNITY).run(
             app / "src", app / "tests" / "unit")
-        assert result.ok is True
-        assert result.passed == 5
+        assert result.unavailable
+        assert "qemu" in result.reason.lower()
 
 
 # --- Unity acquisition -------------------------------------------------------

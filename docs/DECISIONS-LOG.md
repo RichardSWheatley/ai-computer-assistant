@@ -3,6 +3,25 @@
 Compromises, proxies, and deferred decisions — with the reason and what would
 remove them. Newest first. (Required by the working rules in `docs/WORKING-RULES.md`.)
 
+## 2026-08-28 — One toolchain (unit tier = Zephyr's gcc)
+
+- **The host-compiler unit tier is gone** (it lasted one day): compiling
+  unit tests with a PC compiler meant a second toolchain with different
+  int widths, alignment, and libc than the firmware's. The owner's rule
+  stands: whatever compiler Zephyr uses, RITA uses — version-matched to
+  the SDK's gcc, mismatches surfaced.
+- **QEMU is unavoidable**: ARM binaries cannot execute on the PC. The
+  proven recipe (arm926ej-s + rdimon semihosting on versatilepb) runs
+  Unity directly with no Zephyr/west/CMake involvement; the emulator
+  comes from PATH or the Zephyr SDK's host tools. Cost: unit runs are
+  seconds, not milliseconds.
+- **The toolchain download is ~150 MB once**, keyed to the SDK's gcc
+  version from a release table (`RELEASES`); unknown versions fall back
+  to a documented default and the diagnostic says so.
+- `host_cc` stays as a native escape hatch (runs binaries directly) —
+  used by RITA's own test suite for speed and available to developers,
+  never chosen automatically.
+
 ## 2026-08-28 — Verify the artifact, not the source
 
 - **Bundle-only breakage was invisible to the whole test suite.** Four

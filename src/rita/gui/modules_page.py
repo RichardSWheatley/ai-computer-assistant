@@ -44,8 +44,14 @@ class ModulesPage(QWidget):
         self.cerberus_btn.clicked.connect(self._install_cerberus)
         self.unity_btn = QPushButton("Install / update Unity")
         self.unity_btn.clicked.connect(self._install_unity)
+        self.toolchain_btn = QPushButton("Install ARM toolchain")
+        self.toolchain_btn.setToolTip(
+            "Downloads arm-none-eabi-gcc matching your Zephyr SDK's gcc "
+            "version — the unit tier compiles with it.")
+        self.toolchain_btn.clicked.connect(self._install_toolchain)
         row.addWidget(self.cerberus_btn)
         row.addWidget(self.unity_btn)
+        row.addWidget(self.toolchain_btn)
         row.addStretch(1)
         cv.addLayout(row)
         v.addWidget(card)
@@ -97,6 +103,22 @@ class ModulesPage(QWidget):
                 self.sig_cerberus.emit(res.detail)
             finally:
                 self.unity_btn.setEnabled(True)
+
+        threading.Thread(target=run, daemon=True).start()
+
+    def _install_toolchain(self) -> None:
+        from ..firmware.toolchain import install_arm_gcc
+
+        self.toolchain_btn.setEnabled(False)
+        self.sig_cerberus.emit("Downloading the ARM toolchain (matching "
+                               "your Zephyr SDK's gcc)… this is large.")
+
+        def run() -> None:
+            try:
+                res = install_arm_gcc()
+                self.sig_cerberus.emit(res.detail)
+            finally:
+                self.toolchain_btn.setEnabled(True)
 
         threading.Thread(target=run, daemon=True).start()
 

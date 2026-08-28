@@ -1,10 +1,13 @@
-"""Host-run Unity unit tests — the unit tier of RITA's flow.
+"""Unity unit tests — the unit tier of RITA's flow, on Zephyr's compiler.
 
-Unit tests are NOT ztest: they exercise individual functions in isolation
-on the host, in milliseconds, hardware stubbed. RITA uses Unity
-(ThrowTheSwitch — the same framework CERBERUS's Executioner uses), cloned
-onto the machine like CERBERUS itself. A missing compiler or framework is
-reported honestly; the stage is never silently green.
+Unit tests are NOT ztest: they exercise individual functions in isolation,
+hardware stubbed. They are compiled with arm-none-eabi-gcc — the same GCC
+family and version Zephyr uses (acquired by RITA when missing) — directly:
+no Zephyr headers, no CMake, no west. The resulting ARM binaries run under
+qemu-system-arm with semihosting, and Unity's output parses exactly as a
+native run's. An explicit `host_cc` override still compiles natively and
+runs directly (dev machines, CI). A missing toolchain, emulator, or
+framework is reported honestly; the stage is never silently green.
 """
 
 from __future__ import annotations
@@ -92,78 +95,55 @@ class CompilerInfo:
     source: str   # "explicit" | "host" | "sdk"
 
 
-def _is_windows() -> bool:
-    return os.name == "nt"
-
-
-# Common Windows install locations that don't put themselves on PATH.
-_WINDOWS_COMPILER_DIRS = [
-    Path(r"C:\Program Files\LLVM\bin"),
-    Path(r"C:\Program Files (x86)\LLVM\bin"),
-    Path(r"C:\msys64\mingw64\bin"),
-    Path(r"C:\msys64\ucrt64\bin"),
-    Path(r"C:\MinGW\bin"),
-    Path(r"C:\ProgramData\chocolatey\bin"),
-]
-
-_WINDOWS_COMPILER_NAMES = ("clang.exe", "gcc.exe", "cc.exe")
-
-
 def find_compiler(explicit: str | None) -> CompilerInfo | None:
-    """The unit tier's C compiler, in order: explicit override; a native
-    host compiler (PATH, plus well-known install dirs on Windows); then
-    the Zephyr SDK's toolchain — but ONLY where its output can actually
-    run. SDK toolchains are cross compilers emitting ELF, so on Windows
-    they are not host compilers and are not offered."""
+    """The unit tier's compiler is Zephyr's compiler — arm-none-eabi-gcc
+    (or the SDK's arm-zephyr-eabi-gcc), version-matched to the Zephyr SDK,
+    resolved by `toolchain.detect_arm_gcc`. `host_cc` remains an explicit
+    NATIVE override (its binaries run directly, no emulator) for
+    development machines and CI. Unrelated native compilers on the
+    machine are never picked up."""
     if explicit:
         if Path(explicit).exists() or shutil.which(explicit):
             return CompilerInfo(path=explicit, source="explicit")
         return None
-    for cand in ("cc", "gcc", "clang"):
-        if shutil.which(cand):
-            return CompilerInfo(path=cand, source="host")
-    if _is_windows():
-        for d in _WINDOWS_COMPILER_DIRS:
-            for name in _WINDOWS_COMPILER_NAMES:
-                cand = Path(d) / name
-                if cand.is_file():
-                    return CompilerInfo(path=str(cand), source="host")
-        return None            # SDK toolchains can't produce runnable .exe
-    from .workspace import read_sdk_info
+    from .toolchain import detect_arm_gcc
 
-    sdk = read_sdk_info()
-    if sdk:
-        root = Path(sdk["path"])
-        for rel in ("x86_64-zephyr-elf/bin/x86_64-zephyr-elf-gcc",
-                    "x86_64-zephyr-elf/bin/x86_64-zephyr-elf-gcc.exe",
-                    "llvm/bin/clang", "llvm/bin/clang.exe"):
-            cand = root / rel
-            if cand.is_file():
-                return CompilerInfo(path=str(cand), source="sdk")
-    return None
+    info = detect_arm_gcc()
+    if info is None:
+        return None
+    return CompilerInfo(path=info.cc, source="arm")
 
 
-_NO_COMPILER_REASON = ("no C compiler found: none on PATH (cc/gcc/clang) and "
-                       "no Zephyr SDK toolchain detected")
+NO_TOOLCHAIN_REASON = (
+    "arm-none-eabi-gcc (Zephyr's compiler family) is not on this machine: "
+    "not installed by RITA, not on PATH, no GNUARMEMB_TOOLCHAIN_PATH, and "
+    "no Zephyr SDK arm toolchain. Install it from Modules → Install ARM "
+    "toolchain (or `rita toolchain install`) — RITA downloads the release "
+    "matching your Zephyr SDK's gcc version.")
 
-# Windows needs a NATIVE compiler: the Zephyr SDK's toolchains are cross
-# compilers that emit ELF binaries Windows cannot execute, so they can't
-# run host unit tests no matter how they're invoked.
-NO_HOST_COMPILER_WINDOWS = (
-    "no native C compiler on this machine. The Zephyr SDK's toolchains are "
-    "cross compilers (they emit ELF binaries Windows can't run), so the "
-    "unit tier needs a native one: install LLVM/clang for Windows or "
-    "MinGW-w64 gcc (winget install LLVM.LLVM), or point Settings → "
-    "C compiler at one. It is picked up automatically once present.")
+NO_QEMU_REASON = (
+    "qemu-system-arm is missing: ARM test binaries cannot execute on this "
+    "machine directly. It ships with the Zephyr SDK's host tools; install "
+    "it or the SDK and the unit tier picks it up automatically.")
 
 
 def no_compiler_reason() -> str:
-    return NO_HOST_COMPILER_WINDOWS if _is_windows() else _NO_COMPILER_REASON
+    return NO_TOOLCHAIN_REASON
 
 
-class HostUnity:
-    """Compile unity.c + each test file + the sources under test with the
-    host compiler; run; parse Unity's output into concrete artifacts."""
+# The proven ARM run recipe (see docs/specs/unit-tier-toolchain.md):
+# arm926ej-s + rdimon semihosting compiles Unity directly; versatilepb
+# under QEMU executes it and semihosting carries Unity's output out.
+_ARM_CFLAGS = ["-mcpu=arm926ej-s", "--specs=rdimon.specs"]
+_QEMU_ARGS = ["-M", "versatilepb", "-cpu", "arm926", "-nographic",
+              "-audio", "none", "-semihosting", "-kernel"]
+
+
+class UnitRunner:
+    """Compile unity.c + each test file + the sources under test with
+    Zephyr's ARM gcc; run under qemu-system-arm (semihosting); parse
+    Unity's output into concrete artifacts. An explicit `cc` compiles
+    natively and runs directly instead."""
 
     def __init__(self, unity_src: str | Path, cc: str | None = None,
                  timeout: float = 120.0) -> None:
@@ -179,6 +159,15 @@ class HostUnity:
                               reason=(f"compiler {self.cc!r} not found"
                                       if self.cc else no_compiler_reason()))
         cc = compiler.path
+        qemu = None
+        if compiler.source == "arm":
+            from .toolchain import detect_qemu
+
+            qemu = detect_qemu()
+            if qemu is None:
+                return UnitResult(ok=False, unavailable=True,
+                                  reason=NO_QEMU_REASON)
+        platform = "qemu-arm" if qemu else "host"
         test_files = sorted(test_dir.rglob("*.c")) if test_dir.is_dir() else []
         if not test_files:
             return UnitResult(ok=False, unavailable=True,
@@ -191,33 +180,37 @@ class HostUnity:
         ran = failed = 0
         with tempfile.TemporaryDirectory(prefix="rita-unity-") as tmp:
             for test_file in test_files:
-                exe = Path(tmp) / (test_file.stem + ".bin")
-                argv = [cc, "-I", str(self.unity_src), "-I", str(src_dir),
+                exe = Path(tmp) / (test_file.stem + ".elf")
+                argv = [cc, *(_ARM_CFLAGS if qemu else []),
+                        "-I", str(self.unity_src), "-I", str(src_dir),
                         str(self.unity_src / "unity.c"), str(test_file),
                         *map(str, sources), "-o", str(exe)]
-                if compiler.source == "sdk":
-                    argv.append("-static")   # cross toolchain: self-contained
                 comp = subprocess.run(argv, capture_output=True, text=True,
                                       timeout=self.timeout)
                 if comp.returncode != 0:
                     failures.append(FailureArtifact(
-                        kind="unit", suite=test_file.name, platform="host",
+                        kind="unit", suite=test_file.name, platform=platform,
                         reason="unit tests failed to compile",
                         log_excerpt=(comp.stderr or comp.stdout)[-4000:],
                         file_hints=(test_file.name,)))
                     continue
+                run_argv = ([qemu, *_QEMU_ARGS, str(exe)] if qemu
+                            else [str(exe)])
                 try:
-                    run = subprocess.run([str(exe)], capture_output=True,
+                    run = subprocess.run(run_argv, capture_output=True,
                                          text=True, timeout=self.timeout)
-                except OSError as exc:   # e.g. cross-built binary on this host
-                    hint = ("the Zephyr SDK cross-compiler produced a binary "
-                            "this host cannot execute; install a native host "
-                            "C compiler (gcc/clang)"
-                            if compiler.source == "sdk" else str(exc))
+                except subprocess.TimeoutExpired:
                     failures.append(FailureArtifact(
-                        kind="unit", suite=test_file.name, platform="host",
+                        kind="unit", suite=test_file.name, platform=platform,
+                        reason=f"unit run timed out after {self.timeout:.0f}s",
+                        log_excerpt="the test binary never finished under "
+                                    "the emulator", file_hints=(test_file.name,)))
+                    continue
+                except OSError as exc:
+                    failures.append(FailureArtifact(
+                        kind="unit", suite=test_file.name, platform=platform,
                         reason="unit test binary failed to execute",
-                        log_excerpt=hint, file_hints=(test_file.name,)))
+                        log_excerpt=str(exc), file_hints=(test_file.name,)))
                     continue
                 out = run.stdout or ""
                 m = _SUMMARY_RE.search(out)
@@ -226,19 +219,22 @@ class HostUnity:
                     failed += int(m.group(2))
                 for fm in _FAIL_RE.finditer(out):
                     failures.append(FailureArtifact(
-                        kind="unit", suite=test_file.name, platform="host",
+                        kind="unit", suite=test_file.name, platform=platform,
                         reason=f"unit test {fm.group('test')} failed",
                         log_excerpt=fm.group(0),
                         file_hints=(Path(fm.group("file")).name,),
                         testcase=fm.group("test")))
                 if run.returncode != 0 and not _FAIL_RE.search(out) and not m:
                     failures.append(FailureArtifact(
-                        kind="unit", suite=test_file.name, platform="host",
+                        kind="unit", suite=test_file.name, platform=platform,
                         reason=f"unit runner exited {run.returncode}",
                         log_excerpt=(out or run.stderr)[-4000:],
                         file_hints=(test_file.name,)))
         return UnitResult(ok=not failures, failures=tuple(failures),
                           ran=ran, passed=ran - failed, failed=failed)
+
+
+HostUnity = UnitRunner   # the seam's historical name
 
 
 class FakeUnity:

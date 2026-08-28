@@ -192,6 +192,35 @@ def _cerberus() -> Check:
     return Check("CERBERUS", True, str(clone))
 
 
+def _arm_toolchain(cfg: RitaConfig) -> Check:
+    """Zephyr's compiler family — the one the unit tier compiles with.
+    The version must MATCH the Zephyr SDK's gcc (the owner's rule)."""
+    from .firmware.toolchain import detect_arm_gcc, detect_qemu
+
+    info = detect_arm_gcc()
+    if info is None:
+        return Check("ARM toolchain", False,
+                     "arm-none-eabi-gcc not found anywhere — install it "
+                     "from Modules → Install ARM toolchain; RITA downloads "
+                     "the release matching your Zephyr SDK's gcc.")
+    ver = ".".join(map(str, info.version)) if info.version else "unknown"
+    qemu = detect_qemu()
+    if info.mismatch:
+        return Check("ARM toolchain", False,
+                     f"{info.cc} (gcc {ver}, from {info.source}) does NOT "
+                     f"match your Zephyr SDK's gcc version — reinstall from "
+                     f"Modules → Install ARM toolchain to get the matching "
+                     f"release.")
+    if qemu is None:
+        from .firmware.unity import NO_QEMU_REASON
+
+        return Check("ARM toolchain", False,
+                     f"{info.cc} (gcc {ver}) is ready, but {NO_QEMU_REASON}")
+    return Check("ARM toolchain", True,
+                 f"{info.cc} (gcc {ver}, from {info.source}); "
+                 f"tests run under {qemu}")
+
+
 def _unity(cfg: RitaConfig) -> Check:
     from .firmware import unity as _u
 
@@ -202,9 +231,7 @@ def _unity(cfg: RitaConfig) -> Check:
                      "Install it from the Modules page.")
     cc = _u.find_compiler(cfg.host_cc)
     if cc is None:
-        reason = (_u.NO_HOST_COMPILER_WINDOWS if _is_windows()
-                  else _u._NO_COMPILER_REASON)
-        return Check("Unity", False, f"{found}; {reason}")
+        return Check("Unity", False, f"{found}; {_u.no_compiler_reason()}")
     return Check("Unity", True, f"{found}; compiler: {cc.path} ({cc.source})")
 
 
@@ -213,7 +240,8 @@ def run_checks(cfg: RitaConfig | None = None, deep: bool = False) -> list[Check]
     checks = [_workspace(cfg), _coder(cfg)]
     if deep:
         checks.append(_coder_live(cfg))
-    checks += [_mcp(cfg), _voice(), _west(cfg), _sdk(), _cerberus(), _unity(cfg)]
+    checks += [_mcp(cfg), _voice(), _west(cfg), _sdk(),
+               _arm_toolchain(cfg), _cerberus(), _unity(cfg)]
     return checks
 
 
