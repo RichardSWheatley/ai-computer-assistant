@@ -41,10 +41,13 @@ def _write_mcp_config(ws: Path) -> str:
         cli = exe_dir / "rita.exe"
         if not cli.exists():
             cli = exe_dir / "rita"
-        command, args = str(cli), ["mcp-serve", "--workspace", str(ws)]
+        command = str(cli)
+        args = ["mcp-serve", "--workspace", str(Path(ws).resolve())]
     else:
         command = sys.executable
-        args = ["-m", "rita", "mcp-serve", "--workspace", str(ws)]
+        # Absolute: the agent launches this server from ITS cwd, not ours.
+        args = ["-m", "rita", "mcp-serve",
+                "--workspace", str(Path(ws).resolve())]
     p.write_text(json.dumps({"mcpServers": {"rita-workspace": {
         "command": command, "args": args,
     }}}, indent=1))

@@ -55,6 +55,13 @@ class SettingsPage(QWidget):
         save = QPushButton("Save", objectName="primary")
         save.clicked.connect(self._save)
         form.addRow("", save)
+        check = QPushButton("Check setup")
+        check.setToolTip("Test everything RITA needs and report what's "
+                         "wrong — results appear on the Chat page.")
+        # Same deterministic path as typing it: one code path, not two.
+        check.clicked.connect(
+            lambda: self.presenter.submit_text("check setup"))
+        form.addRow("", check)
         v.addWidget(card)
         v.addStretch(1)
 

@@ -84,30 +84,57 @@ class CoderCli:
         self.mcp_config = str(mcp_config) if mcp_config else None
         self.command = command
         self.timeout = timeout
+        # True once an invocation had to fall back to running without the
+        # workspace MCP server. Surfaced in reports — never silent.
+        self.mcp_fallback = False
 
-    def _invoke(self, prompt: str, cwd: Path, *,
-                allow_edits: bool) -> subprocess.CompletedProcess:
+    def _args(self, prompt: str, *, allow_edits: bool, with_mcp: bool) -> list:
         from .static_check import resolve_argv
 
         args = [*resolve_argv(list(self.command)), prompt,
                 "--output-format", "text"]
-        if self.mcp_config:
+        if with_mcp and self.mcp_config:
             args += ["--mcp-config", self.mcp_config]
         if allow_edits:
             args += ["--permission-mode", "acceptEdits"]
-        return subprocess.run(args, cwd=cwd, capture_output=True, text=True,
+        return args
+
+    def _invoke(self, prompt: str, cwd: Path, *,
+                allow_edits: bool) -> subprocess.CompletedProcess:
+        args = self._args(prompt, allow_edits=allow_edits, with_mcp=True)
+        proc = subprocess.run(args, cwd=cwd, capture_output=True, text=True,
                               timeout=self.timeout)
+        self.last_args = args
+        if proc.returncode == 0 or not self.mcp_config:
+            return proc
+        # Workspace tools are an enhancement, not a prerequisite: a broken
+        # MCP server must never block authoring. Retry once without it and
+        # record the fallback so reports can say what happened.
+        retry_args = self._args(prompt, allow_edits=allow_edits, with_mcp=False)
+        retry = subprocess.run(retry_args, cwd=cwd, capture_output=True,
+                               text=True, timeout=self.timeout)
+        if retry.returncode == 0:
+            self.mcp_fallback = True
+            self.last_args = retry_args
+            return retry
+        return proc
 
     def complete(self, prompt: str) -> str:
         proc = self._invoke(prompt, self.workspace, allow_edits=False)
         out = (proc.stdout or "").strip()
         if proc.returncode != 0 or not out:
-            err = (proc.stderr or "").strip()[-800:] or "no stderr"
-            raise RuntimeError(
-                f"the coding agent ({self.command[0]}) exited "
-                f"{proc.returncode} with "
-                f"{'no output' if not out else 'output'} — {err}")
+            raise RuntimeError(self._failure_text(proc))
         return proc.stdout
+
+    def _failure_text(self, proc) -> str:
+        """Quote what actually happened: argv, exit code, both streams."""
+        argv = " ".join(getattr(self, "last_args", list(self.command))[:2])
+        out = (proc.stdout or "").strip()[-600:] or "(empty)"
+        err = (proc.stderr or "").strip()[-600:] or "(empty)"
+        note = (" (retried without the workspace MCP server too)"
+                if self.mcp_config else "")
+        return (f"the coding agent ({argv}) exited {proc.returncode}"
+                f"{note}. stdout: {out} | stderr: {err}")
 
     def patch(self, failure: FailureArtifact, workdir: Path) -> PatchResult:  # pragma: no cover - needs the coding-agent CLI
         failure = _require_failure(failure)

@@ -235,8 +235,19 @@ class Supervisor:
         return f"Project {p.id} ({p.goal[:40]}): " + ", ".join(parts) + "."
 
     def handle_chat(self, text: str) -> str:
-        data = self._boards_data()
+        from .routing.model import normalize
+
         norm = text.lower()
+        # Self-check: RITA is GUI-only, so she must be able to report her
+        # own setup without a terminal. A report, never a task.
+        from .routing import grammar as _grammar
+
+        if _grammar.is_diagnostic(normalize(text)):
+            from .diagnostics import report
+
+            return report(self.cfg, deep=bool(self.cfg.coder_command))
+
+        data = self._boards_data()
 
         if "project" in norm:
             status = self._project_status()

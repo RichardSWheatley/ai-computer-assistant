@@ -3,6 +3,40 @@
 All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/); versions follow semver.
 
+## [0.19.0] - 2026-08-28
+
+### Fixed
+- **THE cause of "the coding agent exited 1": the MCP SDK's 2.x rename.**
+  `mcp` 2.x renamed `FastMCP` to `MCPServer`; RITA imported the 1.x name,
+  so `rita mcp-serve` died on startup, the agent that launches it failed,
+  and it exited 1 with nothing on stderr. The server now resolves either
+  class (the decorator API is identical), and `mcp_available()` reports
+  whether the server can actually be CONSTRUCTED, not merely imported.
+- **`mcp` and the voice runtime are collected into the bundle**
+  (`collect_all`): both are imported dynamically, so PyInstaller never
+  saw them — they were missing only in the packaged app.
+- **A broken MCP no longer blocks coding**: `CoderCli` retries once
+  without `--mcp-config` and records the fallback. Workspace tools are an
+  enhancement, not a prerequisite for authoring code.
+- **Coder failures quote everything**: argv, exit code, stdout tail AND
+  stderr tail — the previous message discarded the output it mentioned.
+- `mcp.json` stores an absolute workspace path (the agent launches the
+  server from its own directory, not RITA's).
+
+### Added
+- **Diagnostics** (`docs/specs/diagnostics.md`): `rita.diagnostics`
+  checks workspace, coding agent (including a real live invocation),
+  MCP, voice, west, SDK, CERBERUS and Unity, each reporting the concrete
+  finding. Say or type **"check setup"** (or the Settings page's *Check
+  setup* button — same deterministic path) and the report lands in the
+  screen pane. Also `rita check [--deep] [--require ...]`.
+- **The packaged bundle is now smoke-tested before release**
+  (`packaging/smoke_bundle.py`, run locally and in CI): it drives the
+  BUILT executables through doctor → sync → mcp.json validation → MCP
+  server boot → module install → self-check, and fails the build on any
+  of them. Source tests cannot see bundle-only breakage; every failure
+  reported from a real install so far was exactly that kind.
+
 ## [0.18.3] - 2026-08-28
 
 ### Fixed

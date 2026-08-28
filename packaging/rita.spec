@@ -6,12 +6,33 @@
 
 from pathlib import Path
 
+from PyInstaller.utils.hooks import collect_all
+
 SRC = Path(SPECPATH).parent / "src"
+
+
+def bundle(pkg):
+    """Collect a package PyInstaller cannot see: `mcp` is imported inside a
+    function (so a frozen `rita.exe mcp-serve` would die), and the voice
+    runtime ships native libraries its import needs."""
+    try:
+        return collect_all(pkg)
+    except Exception:
+        return [], [], []      # not installed in this build environment
+
+
+extra_datas, extra_binaries, extra_hidden = [], [], []
+for _pkg in ("mcp", "sounddevice", "faster_whisper", "ctranslate2",
+             "huggingface_hub", "tokenizers", "pyttsx3"):
+    _d, _b, _h = bundle(_pkg)
+    extra_datas += _d
+    extra_binaries += _b
+    extra_hidden += _h
 
 datas = [
     (str(SRC / "rita/firmware/data/boards.seed.json"), "rita/firmware/data"),
     (str(SRC / "rita/firmware/data/knowledge"), "rita/firmware/data/knowledge"),
-]
+] + extra_datas
 
 hiddenimports = [
     "rita.gui.app", "rita.gui.main_window", "rita.gui.workspace_page",
@@ -20,12 +41,13 @@ hiddenimports = [
     "rita.modules_impl.zephyr_runner", "rita.modules_impl.coder_worker",
     "rita.modules_impl.scaffold", "rita.modules_impl.cerberus",
     "rita.modules_impl.joulescope",
-    "rita.mcpserver.server",
-]
+    "rita.mcpserver.server", "rita.diagnostics",
+] + extra_hidden
 
 gui_a = Analysis(
     [str(Path(SPECPATH) / "launch_gui.py")],
     pathex=[str(SRC)],
+    binaries=extra_binaries,
     datas=datas,
     hiddenimports=hiddenimports,
     excludes=["torch"],
@@ -33,6 +55,7 @@ gui_a = Analysis(
 cli_a = Analysis(
     [str(Path(SPECPATH) / "launch_cli.py")],
     pathex=[str(SRC)],
+    binaries=extra_binaries,
     datas=datas,
     hiddenimports=hiddenimports,
     excludes=["PySide6", "torch"],

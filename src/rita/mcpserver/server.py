@@ -16,17 +16,35 @@ SERVER_NAME = "rita-workspace"
 
 
 def mcp_available() -> bool:
+    """True only if the server can actually be CONSTRUCTED — importing the
+    top-level package is not enough (2.x moved the server class)."""
     try:
-        import mcp  # type: ignore  # noqa: F401
-
+        _server_class()
         return True
     except ImportError:
         return False
 
 
+def _server_class():
+    """The SDK's server class across major versions.
+
+    mcp 2.x renamed FastMCP to MCPServer; the decorator API (`@srv.tool()`,
+    `srv.run()`) is unchanged. Importing the 1.x name under 2.x raises
+    ModuleNotFoundError, which killed the server — and with it the coding
+    agent that launches it."""
+    try:
+        from mcp.server.mcpserver import MCPServer  # type: ignore
+
+        return MCPServer
+    except ImportError:
+        from mcp.server.fastmcp import FastMCP  # type: ignore
+
+        return FastMCP
+
+
 def build_server(workspace: str | Path):  # pragma: no cover - exercised via SDK
-    """Construct the FastMCP server over a workspace (requires the mcp extra)."""
-    from mcp.server.fastmcp import FastMCP  # type: ignore
+    """Construct the MCP server over a workspace (requires the mcp extra)."""
+    FastMCP = _server_class()
 
     tools = WorkspaceTools(workspace)
     srv = FastMCP(SERVER_NAME)

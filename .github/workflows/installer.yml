@@ -28,6 +28,14 @@ jobs:
       - name: Build the bundle (PyInstaller)
         run: pyinstaller packaging/rita.spec --noconfirm --distpath dist
 
+      # The source tests can't see bundle-only breakage: a package
+      # PyInstaller failed to collect is missing ONLY in the frozen app.
+      # Run the built exe's own self-check and fail the build on it.
+      - name: Smoke-test the FROZEN bundle
+        run: |
+          python packaging\smoke_bundle.py dist\RITA --require "workspace MCP,voice"
+          if ($LASTEXITCODE -ne 0) { exit 1 }
+
       - name: Read version
         id: version
         run: |

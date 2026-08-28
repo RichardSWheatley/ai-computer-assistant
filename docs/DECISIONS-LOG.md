@@ -3,6 +3,21 @@
 Compromises, proxies, and deferred decisions — with the reason and what would
 remove them. Newest first. (Required by the working rules in `docs/WORKING-RULES.md`.)
 
+## 2026-08-28 — Verify the artifact, not the source
+
+- **Bundle-only breakage was invisible to the whole test suite.** Four
+  user-facing failures in a row (entry-point crash, unusable mcp.json,
+  missing voice runtime, dead MCP server) existed only in the packaged
+  app, because source tests import from the source tree and CI only
+  checked that the build command exited 0. `packaging/smoke_bundle.py`
+  now drives the built executables end to end, locally and in CI, and
+  fails the build. New rule: a packaging change is not done until the
+  bundle smoke test has run against a real build.
+- **The MCP SDK is a moving dependency.** 2.x renamed the server class;
+  we support both names rather than pinning, and `mcp_available()`
+  probes constructability so a future rename degrades to an honest
+  "workspace tools unavailable" instead of killing the coding agent.
+
 ## 2026-08-28 — Voice runtime bundled (supersedes "not bundled")
 
 - **Voice deps ship in the installer now.** The Phase C decision to

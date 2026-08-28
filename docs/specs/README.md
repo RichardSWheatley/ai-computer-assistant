@@ -17,5 +17,6 @@ One spec per directive fix, written before its tests and implementation:
 | `projects.md` | Task handoff: AI plans (data only), RITA executes | **done** |
 | `coding-agent-seam.md` | Vendor-neutral coder seam; command is config | **done** |
 | `voice-in-gui.md` | The microphone lands in the app (no CLI) | **done** |
+| `diagnostics.md` | In-app setup checks + packaged-bundle verification | **done** |
 
 Update the status column as each lands.

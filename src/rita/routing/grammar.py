@@ -43,6 +43,19 @@ PROJECT_PATTERNS = (
 )
 
 
+# Self-check phrases: a report, never a task.
+DIAGNOSTIC_PATTERNS = (
+    re.compile(r"^(?:run |do )?(?:a )?diagnostics?$"),
+    re.compile(r"^check (?:your |the |my )?setup$"),
+    re.compile(r"^(?:run |do )?(?:a )?(?:setup|self)[ -]?check$"),
+    re.compile(r"^what(?:'?s| is) (?:wrong|broken|missing)$"),
+)
+
+
+def is_diagnostic(norm: str) -> bool:
+    return any(p.match(norm) for p in DIAGNOSTIC_PATTERNS)
+
+
 def project_goal(norm: str) -> str | None:
     for pat in PROJECT_PATTERNS:
         m = pat.match(norm)

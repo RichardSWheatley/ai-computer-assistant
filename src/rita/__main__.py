@@ -205,6 +205,27 @@ def cmd_sync(args) -> int:
     return 0
 
 
+def cmd_check(args) -> int:
+    """Setup report. Also the packaged-build smoke test: CI runs this from
+    the frozen bundle so bundle-only breakage (a package PyInstaller
+    couldn't see) fails the build instead of reaching a user."""
+    from .config import load_rita_config
+    from .diagnostics import report, run_checks
+
+    cfg = load_rita_config()
+    print(report(cfg, deep=args.deep))
+    if not args.require:
+        return 0
+    wanted = {n.strip().lower() for n in args.require.split(",")}
+    bad = [c for c in run_checks(cfg, deep=args.deep)
+           if c.name.lower() in wanted and not c.ok]
+    if bad:
+        print("\nREQUIRED CHECKS FAILED: "
+              + ", ".join(f"{c.name} ({c.detail})" for c in bad))
+        return 1
+    return 0
+
+
 def cmd_mcp_serve(args) -> int:
     from .mcpserver.server import serve
 
@@ -306,8 +327,16 @@ def main(argv: list[str] | None = None) -> int:
                      choices=["status", "install"])
     uni.add_argument("--url", help="override the Unity repo URL")
 
+    chk = sub.add_parser("check", help="report this install's setup")
+    chk.add_argument("--deep", action="store_true",
+                     help="also run the coding agent for real")
+    chk.add_argument("--require",
+                     help="comma-separated check names that must pass "
+                          "(exit 1 otherwise) — used by the packaged build")
+
     args = parser.parse_args(argv)
     return {"doctor": cmd_doctor, "plugins": cmd_plugins, "run": cmd_run,
+            "check": cmd_check,
             "doc": cmd_doc, "workflow": cmd_workflow, "talk": cmd_talk,
             "sync": cmd_sync, "mcp-serve": cmd_mcp_serve,
             "modules": cmd_modules, "module-run": cmd_module_run,
