@@ -3,6 +3,20 @@
 All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/); versions follow semver.
 
+## [0.22.3] - 2026-08-28
+
+### Changed
+- **The toolchain release is now VERIFIED online, not assumed** (the
+  owner's call): before downloading, RITA probes developer.arm.com for
+  the SDK's GCC branch (rel1–rel3, one-byte ranged GETs over the same
+  two-stage TLS chain) and picks the newest release Arm actually
+  publishes. A branch with nothing published is an honest failure
+  naming what was probed; an unreachable probe falls back to the
+  derived rel1 so offline machines still get a concrete download error
+  rather than a blocked path. Explicit `--release` skips probing. Live
+  check at development time: 14.3→14.3.rel1, 13.2→13.2.rel1,
+  12.2→12.2.rel1 all verified against Arm's server.
+
 ## [0.22.2] - 2026-08-28
 
 ### Changed

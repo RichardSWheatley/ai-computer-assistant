@@ -177,6 +177,65 @@ def _ssl_contexts():
     return out
 
 
+def _open(url: str, *, byte_range: str | None = None):
+    """Open a URL through the two-stage TLS chain (system trust, then
+    RITA's bundled CAs). Shared by downloads and existence probes."""
+    import ssl  # noqa: F401  (imported for the error types via helpers)
+
+    headers = {"User-Agent": "rita-installer"}
+    if byte_range:
+        headers["Range"] = byte_range
+    req = urllib_request.Request(url, headers=headers)
+    last = None
+    for _name, ctx in _ssl_contexts():
+        try:
+            return urllib_request.urlopen(req, timeout=120, context=ctx)
+        except Exception as exc:
+            if not _is_cert_error(exc):
+                raise
+            last = exc
+    raise OSError(
+        f"TLS certificate verification failed with the system "
+        f"certificates AND RITA's bundled CA set ({last}). A security "
+        f"product or proxy may be intercepting HTTPS — its certificate "
+        f"must be installed in Windows' certificate store. Verification "
+        f"is never disabled.")
+
+
+def _exists(url: str) -> bool:
+    """Does Arm actually publish this file? A one-byte ranged GET."""
+    import urllib.error
+
+    try:
+        with _open(url, byte_range="bytes=0-0") as r:
+            return getattr(r, "status", 200) in (200, 206)
+    except urllib.error.HTTPError as exc:
+        if exc.code in (404, 403, 410):
+            return False
+        raise
+
+
+def _url_for(release: str, archive_suffix: str | None = None) -> str:
+    host, ext = _host_tag()
+    if archive_suffix:
+        ext = archive_suffix
+    return _BASE_URL.format(rel=release, host=host, ext=ext)
+
+
+def resolve_release_online(want: tuple[int, int]) -> tuple[str, bool]:
+    """The release for the SDK's GCC branch, VERIFIED against Arm's
+    server — probe the branch's revs and pick the newest that is
+    actually published. Returns (release, verified). A probe that can't
+    reach the network at all falls back to the derived rel1 unverified —
+    the download itself will report any real problem."""
+    found = None
+    for rev in (1, 2, 3):
+        rel = f"{want[0]}.{want[1]}.rel{rev}"
+        if _exists(_url_for(rel)):
+            found = rel                       # keep going: newest rev wins
+    return found, True
+
+
 def _is_cert_error(exc) -> bool:
     import ssl
     import urllib.error
@@ -233,11 +292,25 @@ def install_arm_gcc(release: str | None = None,
                        "install a specific release with "
                        "`rita toolchain install --release 14.3.rel1` "
                        "(use your SDK's gcc major.minor).")
-        release = release_for(want)
-    host, ext = _host_tag()
+        try:
+            release, verified = resolve_release_online(want)
+        except OSError:
+            # Probe unreachable (offline?): fall back to the derived name
+            # unverified — the download itself will report any problem.
+            release, verified = release_for(want), False
+        if release is None:
+            # The probe WORKED and Arm publishes nothing on this branch.
+            return InstallResult(
+                ok=False, path=str(dest),
+                detail=f"developer.arm.com publishes no arm-none-eabi "
+                       f"release for GCC {want[0]}.{want[1]} (probed "
+                       f"rel1-rel3) — your SDK's branch has no matching "
+                       f"standalone download. Install one manually or "
+                       f"pass --release explicitly.")
+    _host, ext = _host_tag()
     if archive_suffix:
         ext = archive_suffix
-    url = _BASE_URL.format(rel=release, host=host, ext=ext)
+    url = _url_for(release, archive_suffix)
     try:
         with tempfile.TemporaryDirectory(prefix="rita-toolchain-") as tmp:
             archive = Path(tmp) / f"toolchain{ext}"

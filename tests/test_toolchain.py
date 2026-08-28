@@ -258,6 +258,8 @@ class TestVersionMatchesZephyr:
         from rita.firmware import toolchain
         monkeypatch.setenv("RITA_HOME", str(tmp_path / "rita"))
         monkeypatch.setattr(toolchain, "zephyr_gcc_version", lambda: (12, 2))
+        monkeypatch.setattr(toolchain, "resolve_release_online",
+                            lambda want: (f"{want[0]}.{want[1]}.rel1", True))
         urls = []
 
         def fake_download(url, dest):
@@ -280,6 +282,8 @@ class TestVersionMatchesZephyr:
         from rita.firmware import toolchain
         monkeypatch.setenv("RITA_HOME", str(tmp_path / "rita"))
         monkeypatch.setattr(toolchain, "zephyr_gcc_version", lambda: (14, 3))
+        monkeypatch.setattr(toolchain, "resolve_release_online",
+                            lambda want: (f"{want[0]}.{want[1]}.rel1", True))
         urls = []
 
         def fake_download(url, dest):
@@ -318,6 +322,82 @@ class TestVersionMatchesZephyr:
         monkeypatch.setattr(toolchain, "_download", fake_download)
         toolchain.install_arm_gcc(release="14.3.rel1")
         assert urls and "14.3.rel1" in urls[0]
+
+
+class TestOnlineReleaseResolution:
+    """The release is VERIFIED online, not assumed: RITA probes Arm's
+    server for the SDK's GCC branch and picks the release that is
+    actually there (the newest rev of that branch)."""
+
+    def test_picks_the_rev_that_exists(self, monkeypatch):
+        from rita.firmware import toolchain
+        monkeypatch.setattr(toolchain, "_exists",
+                            lambda url: "14.3.rel2" in url)
+        rel, verified = toolchain.resolve_release_online((14, 3))
+        assert rel == "14.3.rel2"
+        assert verified is True
+
+    def test_picks_the_newest_existing_rev(self, monkeypatch):
+        from rita.firmware import toolchain
+        monkeypatch.setattr(
+            toolchain, "_exists",
+            lambda url: ("14.3.rel1" in url) or ("14.3.rel2" in url))
+        rel, verified = toolchain.resolve_release_online((14, 3))
+        assert rel == "14.3.rel2"                  # newest wins
+
+    def test_no_release_on_the_branch_is_an_honest_failure(self, tmp_path,
+                                                           monkeypatch):
+        from rita.firmware import toolchain
+        monkeypatch.setenv("RITA_HOME", str(tmp_path / "rita"))
+        monkeypatch.setattr(toolchain, "zephyr_gcc_version", lambda: (99, 9))
+        monkeypatch.setattr(toolchain, "_exists", lambda url: False)
+        called = []
+        monkeypatch.setattr(toolchain, "_download",
+                            lambda *a: called.append(a))
+        res = toolchain.install_arm_gcc()
+        assert res.ok is False
+        assert called == []
+        assert "99.9" in res.detail
+        assert "developer.arm.com" in res.detail
+
+    def test_probe_failure_falls_back_to_derived_rel1(self, tmp_path,
+                                                      monkeypatch):
+        # Offline probe must not block: the download itself will speak.
+        from rita.firmware import toolchain
+        monkeypatch.setenv("RITA_HOME", str(tmp_path / "rita"))
+        monkeypatch.setattr(toolchain, "zephyr_gcc_version", lambda: (14, 3))
+
+        def boom(url):
+            raise OSError("no network")
+
+        monkeypatch.setattr(toolchain, "_exists", boom)
+        urls = []
+
+        def fake_download(url, dest):
+            urls.append(url)
+            raise OSError("stop — url captured")
+
+        monkeypatch.setattr(toolchain, "_download", fake_download)
+        toolchain.install_arm_gcc()
+        assert urls and "14.3.rel1" in urls[0]
+
+    def test_explicit_release_skips_probing(self, tmp_path, monkeypatch):
+        from rita.firmware import toolchain
+        monkeypatch.setenv("RITA_HOME", str(tmp_path / "rita"))
+
+        def no_probe(url):
+            raise AssertionError("must not probe with an explicit release")
+
+        monkeypatch.setattr(toolchain, "_exists", no_probe)
+        urls = []
+
+        def fake_download(url, dest):
+            urls.append(url)
+            raise OSError("stop")
+
+        monkeypatch.setattr(toolchain, "_download", fake_download)
+        toolchain.install_arm_gcc(release="13.2.rel1")
+        assert urls and "13.2.rel1" in urls[0]
 
 
 class TestDownloadTls:

@@ -3,6 +3,15 @@
 Compromises, proxies, and deferred decisions — with the reason and what would
 remove them. Newest first. (Required by the working rules in `docs/WORKING-RULES.md`.)
 
+## 2026-08-28 — Release picked by probing Arm's server
+
+- **Existence beats derivation**: the derived `{maj}.{min}.relN` name is
+  probed (rel1–3, newest existing wins) before download, so a naming
+  change or a re-spun release on Arm's side is picked up rather than
+  404ing. Offline probe → derived rel1 unverified, because a blocked
+  install with no error is worse than a download that reports its own
+  failure.
+
 ## 2026-08-28 — SDK gcc sets the version, never compiles
 
 - **arm-zephyr-eabi is excluded from compile candidates** per the owner:
