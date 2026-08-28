@@ -3,6 +3,37 @@
 All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/); versions follow semver.
 
+## [0.22.0] - 2026-08-28
+
+### Fixed
+- **Found by self-test, before it reached the owner: "build <sample>"
+  could never succeed with CERBERUS installed, and the patch loop could
+  edit the user's Zephyr tree.** The pipeline ran the MISRA gate over
+  UNMODIFIED in-tree samples (stock Zephyr code doesn't aim for MISRA →
+  guaranteed retries-exhausted) and pointed patches at the sample's
+  directory INSIDE the workspace. Now: gates and patches apply to code
+  RITA writes — scaffolded applications and authored tests. An
+  unmodified in-tree sample skips STATIC with the reason stated, and a
+  failing one is reported as a workspace/environment issue with the
+  artifact shown, never patched. A defensive invariant makes the
+  pipeline refuse any patch target outside RITA's workdir or the
+  applications root (`docs/specs/static-check.md`, Scope section).
+- Legacy gate/patch tests that encoded the old behavior were moved to
+  the authored-code path they were really about.
+
+### Self-test session (full product, run before release)
+The whole product was exercised end to end in development, as a user:
+frozen-bundle toolchain download (real, 13.2.rel1), every release URL in
+the table probed on Arm's server (all valid, both hosts), real CERBERUS
+and Unity clones from the frozen exe, sync + full `check`, the real unit
+tier (ThrowTheSwitch Unity + downloaded arm-none-eabi-gcc + QEMU, with a
+deliberate failure correctly caught: 3 ran / 2 passed / 1 failed), and a
+scripted GUI walk over every page and button — nav, chat commands,
+rename, controls, work task, project handoff, settings save/login/voice,
+workspace sync, modules installs with simulated failures. The one defect
+found is the fix above; "build blinky" and a project handoff now finish
+green in the same walk.
+
 ## [0.21.1] - 2026-08-28
 
 ### Fixed

@@ -17,6 +17,16 @@ def blinky_fit(_p: str = "") -> str:
     return json.dumps({"fit": "sample.basic.blinky", "reason": "fits"})
 
 
+# The static gate applies to code RITA writes, so the gate tests use the
+# authored-tests path (no index match -> the coder writes the suite).
+AUTHORED_TEST_FILES = json.dumps({
+    "testcase.yaml": "tests:\n  app.mspi.psram:\n    tags: mspi psram\n    harness: ztest\n",
+    "src/main.c": "#include <zephyr/ztest.h>\n",
+    "CMakeLists.txt": "cmake_minimum_required(VERSION 3.20)\n",
+    "prj.conf": "CONFIG_ZTEST=y\n",
+})
+
+
 def make_pipeline(tmp_path, *, static_seq=(), build_seq=("ok",),
                   twister_seq=("pass.json",), max_cycles=3,
                   cerberus_configured=True):
@@ -29,7 +39,7 @@ def make_pipeline(tmp_path, *, static_seq=(), build_seq=("ok",),
 
     runner = FakeWest(build_seq=list(build_seq), twister_seq=list(twister_seq),
                       fixtures_dir=TW)
-    coder = FakeCoder(completions=[blinky_fit()])
+    coder = FakeCoder(completions=[AUTHORED_TEST_FILES])
     checker = FakeCerberus(script=list(static_seq)) if cerberus_configured else None
     cfg = RitaConfig(workspace=str(WS), max_patch_cycles=max_cycles)
     pipe = IteratePipeline(runner=runner, coder=coder,
@@ -39,8 +49,8 @@ def make_pipeline(tmp_path, *, static_seq=(), build_seq=("ok",),
 
 
 def run(pipe):
-    return pipe.run(goal="blink the led", board="apollo510_evb",
-                    terms=["led", "blinky"])
+    return pipe.run(goal="verify mspi psram", board="apollo510_evb",
+                    terms=["mspi", "psram"])
 
 
 class TestStaticGate:

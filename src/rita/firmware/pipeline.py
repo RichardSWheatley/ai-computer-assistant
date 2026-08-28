@@ -101,6 +101,19 @@ class IteratePipeline:
         if self.on_stage is not None:
             self.on_stage(stage)
 
+    def _patch(self, artifact, target: Path) -> None:
+        """Invariant: RITA edits only code she wrote — her workdir or the
+        applications root. Anything else is the user's upstream tree."""
+        target = Path(target).resolve()
+        allowed = (Path(self.workdir).resolve(),
+                   applications_root(self.cfg).resolve())
+        if not any(target == root or root in target.parents
+                   for root in allowed):
+            raise RuntimeError(
+                f"refusing to patch upstream workspace code at {target} — "
+                f"RITA edits only code she writes")
+        self.coder.patch(artifact, target)
+
     @staticmethod
     def _checkpoint(ctl, completed_stage: str) -> None:
         # Fix 4 seam: checkpoints exist ONLY between stages; a running west/
@@ -141,6 +154,9 @@ class IteratePipeline:
         else:
             suite_dir = self.workdir / "authored"
         build_target = app_dir if scaffold else suite_dir
+        # Gates and patches apply to code RITA WRITES (scaffolded apps,
+        # authored tests) — never to unmodified upstream workspace code.
+        authored = scaffold or resolution.method == "written"
         self._record(report, StageResult(
             "RESOLVE", "green",
             f"{resolution.method}: "
@@ -156,7 +172,14 @@ class IteratePipeline:
         static_skip_noted = unit_skip_noted = unit_authored = False
         while True:
             # --- STATIC: CERBERUS on the code -------------------------------
-            if self.static_checker is None:
+            if not authored:
+                if not static_skip_noted:
+                    self._record(report, StageResult(
+                        "STATIC", "skipped",
+                        "unmodified in-tree sample — the static gate "
+                        "applies to code RITA writes"))
+                    static_skip_noted = True
+            elif self.static_checker is None:
                 if not static_skip_noted:
                     self._record(report, StageResult(
                         "STATIC", "skipped",
@@ -175,7 +198,7 @@ class IteratePipeline:
                             "not attempted: static gate never passed"))
                         report.outcome = "retries_exhausted"
                         return report
-                    self.coder.patch(sres.findings[0], build_target)
+                    self._patch(sres.findings[0], build_target)
                     static_patches += 1
                     continue
                 self._record(report, StageResult(
@@ -187,7 +210,7 @@ class IteratePipeline:
                 if not unit_skip_noted:
                     self._record(report, StageResult(
                         "UNIT_TEST", "skipped",
-                        "no authored code (existing sample run)"))
+                        "no scaffolded application — nothing RITA-coded to unit-test"))
                     unit_skip_noted = True
             elif self.unit_runner is None:
                 if not unit_skip_noted:
@@ -233,7 +256,7 @@ class IteratePipeline:
                             "not attempted: unit tier never passed"))
                         report.outcome = "retries_exhausted"
                         return report
-                    self.coder.patch(artifact, app_dir)
+                    self._patch(artifact, app_dir)
                     unit_patches += 1
                     continue
                 ures = self.unit_runner.run(src_dir, unit_dir)
@@ -253,7 +276,7 @@ class IteratePipeline:
                             "not attempted: unit tier never passed"))
                         report.outcome = "retries_exhausted"
                         return report
-                    self.coder.patch(ures.failures[0], app_dir)
+                    self._patch(ures.failures[0], app_dir)
                     unit_patches += 1
                     continue
                 else:
@@ -267,6 +290,17 @@ class IteratePipeline:
             bres = self.runner.build(build_target, SIM_PLATFORM,
                                      self.workdir / "build")
             if not bres.ok:
+                if not authored:
+                    self._record(report, StageResult(
+                        "FINAL_TEST", "failed",
+                        "the in-tree sample failed to build on this "
+                        "workspace — a workspace/environment issue, not "
+                        "code RITA wrote; log on screen",
+                        failures=(bres.failure,)))
+                    self._record(report, StageResult(
+                        "DEVICE", "blocked", "not attempted: final test failed"))
+                    report.outcome = "failed"
+                    return report
                 if final_patches >= max_cycles:
                     self._record(report, StageResult(
                         "FINAL_TEST", "retries_exhausted",
@@ -277,7 +311,7 @@ class IteratePipeline:
                         "not attempted: final test never went green"))
                     report.outcome = "retries_exhausted"
                     return report
-                self.coder.patch(bres.failure, build_target)
+                self._patch(bres.failure, build_target)
                 final_patches += 1
                 continue
             self._checkpoint(ctl, "FINAL_BUILD")
@@ -291,6 +325,16 @@ class IteratePipeline:
                     f"Zephyr suite green after {final_patches} patch cycles"))
                 self._checkpoint(ctl, "FINAL_TEST")
                 break
+            if not authored:
+                self._record(report, StageResult(
+                    "FINAL_TEST", "failed",
+                    "the in-tree sample fails its suite on this workspace — "
+                    "a workspace/environment issue, not code RITA wrote; "
+                    "log on screen", failures=tres.failures))
+                self._record(report, StageResult(
+                    "DEVICE", "blocked", "not attempted: final test failed"))
+                report.outcome = "failed"
+                return report
             if final_patches >= max_cycles:
                 self._record(report, StageResult(
                     "FINAL_TEST", "retries_exhausted",
@@ -301,7 +345,7 @@ class IteratePipeline:
                     "not attempted: final test never went green"))
                 report.outcome = "retries_exhausted"
                 return report
-            self.coder.patch(tres.failures[0], build_target)
+            self._patch(tres.failures[0], build_target)
             final_patches += 1
             # loop -> STATIC: every patch re-passes every gate.
 
@@ -334,7 +378,15 @@ class IteratePipeline:
                     failures=dres.failures))
                 report.outcome = "retries_exhausted"
                 return report
-            self.coder.patch(dres.failures[0], build_target)
+            if not authored:
+                self._record(report, StageResult(
+                    "DEVICE", "failed",
+                    "the in-tree sample fails on hardware — reported, "
+                    "never patched (not code RITA wrote)",
+                    failures=dres.failures))
+                report.outcome = "failed"
+                return report
+            self._patch(dres.failures[0], build_target)
             device_patches += 1
             self._checkpoint(ctl, "DEVICE_PATCH")
 

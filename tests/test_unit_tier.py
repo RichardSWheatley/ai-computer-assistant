@@ -366,7 +366,7 @@ class TestPipelineUnitStage:
                           terms=["led", "blinky"], scaffold=False)
         unit = next(s for s in report.stages if s.stage == "UNIT_TEST")
         assert unit.outcome == "skipped"
-        assert "no authored code" in unit.detail
+        assert "nothing RITA-coded" in unit.detail
         assert unity.calls == 0
 
 

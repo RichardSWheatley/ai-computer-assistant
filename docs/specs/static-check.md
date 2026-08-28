@@ -80,3 +80,22 @@ seat inside CERBERUS, provider set by CERBERUS's own `CERBERUS_LLM_*` env); Head
 - `CerberusCli` against a real subprocess: JSON findings parsed with
   file/line; non-JSON output still yields a concrete artifact; exit 0
   passes.
+
+## Scope: gates and patches apply to code RITA writes — never upstream
+
+Discovered by self-test: running the static gate over an UNMODIFIED
+in-tree sample means stock Zephyr code (which does not aim for MISRA)
+can never build, and the patch loop would write into the user's zephyr
+tree. Both violate the design.
+
+- STATIC runs on RITA-authored code only: scaffolded applications and
+  authored tests. `resolve → existing sample` without scaffold reports
+  STATIC skipped: "unmodified in-tree sample — the static gate applies
+  to code RITA writes".
+- The patch loop NEVER targets upstream workspace code. A failing
+  in-tree sample (build or twister) is reported as `failed` with the
+  artifact and a detail naming it a workspace/environment issue — no
+  patch attempts, no retries burned. Authored/scaffolded targets patch
+  exactly as before.
+- Defensive invariant: the pipeline refuses to hand the coder a patch
+  target outside its own workdir or the applications root.

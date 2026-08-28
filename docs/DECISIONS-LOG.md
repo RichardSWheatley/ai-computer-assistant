@@ -3,6 +3,18 @@
 Compromises, proxies, and deferred decisions — with the reason and what would
 remove them. Newest first. (Required by the working rules in `docs/WORKING-RULES.md`.)
 
+## 2026-08-28 — Gates apply to code RITA writes
+
+- **In-tree samples are exempt from STATIC and from patching.** The
+  static gate exists to hold RITA-authored code to the contract; stock
+  upstream code neither aims for MISRA nor belongs to RITA to edit. A
+  failing in-tree sample is a workspace/environment report, not a patch
+  loop. The pipeline hard-refuses patch targets outside its workdir and
+  the applications root — an invariant, not a convention.
+- Found by running the product end to end in development (the standing
+  self-test), not by the owner. That is the intended direction of
+  travel.
+
 ## 2026-08-28 — One toolchain (unit tier = Zephyr's gcc)
 
 - **The host-compiler unit tier is gone** (it lasted one day): compiling

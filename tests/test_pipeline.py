@@ -78,6 +78,22 @@ def blinky_fit(prompt: str) -> str:
     return json.dumps({"fit": "sample.basic.blinky", "reason": "fits"})
 
 
+# Authored-path harness: gates and patches apply to code RITA writes, so
+# patch-mechanic tests run against an authored test bundle (no index
+# match -> the coder writes it), never an in-tree sample.
+AUTHORED_TEST_FILES = json.dumps({
+    "testcase.yaml": "tests:\n  app.mspi.psram:\n    tags: mspi psram\n    harness: ztest\n",
+    "src/main.c": "#include <zephyr/ztest.h>\n",
+    "CMakeLists.txt": "cmake_minimum_required(VERSION 3.20)\n",
+    "prj.conf": "CONFIG_ZTEST=y\n",
+})
+
+
+def run_authored(pipe):
+    return pipe.run(goal="verify mspi psram", board="apollo510_evb",
+                    terms=["mspi", "psram"])
+
+
 class TestIteratePipeline:
     def test_green_first_try_no_coder(self, tmp_path):
         pipe, runner, coder = make_pipeline(
@@ -95,9 +111,8 @@ class TestIteratePipeline:
     def test_compile_fail_patch_then_green(self, tmp_path):
         pipe, runner, coder = make_pipeline(
             tmp_path, build_seq=["fail_build.json", "ok"],
-            twister_seq=["pass.json"], completions=[blinky_fit("")])
-        report = pipe.run(goal="blink the led", board="apollo510_evb",
-                          terms=["led", "blinky"])
+            twister_seq=["pass.json"], completions=[AUTHORED_TEST_FILES])
+        report = run_authored(pipe)
         assert report.outcome == "green"
         assert len(coder.patches) == 1
         assert coder.patches[0].kind == "compile"
@@ -106,9 +121,8 @@ class TestIteratePipeline:
     def test_retries_exhausted_is_reported_not_hidden(self, tmp_path):
         pipe, runner, coder = make_pipeline(
             tmp_path, build_seq=["fail_build.json"] * 10,
-            max_cycles=3, completions=[blinky_fit("")])
-        report = pipe.run(goal="blink the led", board="apollo510_evb",
-                          terms=["led", "blinky"])
+            max_cycles=3, completions=[AUTHORED_TEST_FILES])
+        report = run_authored(pipe)
         assert report.outcome == "retries_exhausted"
         assert len(coder.patches) == 3                # budget honored exactly
         final = next(s for s in report.stages if s.stage == "FINAL_TEST")
@@ -119,9 +133,8 @@ class TestIteratePipeline:
         pipe, runner, coder = make_pipeline(
             tmp_path, build_seq=["ok", "ok"],
             twister_seq=["fail_test.json", "pass.json"],
-            completions=[blinky_fit("")])
-        report = pipe.run(goal="blink the led", board="apollo510_evb",
-                          terms=["led", "blinky"])
+            completions=[AUTHORED_TEST_FILES])
+        report = run_authored(pipe)
         assert report.outcome == "green"
         assert len(coder.patches) == 1
         assert coder.patches[0].kind == "test"
