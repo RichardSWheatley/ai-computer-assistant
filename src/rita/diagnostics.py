@@ -17,6 +17,16 @@ from .config import RitaConfig
 
 _SMOKE_TIMEOUT = 90.0
 
+# Auth is the most common live-agent failure and its fix is specific.
+_AUTH_HINTS = ("authenticate", "oauth", "unauthorized", "login", "api key",
+               "session expired")
+
+
+def _is_windows() -> bool:
+    import os
+
+    return os.name == "nt"
+
 
 @dataclass(frozen=True)
 class Check:
@@ -80,9 +90,15 @@ def _coder_live(cfg: RitaConfig) -> Check:
         return Check(name, False, f"could not start: {exc}")
     out, err = _tail(proc.stdout), _tail(proc.stderr)
     if proc.returncode != 0 or not out:
+        blob = f"{out} {err}".lower()
+        hint = ""
+        if any(h in blob for h in _AUTH_HINTS):
+            hint = (" — the agent isn't logged in: run it once yourself in a "
+                    "terminal and complete its login, then try again. RITA "
+                    "can't do the login for you.")
         return Check(name, False,
                      f"exit {proc.returncode}. stdout: {out or '(empty)'} | "
-                     f"stderr: {err or '(empty)'}")
+                     f"stderr: {err or '(empty)'}{hint}")
     return Check(name, True, f"replied: {out[:120]}")
 
 
@@ -106,6 +122,17 @@ def _mcp(cfg: RitaConfig) -> Check:
         return Check("workspace MCP", False,
                      f"{command} does not exist — press Sync to rewrite "
                      f"{p.name} for this install.")
+    # Stale config from an older build: the GUI exe can't run `-m rita`,
+    # and a relative workspace breaks when the agent launches the server
+    # from its own directory. Both look fine on a file-exists check alone.
+    stale = ("-m" in args
+             or Path(command).name.lower().startswith("ritaapp")
+             or not any(Path(a).is_absolute() for a in args[-1:]))
+    if stale:
+        return Check("workspace MCP", False,
+                     f"{p.name} was written by an older version "
+                     f"({command} {' '.join(args[:3])}…) and cannot start — "
+                     f"press Sync on the Workspace page to rewrite it.")
     from .mcpserver.server import mcp_available
 
     if not mcp_available():
@@ -165,18 +192,20 @@ def _cerberus() -> Check:
     return Check("CERBERUS", True, str(clone))
 
 
-def _unity() -> Check:
-    from .firmware.unity import detect_unity, find_compiler
+def _unity(cfg: RitaConfig) -> Check:
+    from .firmware import unity as _u
 
-    unity = detect_unity()
-    if unity is None:
+    found = _u.detect_unity()
+    if found is None:
         return Check("Unity", False,
                      "not installed — the unit tier reports itself skipped. "
                      "Install it from the Modules page.")
-    cc = find_compiler(None)
-    where = f"{unity}; compiler: {cc.path} ({cc.source})" if cc else \
-        f"{unity}; no C compiler found (PATH or Zephyr SDK)"
-    return Check("Unity", cc is not None, where)
+    cc = _u.find_compiler(cfg.host_cc)
+    if cc is None:
+        reason = (_u.NO_HOST_COMPILER_WINDOWS if _is_windows()
+                  else _u._NO_COMPILER_REASON)
+        return Check("Unity", False, f"{found}; {reason}")
+    return Check("Unity", True, f"{found}; compiler: {cc.path} ({cc.source})")
 
 
 def run_checks(cfg: RitaConfig | None = None, deep: bool = False) -> list[Check]:
@@ -184,7 +213,7 @@ def run_checks(cfg: RitaConfig | None = None, deep: bool = False) -> list[Check]
     checks = [_workspace(cfg), _coder(cfg)]
     if deep:
         checks.append(_coder_live(cfg))
-    checks += [_mcp(cfg), _voice(), _west(cfg), _sdk(), _cerberus(), _unity()]
+    checks += [_mcp(cfg), _voice(), _west(cfg), _sdk(), _cerberus(), _unity(cfg)]
     return checks
 
 

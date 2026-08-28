@@ -160,10 +160,15 @@ class RitaWindow(QMainWindow):
         self.presenter.submit_text(text)
 
     def _transcript_add(self, who: str, text: str) -> None:
+        from html import escape
+
         color = ACCENT if who != "You" else TEXT_DIM
+        # Escape: this pane renders HTML, so an error naming <module> or a
+        # diff containing <stdio.h> would otherwise vanish silently.
+        body = escape(text).replace("\n", "<br/>")
         self.transcript.append(
-            f'<p style="margin:6px 0"><b style="color:{color}">{who}</b>'
-            f"<br/>{text}</p>")
+            f'<p style="margin:6px 0"><b style="color:{color}">{escape(who)}'
+            f"</b><br/>{body}</p>")
 
     def _screen_add(self, text: str) -> None:
         self.screen_pane.appendPlainText(text + "\n")

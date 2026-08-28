@@ -9,6 +9,7 @@ reported honestly; the stage is never silently green.
 
 from __future__ import annotations
 
+import os
 import re
 import shutil
 import subprocess
@@ -91,11 +92,29 @@ class CompilerInfo:
     source: str   # "explicit" | "host" | "sdk"
 
 
+def _is_windows() -> bool:
+    return os.name == "nt"
+
+
+# Common Windows install locations that don't put themselves on PATH.
+_WINDOWS_COMPILER_DIRS = [
+    Path(r"C:\Program Files\LLVM\bin"),
+    Path(r"C:\Program Files (x86)\LLVM\bin"),
+    Path(r"C:\msys64\mingw64\bin"),
+    Path(r"C:\msys64\ucrt64\bin"),
+    Path(r"C:\MinGW\bin"),
+    Path(r"C:\ProgramData\chocolatey\bin"),
+]
+
+_WINDOWS_COMPILER_NAMES = ("clang.exe", "gcc.exe", "cc.exe")
+
+
 def find_compiler(explicit: str | None) -> CompilerInfo | None:
     """The unit tier's C compiler, in order: explicit override; a native
-    host compiler on PATH; the Zephyr SDK's toolchain (gcc by default,
-    the LLVM bundle when that variant is installed). The SDK ships a
-    compiler out of the box, so an SDK machine needs nothing extra."""
+    host compiler (PATH, plus well-known install dirs on Windows); then
+    the Zephyr SDK's toolchain — but ONLY where its output can actually
+    run. SDK toolchains are cross compilers emitting ELF, so on Windows
+    they are not host compilers and are not offered."""
     if explicit:
         if Path(explicit).exists() or shutil.which(explicit):
             return CompilerInfo(path=explicit, source="explicit")
@@ -103,6 +122,13 @@ def find_compiler(explicit: str | None) -> CompilerInfo | None:
     for cand in ("cc", "gcc", "clang"):
         if shutil.which(cand):
             return CompilerInfo(path=cand, source="host")
+    if _is_windows():
+        for d in _WINDOWS_COMPILER_DIRS:
+            for name in _WINDOWS_COMPILER_NAMES:
+                cand = Path(d) / name
+                if cand.is_file():
+                    return CompilerInfo(path=str(cand), source="host")
+        return None            # SDK toolchains can't produce runnable .exe
     from .workspace import read_sdk_info
 
     sdk = read_sdk_info()
@@ -119,6 +145,20 @@ def find_compiler(explicit: str | None) -> CompilerInfo | None:
 
 _NO_COMPILER_REASON = ("no C compiler found: none on PATH (cc/gcc/clang) and "
                        "no Zephyr SDK toolchain detected")
+
+# Windows needs a NATIVE compiler: the Zephyr SDK's toolchains are cross
+# compilers that emit ELF binaries Windows cannot execute, so they can't
+# run host unit tests no matter how they're invoked.
+NO_HOST_COMPILER_WINDOWS = (
+    "no native C compiler on this machine. The Zephyr SDK's toolchains are "
+    "cross compilers (they emit ELF binaries Windows can't run), so the "
+    "unit tier needs a native one: install LLVM/clang for Windows or "
+    "MinGW-w64 gcc (winget install LLVM.LLVM), or point Settings → "
+    "C compiler at one. It is picked up automatically once present.")
+
+
+def no_compiler_reason() -> str:
+    return NO_HOST_COMPILER_WINDOWS if _is_windows() else _NO_COMPILER_REASON
 
 
 class HostUnity:
@@ -137,7 +177,7 @@ class HostUnity:
         if compiler is None:
             return UnitResult(ok=False, unavailable=True,
                               reason=(f"compiler {self.cc!r} not found"
-                                      if self.cc else _NO_COMPILER_REASON))
+                                      if self.cc else no_compiler_reason()))
         cc = compiler.path
         test_files = sorted(test_dir.rglob("*.c")) if test_dir.is_dir() else []
         if not test_files:

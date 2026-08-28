@@ -3,6 +3,27 @@
 All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/); versions follow semver.
 
+## [0.19.1] - 2026-08-28
+
+### Fixed
+- **The MCP check no longer passes a stale config.** It verified only
+  that the named executable existed, so a config written by an older
+  build (`RitaApp.exe -m rita`, or a relative workspace) reported OK
+  while being unusable. Both forms are now flagged, naming Sync as the
+  fix.
+- **Windows host compiler discovery is correct and honest**: the Zephyr
+  SDK's toolchains are cross compilers emitting ELF, which Windows
+  cannot execute, so they are no longer offered as host compilers there.
+  Well-known native install dirs (LLVM, MSYS2/MinGW, Chocolatey) are
+  searched beyond PATH, and when nothing is found the message names what
+  to install and why.
+- **An agent that isn't logged in says so**: auth/OAuth failures in a
+  task or a diagnostic now add "your coding agent is not logged in —
+  run it once in a terminal and complete its login", instead of leaving
+  the raw provider text to be decoded.
+- **The transcript escapes HTML**: a message containing `<stdio.h>` or
+  `<module>` previously vanished into the rendered markup.
+
 ## [0.19.0] - 2026-08-28
 
 ### Fixed

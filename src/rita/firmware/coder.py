@@ -133,8 +133,15 @@ class CoderCli:
         err = (proc.stderr or "").strip()[-600:] or "(empty)"
         note = (" (retried without the workspace MCP server too)"
                 if self.mcp_config else "")
+        blob = f"{out} {err}".lower()
+        hint = ""
+        if any(h in blob for h in ("authenticate", "oauth", "unauthorized",
+                                   "login", "api key", "session expired")):
+            hint = (" — YOUR CODING AGENT IS NOT LOGGED IN: run it once in a "
+                    "terminal and complete its login, then try again. The "
+                    "login is interactive, so RITA cannot do it for you.")
         return (f"the coding agent ({argv}) exited {proc.returncode}"
-                f"{note}. stdout: {out} | stderr: {err}")
+                f"{note}. stdout: {out} | stderr: {err}{hint}")
 
     def patch(self, failure: FailureArtifact, workdir: Path) -> PatchResult:  # pragma: no cover - needs the coding-agent CLI
         failure = _require_failure(failure)
