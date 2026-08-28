@@ -24,14 +24,14 @@ hiddenimports = [
 ]
 
 gui_a = Analysis(
-    [str(SRC / "rita/gui/app.py")],
+    [str(Path(SPECPATH) / "launch_gui.py")],
     pathex=[str(SRC)],
     datas=datas,
     hiddenimports=hiddenimports,
     excludes=["torch", "faster_whisper", "sounddevice", "pyttsx3"],
 )
 cli_a = Analysis(
-    [str(SRC / "rita/__main__.py")],
+    [str(Path(SPECPATH) / "launch_cli.py")],
     pathex=[str(SRC)],
     datas=datas,
     hiddenimports=hiddenimports,

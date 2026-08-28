@@ -3,6 +3,17 @@
 All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/); versions follow semver.
 
+## [0.16.3] - 2026-08-28
+
+### Fixed
+- **The installed RitaApp.exe crashed at launch** ("attempted relative
+  import with no known parent package"): the PyInstaller spec fed the
+  package modules (`rita/gui/app.py`, `rita/__main__.py`) in as
+  top-level scripts, so their relative imports had no parent package.
+  Both executables now start from `packaging/launch_gui.py` /
+  `launch_cli.py` shims that import the package absolutely. Verified by
+  building the bundle and running both executables (GUI offscreen).
+
 ## [0.16.2] - 2026-08-28
 
 ### Fixed
