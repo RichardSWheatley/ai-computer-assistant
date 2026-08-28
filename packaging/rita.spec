@@ -15,7 +15,7 @@ datas = [
 
 hiddenimports = [
     "rita.gui.app", "rita.gui.main_window", "rita.gui.workspace_page",
-    "rita.gui.modules_page", "rita.gui.settings_page",
+    "rita.gui.projects_page", "rita.gui.modules_page", "rita.gui.settings_page",
     "rita.modules_impl.voice_in", "rita.modules_impl.voice_out",
     "rita.modules_impl.zephyr_runner", "rita.modules_impl.claude_worker",
     "rita.modules_impl.scaffold", "rita.modules_impl.cerberus",

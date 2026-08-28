@@ -3,6 +3,12 @@
 All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/); versions follow semver.
 
+## [0.16.1] - 2026-08-28
+
+### Fixed
+- The new Projects page is listed in the PyInstaller hidden imports
+  alongside the other pages, so the bundled `RitaApp.exe` ships it.
+
 ## [0.16.0] - 2026-08-28
 
 ### Added
