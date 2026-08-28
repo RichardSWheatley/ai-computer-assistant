@@ -76,7 +76,7 @@ sample names — never an LLM guessing.
 
 | You say | What RITA does |
 |---|---|
-| **"Rita, please build me an example for MSPI that communicates with a PSRAM on MSPI0 in hex mode."** | Codes the application in `<workspace>\applications\` (every function restricts or validates its input/output parameters) → **CERBERUS** static check → **unit tests**: every single function gets Unity tests of its parameters, compiled with your Zephyr SDK's ARM gcc and run under QEMU — valid, boundary, invalid — all green before moving on → iterates as needed (every patch re-passes every gate) → **final test**: the relevant Zephyr samples/tests under twister → reports. |
+| **"Rita, please build me an example for MSPI that communicates with a PSRAM on MSPI0 in hex mode."** | Codes the application in `<workspace>\applications\` (every function restricts or validates its input/output parameters) → **CERBERUS** static check → **unit tests**: every single function gets Unity tests of its parameters, compiled with Arm's standalone arm-none-eabi-gcc on your SDK's GCC branch and run under QEMU — valid, boundary, invalid — all green before moving on → iterates as needed (every patch re-passes every gate) → **final test**: the relevant Zephyr samples/tests under twister → reports. |
 | "build blinky" | Resolves `samples/basic/blinky` from the index, builds, twister-gates it. |
 | "flash blinky to the apollo510" | Sim-first pipeline; the device step stays **blocked** until the bench milestone — RITA says so instead of pretending. |
 | "run the samples" / "report on the last run" | Pipeline verbs, same gates. |
@@ -128,13 +128,17 @@ cancels at a safe boundary and reports what completed.
 
 ### One toolchain
 
-The per-function unit tests are compiled with **arm-none-eabi-gcc** — the
-same GCC family and version as your Zephyr SDK — and run under
-`qemu-system-arm` (bundled with the SDK). If the toolchain isn't on the
-machine, RITA downloads the matching release herself (Modules → Install
-ARM toolchain; the installer also does this once). Nothing foreign — no
-LLVM, no MinGW — and `"check setup"` shows exactly which gcc is in use
-and whether it matches your SDK's.
+The per-function unit tests are compiled with **Arm's standalone
+arm-none-eabi-gcc on the same GCC branch as your Zephyr SDK's gcc** and
+run under `qemu-system-arm` (bundled with the SDK). Your SDK's own
+`arm-zephyr-eabi-gcc` is never used to compile them — it's built for
+Zephyr, not standalone; it only tells RITA which version to fetch. RITA
+**verifies the release online** against developer.arm.com and downloads
+the newest one Arm publishes for that branch (Modules → Install ARM
+toolchain; the installer also does this once). Note the honest
+patch-level difference: your SDK reports e.g. 14.3.0, Arm's standalone
+build of the same GCC 14.3 branch reports 14.3.1 — `"check setup"` shows
+both. Nothing foreign — no LLVM, no MinGW.
 
 ## 6. The gates: CERBERUS and per-function unit tests
 

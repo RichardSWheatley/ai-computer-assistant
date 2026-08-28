@@ -3,6 +3,18 @@
 All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/); versions follow semver.
 
+## [0.22.4] - 2026-08-28
+
+### Fixed
+- Docs only: GETTING-STARTED still said unit tests compile "with your
+  Zephyr SDK's ARM gcc" — corrected to the actual policy (Arm's
+  standalone arm-none-eabi on the SDK's GCC branch, release verified
+  online; the SDK's arm-zephyr-eabi never compiles, it only names the
+  version; the 14.3.0-vs-14.3.1 branch note included). Also verified in
+  passing: the installer's ToolchainPresent guard exists, and the full
+  scaffold pipeline runs green with the REAL unit tier (Unity + RITA's
+  downloaded ARM gcc + QEMU) inside the iterate loop.
+
 ## [0.22.3] - 2026-08-28
 
 ### Changed
