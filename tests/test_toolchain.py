@@ -40,7 +40,8 @@ class TestDetectionOrder:
                             if n == "arm-none-eabi-gcc" else None)
         info = toolchain.detect_arm_gcc()
         assert info.source == "path"
-        assert info.cc == "/usr/bin/arm-none-eabi-gcc"
+        # Path() normalizes separators per-OS; compare shape-independently.
+        assert Path(info.cc).as_posix() == "/usr/bin/arm-none-eabi-gcc"
 
     def test_gnuarmemb_env_next(self, tmp_path, monkeypatch):
         from rita.firmware import toolchain
@@ -218,16 +219,16 @@ class TestVersionMatchesZephyr:
         sdk, sdk_gcc, _ = self._sdk(tmp_path, "13.2.1")
         monkeypatch.setenv("ZEPHYR_SDK_INSTALL_DIR", str(sdk))
         own = _fake_gcc(tmp_path / "rita" / "toolchains" / "arm-none-eabi" / "bin")
-        versions = {str(own): (12, 2), str(sdk_gcc): (13, 2),
+        versions = {own.as_posix(): (12, 2), sdk_gcc.as_posix(): (13, 2),
                     "/usr/bin/arm-none-eabi-gcc": (13, 2)}
         monkeypatch.setattr(toolchain, "_gcc_version",
-                            lambda cc: versions.get(str(cc)))
+                            lambda cc: versions.get(Path(cc).as_posix()))
         monkeypatch.setattr(toolchain.shutil, "which",
                             lambda n: "/usr/bin/arm-none-eabi-gcc"
                             if n == "arm-none-eabi-gcc" else None)
         info = toolchain.detect_arm_gcc()
         # RITA's own 12.2 does NOT match Zephyr's 13.2 -> first match wins.
-        assert info.cc == "/usr/bin/arm-none-eabi-gcc"
+        assert Path(info.cc).as_posix() == "/usr/bin/arm-none-eabi-gcc"
         assert info.version == (13, 2)
         assert info.mismatch is False
 
@@ -239,9 +240,10 @@ class TestVersionMatchesZephyr:
         sdk, sdk_gcc, _ = self._sdk(tmp_path, "13.2.1")
         monkeypatch.setenv("ZEPHYR_SDK_INSTALL_DIR", str(sdk))
         own = _fake_gcc(tmp_path / "rita" / "toolchains" / "arm-none-eabi" / "bin")
-        versions = {str(own): (12, 2), str(sdk_gcc): None}   # sdk unreadable
+        versions = {own.as_posix(): (12, 2),
+                    sdk_gcc.as_posix(): None}   # sdk unreadable
         monkeypatch.setattr(toolchain, "_gcc_version",
-                            lambda cc: versions.get(str(cc)))
+                            lambda cc: versions.get(Path(cc).as_posix()))
         monkeypatch.setattr(toolchain.shutil, "which", lambda n: None)
         info = toolchain.detect_arm_gcc()
         assert info.cc == str(own)

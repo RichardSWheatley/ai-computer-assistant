@@ -3,6 +3,14 @@
 All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/); versions follow semver.
 
+## [0.20.1] - 2026-08-28
+
+### Fixed
+- Two toolchain-detection tests carried POSIX path-separator assumptions
+  that only surface on Windows (Path() renders `/usr/bin/…` as
+  `\usr\bin\…`); comparisons and fixture keys are now
+  separator-independent. Test-only — no product change.
+
 ## [0.20.0] - 2026-08-28
 
 ### Changed
