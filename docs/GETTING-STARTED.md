@@ -181,6 +181,9 @@ the same reason.
   which installs and uninstalls never touch. Run the new Setup right over
   the old install (no uninstall needed). If an old build corrupted the
   config, RITA now backs it up as `config.bad` and starts clean once.
+- **Updates don't re-download CERBERUS or Unity** — the installer checks
+  `%USERPROFILE%\.rita` first and keeps what you have; updating those
+  tools is an explicit button on the Modules page.
 - **A work request says "that pipeline isn't wired up yet" or asks for
   sync** — sync a workspace first (Workspace page).
 - **A task ends "retries exhausted"** — that's RITA stopping at its patch

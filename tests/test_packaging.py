@@ -91,6 +91,18 @@ class TestPackagingFiles:
         assert "RitaApp.exe" in iss
         assert "modules install" in iss                 # post-install step
 
+    def test_iss_skips_downloads_already_on_the_machine(self):
+        # Re-running the installer must not re-fetch CERBERUS/Unity the
+        # user already has in ~/.rita — the installer checks first.
+        iss = (PACKAGING / "installer.iss").read_text()
+        assert "CerberusPresent" in iss
+        assert "UnityPresent" in iss
+        assert "Check: not CerberusPresent" in iss
+        assert "Check: not UnityPresent" in iss
+        # It probes the same file the app's own detection uses.
+        assert r"cerberus\cerberus\cli.py" in iss
+        assert r"unity.c" in iss
+
     def test_ci_workflow_is_valid_yaml_targeting_windows(self):
         from rita.firmware import yamlmini
         wf_path = REPO / ".github" / "workflows" / "installer.yml"

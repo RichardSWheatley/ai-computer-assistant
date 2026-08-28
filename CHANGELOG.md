@@ -3,6 +3,16 @@
 All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/); versions follow semver.
 
+## [0.18.3] - 2026-08-28
+
+### Fixed
+- **The installer keeps what's already on the machine**: re-running
+  Setup no longer re-downloads CERBERUS or Unity — it probes the same
+  files the app's own detection uses (`~/.rita/cerberus/cerberus/cli.py`,
+  the Unity sources) and skips the download steps when present. Updating
+  those tools stays an explicit button on the Modules page. The wizard
+  text says so.
+
 ## [0.18.2] - 2026-08-28
 
 ### Fixed
