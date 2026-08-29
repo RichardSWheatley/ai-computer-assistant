@@ -264,6 +264,147 @@ class TestMicButtonModel:
             p.close()
 
 
+class TestHalfDuplex:
+    """RITA must never hear her own voice: while she speaks (plus an
+    echo tail) the microphone is deaf, and a window she talked over is
+    discarded — no more transcribing her own replies."""
+
+    def test_speaker_reports_busy_and_quiet(self):
+        import threading
+
+        from rita.voice.tts import PausableSpeaker
+
+        gate = threading.Event()
+
+        class GatedTTS:
+            def speak(self, text):
+                gate.wait(timeout=5)
+
+        sp = PausableSpeaker(GatedTTS())
+        assert sp.busy is False
+        sp.say("Hello there.")
+        deadline = time.time() + 2
+        while time.time() < deadline and not sp.busy:
+            time.sleep(0.01)
+        assert sp.busy is True               # mid-utterance
+        t_before = __import__("time").monotonic()
+        gate.set()
+        sp.wait_until(lambda: not sp.busy)
+        assert sp.spoke_after(t_before)      # audio happened after t
+        assert sp.quiet_for() < 5.0
+
+    def test_mic_is_deaf_while_rita_speaks(self, tmp_path):
+        import threading
+
+        from rita.config import RitaConfig
+        from rita.gui.presenter import GuiPresenter
+        from rita.supervisor import Supervisor
+        from rita.voice.mic import FakeRecorder
+        from rita.voice.tts import PausableSpeaker
+
+        gate = threading.Event()
+
+        class GatedTTS:
+            def speak(self, text):
+                gate.wait(timeout=10)
+
+        class CountingSTT:
+            calls = 0
+
+            def transcribe(self, wav):
+                CountingSTT.calls += 1
+                return ""
+
+        sup = Supervisor(rita_cfg=RitaConfig(workspace=str(WS),
+                                             auto_setup=False),
+                         config_path=tmp_path / "config",
+                         tts=GatedTTS(), workdir=tmp_path / "work")
+        recorder = FakeRecorder()
+        p = GuiPresenter(sup, voice_backends=lambda: (recorder,
+                                                      CountingSTT(), None))
+        try:
+            assert isinstance(sup.speaker, PausableSpeaker)
+            p.start_voice()
+            sup.speaker.say("A long reply that is still being spoken.")
+            sup.speaker.wait_until(lambda: sup.speaker.busy)
+            before = recorder.calls
+            time.sleep(0.4)
+            assert recorder.calls == before   # the mic held its breath
+            gate.set()
+            deadline = time.time() + 5
+            while time.time() < deadline and recorder.calls == before:
+                time.sleep(0.02)
+            assert recorder.calls > before    # deaf only WHILE speaking
+        finally:
+            gate.set()
+            p.close()
+
+
+class TestMicButtonLooksAlive:
+    def test_button_label_follows_the_mic(self, tmp_path, monkeypatch):
+        pytest.importorskip("PySide6")
+        monkeypatch.setenv("QT_QPA_PLATFORM", "offscreen")
+        from PySide6.QtWidgets import QApplication
+
+        from rita.config import RitaConfig
+        from rita.gui.main_window import RitaWindow
+        from rita.gui.presenter import GuiPresenter
+        from rita.supervisor import Supervisor
+        from rita.voice.tts import FakeTTS
+
+        app = QApplication.instance() or QApplication([])
+        sup = Supervisor(rita_cfg=RitaConfig(workspace=str(WS),
+                                             auto_setup=False),
+                         config_path=tmp_path / "config", tts=FakeTTS(),
+                         workdir=tmp_path / "work")
+        p = GuiPresenter(sup)
+        w = RitaWindow(p)
+        try:
+            tab = w.chat_tabs.widget(0)
+            assert "voice" in tab.mic_btn.text().lower()
+            assert not tab.mic_btn.icon().isNull()   # a real icon, not emoji
+            w._voice_state(True)
+            assert "listening" in tab.mic_btn.text().lower()
+            w._voice_state(False)
+            assert "voice" in tab.mic_btn.text().lower()
+        finally:
+            p.close()
+            w.close()
+
+    def test_stop_event_reaches_a_recorder_that_takes_one(self, tmp_path):
+        from rita.config import RitaConfig
+        from rita.gui.presenter import GuiPresenter
+        from rita.supervisor import Supervisor
+        from rita.voice.tts import FakeTTS
+
+        seen = {}
+
+        class StoppableRecorder:
+            def record(self, stop=None):
+                seen["stop"] = stop
+                time.sleep(0.02)
+                return "missing.wav"
+
+        class NullSTT:
+            def transcribe(self, wav):
+                return ""
+
+        sup = Supervisor(rita_cfg=RitaConfig(workspace=str(WS),
+                                             auto_setup=False),
+                         config_path=tmp_path / "config", tts=FakeTTS(),
+                         workdir=tmp_path / "work")
+        p = GuiPresenter(sup, voice_backends=lambda: (StoppableRecorder(),
+                                                      NullSTT(), None))
+        try:
+            p.start_voice()
+            deadline = time.time() + 5
+            while time.time() < deadline and "stop" not in seen:
+                time.sleep(0.02)
+            assert seen.get("stop") is not None   # the off-switch, wired in
+        finally:
+            p.close()
+
+
 class TestButtonsFeelLikeButtons:
     def test_qss_has_pressed_and_hover_states(self):
         from rita.gui.theme import QSS

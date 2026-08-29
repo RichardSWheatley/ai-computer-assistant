@@ -433,7 +433,19 @@ def install_arm_gcc(release: str | None = None,
             return InstallResult(
                 ok=False, path=str(_rita_toolchain_dir()),
                 detail=already_running_detail("the ARM toolchain"))
-        return _install_arm_gcc_locked(release, archive_suffix)
+        try:
+            return _install_arm_gcc_locked(release, archive_suffix)
+        except Exception as exc:
+            # An installer must NEVER raise: an escaped exception loses
+            # its traceback in the GUI and strands the user with one
+            # bare line. Return it as evidence instead.
+            import traceback
+
+            tb = "".join(traceback.format_exception(exc)).strip()
+            return InstallResult(
+                ok=False, path=str(_rita_toolchain_dir()),
+                detail=f"unexpected failure: {type(exc).__name__}: "
+                       f"{exc}\n--- where ---\n{tb[-900:]}")
 
 
 def _install_arm_gcc_locked(release: str | None,

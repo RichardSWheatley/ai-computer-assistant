@@ -154,6 +154,62 @@ class TestCerberusCli:
         assert CerberusCli(cmd).check(tmp_path).ok is True
 
 
+class TestDeepModeIsAdditive:
+    """The owner: CERBERUS should ALWAYS scan; the LLM step is an
+    option on top, never an either/or."""
+
+    class _FakeCli:
+        def __init__(self, ok, findings=()):
+            self.ok_result = ok
+            self.findings = findings
+            self.calls = 0
+
+        def check(self, target):
+            self.calls += 1
+            from rita.firmware.static_check import StaticResult
+            return StaticResult(ok=self.ok_result,
+                                findings=tuple(self.findings))
+
+    def test_deep_runs_scan_first_then_analyze(self):
+        from rita.firmware.cerberus_setup import ScanPlusAnalyze
+        scan = self._FakeCli(ok=True)
+        analyze = self._FakeCli(ok=True)
+        result = ScanPlusAnalyze(scan, analyze).check("dir")
+        assert result.ok is True
+        assert scan.calls == 1 and analyze.calls == 1
+
+    def test_scan_findings_short_circuit_the_llm(self):
+        from rita.firmware.coder import FailureArtifact
+        from rita.firmware.cerberus_setup import ScanPlusAnalyze
+        finding = FailureArtifact(kind="static", suite="", platform="",
+                                  reason="bad", log_excerpt="bad",
+                                  file_hints=("a.c",))
+        scan = self._FakeCli(ok=False, findings=[finding])
+        analyze = self._FakeCli(ok=True)
+        result = ScanPlusAnalyze(scan, analyze).check("dir")
+        assert result.ok is False
+        assert analyze.calls == 0        # deterministic gate first
+        assert result.findings == (finding,)
+
+    def test_clean_scan_surfaces_analyze_findings(self):
+        from rita.firmware.coder import FailureArtifact
+        from rita.firmware.cerberus_setup import ScanPlusAnalyze
+        finding = FailureArtifact(kind="static", suite="", platform="",
+                                  reason="llm", log_excerpt="llm found it",
+                                  file_hints=("b.c",))
+        scan = self._FakeCli(ok=True)
+        analyze = self._FakeCli(ok=False, findings=[finding])
+        result = ScanPlusAnalyze(scan, analyze).check("dir")
+        assert result.ok is False
+        assert "llm found it" in result.findings[0].log_excerpt
+
+    def test_default_checker_deep_is_scan_plus_analyze(self, tmp_path):
+        from rita.firmware.cerberus_setup import (ScanPlusAnalyze,
+                                                  default_checker)
+        checker = default_checker(tmp_path, deep=True)
+        assert isinstance(checker, ScanPlusAnalyze)
+
+
 class TestSupervisorWiring:
     def test_supervisor_builds_checker_from_config(self, tmp_path,
                                                    monkeypatch):

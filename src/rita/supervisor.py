@@ -44,6 +44,8 @@ class Supervisor:
         self.workdir = Path(workdir)
         self._task_seq = 0
         self._facts: dict = {}   # lazy workspace-fact cache (cleared on sync)
+        # Agent-activity narration sink (the GUI presenter subscribes).
+        self.on_activity = None
         self.shell = RouterShell(
             vocab or Vocabulary.load(), config_path=config_path,
             work=self.handle_work, chat=self.handle_chat,
@@ -75,9 +77,14 @@ class Supervisor:
         from .home import mcp_config_path
 
         mcp = mcp_config_path()
-        return CoderCli(self.cfg.workspace,
-                        command=tuple(split_command(self.cfg.coder_command)),
-                        mcp_config=mcp if mcp.exists() else None)
+        cli = CoderCli(self.cfg.workspace,
+                       command=tuple(split_command(self.cfg.coder_command)),
+                       mcp_config=mcp if mcp.exists() else None)
+        # Narrate agent activity into the GUI's screen pane when a
+        # presenter has subscribed (self.on_activity set by the GUI).
+        cli.on_activity = lambda msg: (self.on_activity(msg)
+                                       if self.on_activity else None)
+        return cli
 
     _NO_CODER = ("No coding agent is configured, so I can't write or patch "
                  "code yet. Set the coding agent command on the Settings "
@@ -494,6 +501,9 @@ class Supervisor:
         if _grammar.is_setup(normalize(text)):
             return self.auto_setup()
 
+        if _grammar.is_status(normalize(text)):
+            return self._live_status()
+
         if _grammar.is_diagnostic(normalize(text)):
             from .diagnostics import report
 
@@ -565,6 +575,24 @@ class Supervisor:
 
         return ("We can chat, but nothing in that matched a work command. "
                 "Name a board or sample to put me to work.")
+
+    def _live_status(self) -> str:
+        """What's happening RIGHT NOW — the owner must never have to
+        press Pause to find out whether a task is alive."""
+        lines = []
+        for tid in self.manager.tasks():
+            rep = self.manager.report(tid)
+            if rep.state in ("RUNNING", "PAUSING", "PAUSED", "STOPPING"):
+                done = ", ".join(rep.completed_stages) or "just started"
+                lines.append(f"{rep.name} ({tid}): "
+                             f"{rep.state.lower()} — done so far: {done}")
+        if lines:
+            return "Yes — still on it:\n" + "\n".join(lines)
+        msg = "Nothing is running right now."
+        status = self._project_status()
+        if status and "No projects yet" not in status:
+            msg += " " + status
+        return msg
 
     def _handle_toolset(self, req) -> str:
         from .learning import toolsets

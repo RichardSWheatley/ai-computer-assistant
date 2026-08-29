@@ -74,6 +74,16 @@ class GuiPresenter:
         self._voice_thread: threading.Thread | None = None
         threading.Thread(target=self._watch_tasks, daemon=True,
                          name="gui-task-watch").start()
+        # Agent narration ("asking the coding agent… / replied in Ns")
+        # lands in the active chat's screen pane.
+        supervisor.on_activity = self._activity
+
+    def _activity(self, msg: str) -> None:
+        try:
+            self.on_screen(msg)
+            self.on_chat_event(self._current_chat(), "screen", msg)
+        except Exception:
+            pass
 
     # --- input ---------------------------------------------------------------
 
@@ -215,7 +225,29 @@ class GuiPresenter:
         return self._voice_thread is not None and self._voice_thread.is_alive() \
             and not self._voice_stop.is_set()
 
+    # Seconds of silence required after RITA speaks before the mic
+    # re-arms — room echo of her own voice must fully decay.
+    _ECHO_TAIL = 0.4
+
+    def _speaker_busy(self) -> bool:
+        sp = self.sup.speaker
+        if sp is None:
+            return False
+        busy = getattr(sp, "busy", False)
+        quiet = getattr(sp, "quiet_for", lambda: float("inf"))()
+        return bool(busy) or quiet < self._ECHO_TAIL
+
+    def _record(self, recorder):
+        """One recording window; the stop event is passed to recorders
+        that accept it, so mic-off takes effect immediately."""
+        try:
+            return recorder.record(stop=self._voice_stop)
+        except TypeError:
+            return recorder.record()
+
     def _listen(self, recorder, stt) -> None:
+        import time as _time
+
         from ..voice.loop import _STOP_PHRASES
         from ..voice.stt import to_utterance
 
@@ -223,7 +255,19 @@ class GuiPresenter:
 
         while not self._voice_stop.is_set():
             try:
-                wav = recorder.record()
+                # HALF-DUPLEX: while RITA speaks (plus the echo tail)
+                # the microphone is deaf — she must never hear her own
+                # voice and type it back.
+                if self._speaker_busy():
+                    self._voice_stop.wait(0.05)
+                    continue
+                window_start = _time.monotonic()
+                wav = self._record(recorder)
+                sp = self.sup.speaker
+                if sp is not None and getattr(sp, "spoke_after",
+                                              lambda t: False)(
+                        window_start - self._ECHO_TAIL):
+                    continue        # she talked over this window: discard
                 # Silence gate: Whisper hallucinates words on room
                 # noise — a quiet recording never reaches it.
                 level = rms_level(wav)
@@ -266,9 +310,22 @@ class GuiPresenter:
     # --- task announcements --------------------------------------------------
 
     def _watch_tasks(self) -> None:
+        seen_stages: dict[str, int] = {}
         while not self._closing.wait(self._poll):
             for tid in self.sup.manager.tasks():
                 rep = self.sup.manager.report(tid)
+                # Stage-by-stage progress streams to the owning chat's
+                # screen pane — the owner pressed Pause once just to
+                # prove a task was alive. Never again.
+                n = len(rep.completed_stages)
+                if n > seen_stages.get(tid, 0):
+                    fresh = rep.completed_stages[seen_stages.get(tid, 0):]
+                    seen_stages[tid] = n
+                    chat = self._task_chats.get(tid) or self._current_chat()
+                    for stage in fresh:
+                        line = f"▸ {rep.name}: {stage} done"
+                        self.on_screen(line)
+                        self.on_chat_event(chat, "screen", line)
                 if self._seen_states.get(tid) == rep.state:
                     continue
                 self._seen_states[tid] = rep.state

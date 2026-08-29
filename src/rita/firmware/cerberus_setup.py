@@ -84,16 +84,35 @@ def _install_cerberus_locked(d: Path, url: str, git: str,
     return InstallResult(ok=True, path=str(d), detail=f"CERBERUS {action} at {d}")
 
 
+class ScanPlusAnalyze:
+    """Deep mode is ADDITIVE (the owner's rule): the deterministic scan
+    ALWAYS runs first; the LLM analysis runs only on a clean scan.
+    Scan findings short-circuit — the deterministic gate is the floor,
+    the LLM is an option on top, never a replacement."""
+
+    def __init__(self, scan, analyze) -> None:
+        self.scan = scan
+        self.analyze = analyze
+
+    def check(self, target):
+        result = self.scan.check(target)
+        if not result.ok:
+            return result
+        return self.analyze.check(target)
+
+
 def default_checker(clone: str | Path, *, deep: bool = False,
-                    unity_dir: str | Path | None = None) -> CerberusCli:
+                    unity_dir: str | Path | None = None):
     """The pinned invocation, run from the clone (it isn't pip-installed):
-    scan = Head 1, deterministic and keyless (RITA's default gate);
-    analyze = all three heads (opt-in)."""
+    scan = Head 1, deterministic and keyless (RITA's default gate,
+    ALWAYS run); deep adds analyze (all three heads) after a clean
+    scan — additive, never either/or."""
     clone = Path(clone)
-    if deep:
-        unity = Path(unity_dir) if unity_dir else clone / "unity"
-        argv = [sys.executable, "-m", "cerberus.cli", "analyze",
-                "--unity-dir", str(unity)]
-    else:
-        argv = [sys.executable, "-m", "cerberus.cli", "scan"]
-    return CerberusCli(argv, cwd=str(clone))
+    scan = CerberusCli([sys.executable, "-m", "cerberus.cli", "scan"],
+                       cwd=str(clone))
+    if not deep:
+        return scan
+    unity = Path(unity_dir) if unity_dir else clone / "unity"
+    analyze = CerberusCli([sys.executable, "-m", "cerberus.cli", "analyze",
+                           "--unity-dir", str(unity)], cwd=str(clone))
+    return ScanPlusAnalyze(scan, analyze)

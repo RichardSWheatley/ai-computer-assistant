@@ -3,6 +3,24 @@
 Compromises, proxies, and deferred decisions — with the reason and what would
 remove them. Newest first. (Required by the working rules in `docs/WORKING-RULES.md`.)
 
+## 2026-08-29 — The .CMD shim lesson + always-visible progress
+
+- **Prompts travel via stdin whenever argv[0] is a .cmd/.bat shim.**
+  cmd.exe truncates multi-line arguments at the first newline — the
+  root cause behind WEEKS of "empty output"/"prose reply"/"exited 1"
+  agent failures on the owner's machine, finally pinned by the
+  quoted-reply evidence rule ("your message ends at the colon").
+  Direct binaries keep argv (vendor-neutral compatibility). Agent
+  I/O is UTF-8 with errors=replace, never the locale code page.
+- **Silence is failure applies to RUNNING tasks too**: live status
+  phrases, stage streaming, and agent narration exist because the
+  owner pressed Pause just to prove a task was alive. A visible
+  heartbeat is product behavior, not logging.
+- **Half-duplex over echo cancellation**: muting the mic while RITA
+  speaks (+0.4 s tail) is deterministic and testable; AEC would be a
+  dependency and a tuning surface. Revisit only if users talk over
+  her on purpose.
+
 ## 2026-08-29 — Language question re-examined, Python + Qt reaffirmed
 
 - The owner asked whether Rust/Slint/Tauri would have been faster on

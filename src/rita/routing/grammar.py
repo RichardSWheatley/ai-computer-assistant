@@ -56,6 +56,21 @@ def is_setup(norm: str) -> bool:
     return any(p.match(norm) for p in SETUP_PATTERNS)
 
 
+# Live-status phrases: "are you still working?" answers with what's
+# running RIGHT NOW — the owner should never press Pause to check.
+STATUS_PATTERNS = (
+    re.compile(r"^are you (?:still )?working(?: on (?:it|that))?$"),
+    re.compile(r"^(?:what(?:'?s| is) (?:the |your ))?(?:status|progress)$"),
+    re.compile(r"^what are you doing(?: now)?$"),
+    re.compile(r"^how(?:'?s| is) it going$"),
+    re.compile(r"^still (?:there|working|going)$"),
+)
+
+
+def is_status(norm: str) -> bool:
+    return any(p.match(norm) for p in STATUS_PATTERNS)
+
+
 # Self-check phrases: a report, never a task.
 DIAGNOSTIC_PATTERNS = (
     re.compile(r"^(?:run |do )?(?:a )?diagnostics?$"),

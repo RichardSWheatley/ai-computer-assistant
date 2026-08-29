@@ -66,6 +66,10 @@ class PausableSpeaker:
         self._paused = False
         self._interrupted = False
         self._worker: threading.Thread | None = None
+        # Half-duplex bookkeeping: the microphone must know when RITA
+        # is talking (or just finished) so she never hears herself.
+        self._speaking = False
+        self._last_audio = 0.0
 
     # --- queueing -----------------------------------------------------------
 
@@ -87,8 +91,14 @@ class PausableSpeaker:
                 while self._paused or self._pos >= len(self._chunks):
                     self._cond.wait()
                 chunk = self._chunks[self._pos]
+                self._speaking = True
             # Speak OUTSIDE the lock so pause()/stop() stay instant.
-            self.tts.speak(chunk)
+            try:
+                self.tts.speak(chunk)
+            finally:
+                with self._cond:
+                    self._speaking = False
+                    self._last_audio = time.monotonic()
             with self._cond:
                 if self._interrupted:
                     self._interrupted = False   # aborted chunk replays on resume
@@ -130,6 +140,28 @@ class PausableSpeaker:
         self.say(text)
 
     # --- introspection ------------------------------------------------------
+
+    @property
+    def busy(self) -> bool:
+        """True while a chunk is being spoken or is queued to speak."""
+        with self._cond:
+            return self._speaking or (not self._paused
+                                      and self._pos < len(self._chunks))
+
+    def quiet_for(self) -> float:
+        """Seconds since audio last played (inf if never)."""
+        with self._cond:
+            if self._speaking:
+                return 0.0
+            if self._last_audio == 0.0:
+                return float("inf")
+            return time.monotonic() - self._last_audio
+
+    def spoke_after(self, t: float) -> bool:
+        """Did any audio play at or after monotonic time t? The mic
+        uses this to discard recording windows RITA talked over."""
+        with self._cond:
+            return self._speaking or self._last_audio >= t
 
     @property
     def position(self) -> int:

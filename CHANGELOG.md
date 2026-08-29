@@ -3,6 +3,49 @@
 All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/); versions follow semver.
 
+## [0.29.0] - 2026-08-29
+
+### Fixed — the agent finally hears the whole prompt
+The owner's evidence-bearing failure paid off: the agent replied
+*"your message ends at the colon"*. npm/pip `.CMD` shims (like the
+owner's `claude.CMD`) run through cmd.exe, which **truncates
+multi-line arguments at the first newline** — every multi-line prompt
+RITA ever sent through the shim arrived cut off. Through a shim, the
+prompt now travels via **stdin**; direct binaries keep argv. Agent
+output is decoded as **UTF-8** (em dashes were arriving as mojibake
+via cp1252).
+
+### Fixed — RITA no longer hears her own voice
+Half-duplex: while she speaks (plus a 0.4 s echo tail) the microphone
+is deaf, and a recording window she talked over is discarded — her
+replies can never be transcribed back as commands.
+
+### Changed — a mic button that looks and acts alive
+A real vector icon and a label ("Voice" ↔ "Listening…", accent
+gradient while on) instead of an emoji glyph — and turning the mic
+off now takes effect within ~0.1 s instead of whenever the current
+5-second window ended.
+
+### Added — you can always see it working
+- **"are you still working?" / "status" / "what are you doing"**
+  answer with the live task list and the stages completed so far.
+- **Stage progress streams into the chat's screen pane** as gates
+  pass (`▸ build hello world: RESOLVE done`).
+- **Agent activity is narrated** ("→ asking the coding agent…",
+  "← replied in 41s") in the screen pane — pressing Pause to prove a
+  task is alive is over.
+
+### Changed — CERBERUS deep mode is additive
+The owner's rule: **the deterministic scan always runs**; the LLM
+analysis is an option on top, never an either/or. Deep mode now runs
+scan first and only a clean scan proceeds to analyze (scan findings
+short-circuit — the deterministic gate is the floor).
+
+### Fixed — installers can no longer raise
+A raw `PermissionError` escaped the toolchain installer on the
+owner's machine with no traceback. Installers now catch everything
+and return the traceback tail as evidence; the Modules log prints it.
+
 ## [0.28.1] - 2026-08-29
 
 ### Docs

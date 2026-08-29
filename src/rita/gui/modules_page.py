@@ -95,8 +95,12 @@ class ModulesPage(QWidget):
                 mark = "" if res.ok else " FAILED"
                 self.sig_log.emit(f"{name}{mark}: {res.detail}")
             except Exception as exc:   # a raising installer must be SEEN
+                import traceback
+
+                tb = "".join(traceback.format_exception(exc)).strip()
                 self.sig_log.emit(f"{name} install FAILED: "
-                                  f"{type(exc).__name__}: {exc}")
+                                  f"{type(exc).__name__}: {exc}\n"
+                                  f"--- where ---\n{tb[-900:]}")
             finally:
                 self.sig_done.emit(button, original)
 

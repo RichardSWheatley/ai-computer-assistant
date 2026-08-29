@@ -77,8 +77,13 @@ class ChatTab(QWidget):
 
         prompt_row = QHBoxLayout()
         # The MIC BUTTON is the gate: on = everything you say is a
-        # command (no wake word); Send turns it off.
-        self.mic_btn = QPushButton("🎤", objectName="micButton")
+        # command (no wake word); Send turns it off. A real icon and a
+        # label that says what's happening — never an emoji glyph.
+        from .icons import mic_icon
+        from .theme import TEXT_DIM as _DIM
+
+        self.mic_btn = QPushButton(" Voice", objectName="micButton")
+        self.mic_btn.setIcon(mic_icon(_DIM))
         self.mic_btn.setCheckable(True)
         self.mic_btn.setToolTip(
             "Microphone on/off. While on, everything you say is a "
@@ -272,9 +277,17 @@ class RitaWindow(QMainWindow):
             tab.refresh_workspace()
 
     def _voice_state(self, active: bool) -> None:
-        # One microphone, shown consistently on every tab's button.
+        # One microphone, shown consistently on every tab's button —
+        # icon, label, and check state all say the same thing.
+        from .icons import mic_icon
+        from .theme import TEXT_DIM as _DIM
+
+        icon = mic_icon("#FFFFFF" if active else _DIM)
+        label = " Listening…" if active else " Voice"
         for tab in self._tabs_by_chat.values():
             tab.mic_btn.setChecked(active)
+            tab.mic_btn.setIcon(icon)
+            tab.mic_btn.setText(label)
 
     def _active_tab(self) -> ChatTab:
         tab = self.chat_tabs.currentWidget()

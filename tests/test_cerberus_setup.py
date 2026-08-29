@@ -100,8 +100,11 @@ class TestDefaultChecker:
         clone = tmp_path / "clone"
         (clone / "unity").mkdir(parents=True)
         checker = default_checker(clone, deep=True)
-        assert "analyze" in checker.argv
-        assert "--unity-dir" in checker.argv
+        # Deep is ADDITIVE: the deterministic scan always runs first,
+        # the LLM analyze runs after a clean scan — never either/or.
+        assert "scan" in checker.scan.argv
+        assert "analyze" in checker.analyze.argv
+        assert "--unity-dir" in checker.analyze.argv
 
     def test_acquired_gate_end_to_end(self, fixture_repo, rita_home, tmp_path):
         # Clone -> default checker -> REAL subprocess verdicts both ways.

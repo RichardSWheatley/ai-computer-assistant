@@ -137,10 +137,11 @@ QPushButton#stop {{
 QPushButton#stop:hover {{ background: #E88080; }}
 QPushButton#stop:pressed {{ background: #BC5252; }}
 QPushButton#micButton {{
-    padding: 8px 13px; font-size: 16px;
+    padding: 9px 14px; font-weight: 500;
 }}
 QPushButton#micButton:checked {{
-    background: {ACCENT_SOFT}; border: 1px solid {ACCENT};
+    background: {_PRIMARY_GRAD}; border: 1px solid {ACCENT};
+    color: white; font-weight: 600;
 }}
 QToolButton {{
     background: {BG_INPUT}; border: 1px solid {BORDER_STRONG};

@@ -81,21 +81,42 @@ class MicRecorder:
             return int(d)
         return d
 
-    def record(self) -> str:  # pragma: no cover - needs a microphone
+    def record(self, stop=None) -> str:  # pragma: no cover - needs a microphone
+        """One listening window. `stop` (a threading.Event) aborts the
+        window within ~0.1 s — the mic button's OFF must feel instant,
+        not 'whenever the current 5-second window ends'."""
         import sounddevice as sd  # type: ignore
         import numpy as np  # type: ignore
 
-        frames = int(self.seconds * self.sample_rate)
-        audio = sd.rec(frames, samplerate=self.sample_rate, channels=1,
-                       dtype="int16", device=self._resolve_device())
-        sd.wait()
+        chunks = []
+
+        def _cb(indata, frames, time_info, status):
+            chunks.append(indata.copy())
+
+        deadline = self.seconds
+        elapsed = 0.0
+        with sd.InputStream(samplerate=self.sample_rate, channels=1,
+                            dtype="int16", device=self._resolve_device(),
+                            callback=_cb):
+            step = 0.1
+            while elapsed < deadline:
+                if stop is not None and stop.wait(step):
+                    break
+                elif stop is None:
+                    import time as _time
+
+                    _time.sleep(step)
+                elapsed += step
+
+        data = (np.concatenate(chunks) if chunks
+                else np.zeros((0, 1), dtype="int16"))
         os.makedirs(self.out_dir, exist_ok=True)
         path = os.path.join(self.out_dir, "utterance.wav")
         with wave.open(path, "wb") as wf:
             wf.setnchannels(1)
             wf.setsampwidth(2)  # int16
             wf.setframerate(self.sample_rate)
-            wf.writeframes(np.asarray(audio, dtype="int16").tobytes())
+            wf.writeframes(np.asarray(data, dtype="int16").tobytes())
         return path
 
 

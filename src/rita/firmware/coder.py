@@ -137,32 +137,68 @@ class CoderCli:
         # True once an invocation had to fall back to running without the
         # workspace MCP server. Surfaced in reports — never silent.
         self.mcp_fallback = False
+        # Progress narration sink: "asking the agent… / replied in Ns".
+        self.on_activity = None
 
-    def _args(self, prompt: str, *, allow_edits: bool, with_mcp: bool) -> list:
+    def _note(self, msg: str) -> None:
+        if self.on_activity is not None:
+            try:
+                self.on_activity(msg)
+            except Exception:
+                pass
+
+    def _args(self, prompt: str, *, allow_edits: bool,
+              with_mcp: bool) -> tuple[list, str | None]:
+        """(argv, stdin payload). npm/pip .cmd shims route through
+        cmd.exe, which DESTROYS multi-line arguments — the owner's agent
+        replied 'your message ends at the colon': the prompt had been
+        truncated at its first newline. Through a shim, the prompt
+        travels via stdin; a real binary keeps it in argv."""
         from .static_check import resolve_argv
 
-        args = [*resolve_argv(list(self.command)), prompt,
-                "--output-format", "text"]
+        argv = resolve_argv(list(self.command))
+        shim = argv[0].lower().endswith((".cmd", ".bat"))
+        stdin_payload = prompt if shim else None
+        args = [*argv] + ([] if shim else [prompt]) + [
+            "--output-format", "text"]
         if with_mcp and self.mcp_config:
             args += ["--mcp-config", self.mcp_config]
         if allow_edits:
             args += ["--permission-mode", "acceptEdits"]
-        return args
+        return args, stdin_payload
+
+    def _run(self, args: list, stdin_payload: str | None,
+             cwd: Path) -> subprocess.CompletedProcess:
+        # UTF-8 both ways: agent output decoded per locale turned em
+        # dashes into mojibake on Windows (cp1252).
+        import time as _time
+
+        self._note("→ asking the coding agent…")
+        t0 = _time.monotonic()
+        proc = subprocess.run(args, cwd=cwd, capture_output=True,
+                              encoding="utf-8", errors="replace",
+                              input=stdin_payload,
+                              timeout=self.timeout)
+        dt = _time.monotonic() - t0
+        self._note(f"← the coding agent replied in {dt:.0f}s "
+                   f"(exit {proc.returncode}, "
+                   f"{len(proc.stdout or '')} chars)")
+        return proc
 
     def _invoke(self, prompt: str, cwd: Path, *,
                 allow_edits: bool) -> subprocess.CompletedProcess:
-        args = self._args(prompt, allow_edits=allow_edits, with_mcp=True)
-        proc = subprocess.run(args, cwd=cwd, capture_output=True, text=True,
-                              timeout=self.timeout)
+        args, payload = self._args(prompt, allow_edits=allow_edits,
+                                   with_mcp=True)
+        proc = self._run(args, payload, cwd)
         self.last_args = args
         if proc.returncode == 0 or not self.mcp_config:
             return proc
         # Workspace tools are an enhancement, not a prerequisite: a broken
         # MCP server must never block authoring. Retry once without it and
         # record the fallback so reports can say what happened.
-        retry_args = self._args(prompt, allow_edits=allow_edits, with_mcp=False)
-        retry = subprocess.run(retry_args, cwd=cwd, capture_output=True,
-                               text=True, timeout=self.timeout)
+        retry_args, payload = self._args(prompt, allow_edits=allow_edits,
+                                         with_mcp=False)
+        retry = self._run(retry_args, payload, cwd)
         if retry.returncode == 0:
             self.mcp_fallback = True
             self.last_args = retry_args

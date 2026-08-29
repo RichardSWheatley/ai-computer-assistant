@@ -43,7 +43,8 @@ class SettingsPage(QWidget):
             "custom CERBERUS command — empty = use the installed clone")
         form.addRow("CERBERUS override", self.cerberus_edit)
         self.cerberus_deep = QCheckBox(
-            "Deep mode: analyze (Oracle LLM + Unity heads) instead of scan")
+            "Deep mode: ALSO run the LLM analysis (Oracle + Unity heads) "
+            "after the always-on scan")
         self.cerberus_deep.setChecked(cfg.cerberus_deep)
         form.addRow("", self.cerberus_deep)
         self.host_cc_edit = QLineEdit(cfg.host_cc or "")
