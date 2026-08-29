@@ -135,6 +135,34 @@ class TestTabbedWindow:
         finally:
             w.close()
 
+    def test_tabs_close_but_the_last_one_stays(self, tmp_path, monkeypatch):
+        pytest.importorskip("PySide6")
+        monkeypatch.setenv("QT_QPA_PLATFORM", "offscreen")
+        from PySide6.QtWidgets import QApplication
+
+        from rita.gui.main_window import RitaWindow
+
+        app = QApplication.instance() or QApplication([])
+        p, sup, _ = make_presenter(tmp_path)
+        w = RitaWindow(p)
+        try:
+            w._add_chat_tab_clicked()
+            assert w.chat_tabs.count() == 2
+            second_id = w.chat_tabs.widget(1).chat_id
+            w._close_chat_tab(1)
+            app.processEvents()
+            assert w.chat_tabs.count() == 1          # closed
+            assert sup.active_chat == w.chat_tabs.widget(0).chat_id
+            w._close_chat_tab(0)
+            assert w.chat_tabs.count() == 1          # the last tab stays
+            # A background event for the closed chat reopens its tab —
+            # results are never lost to a closed tab.
+            w._chat_event(second_id, "reply", "done in the background")
+            assert w.chat_tabs.count() == 2
+        finally:
+            p.close()
+            w.close()
+
     def test_each_tab_shows_its_own_workspace(self, tmp_path, monkeypatch):
         pytest.importorskip("PySide6")
         monkeypatch.setenv("QT_QPA_PLATFORM", "offscreen")

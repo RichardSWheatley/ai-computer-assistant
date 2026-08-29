@@ -25,6 +25,13 @@ jobs:
           pip install pytest
           python -m pytest -q
 
+      # RITA tests her own GUI on Windows: a scripted user session that
+      # clicks every page and control in the real window (offscreen).
+      - name: Drive the GUI like a user
+        run: |
+          python packaging\gui_walk.py --out build\gui-walk
+          if ($LASTEXITCODE -ne 0) { exit 1 }
+
       - name: Build the bundle (PyInstaller)
         run: pyinstaller packaging/rita.spec --noconfirm --distpath dist
 

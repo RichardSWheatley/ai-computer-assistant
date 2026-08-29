@@ -806,6 +806,56 @@ class TestVersionedFallback:
         assert not stale.exists()                 # old fallback dir cleaned
 
 
+class TestQuarantinedFilesAreInvisible:
+    """The owner's traceback: their old gcc.exe is so locked that even
+    stat() is denied, and Path.is_file() RE-RAISES EACCES — detection
+    crashed before the fallback built for this exact case could run.
+    A probe must treat an unreadable path as absent, never raise."""
+
+    def _poison(self, tmp_path, monkeypatch):
+        from pathlib import Path as _P
+        bad = _fake_gcc(tmp_path / "rita" / "toolchains" / "arm-none-eabi"
+                        / "bin", "arm-none-eabi-gcc.exe")
+        real = _P.is_file
+
+        def poisoned(self):
+            if self.name == "arm-none-eabi-gcc.exe" and \
+                    "toolchains" in str(self):
+                raise PermissionError("[WinError 5] Access is denied")
+            return real(self)
+
+        monkeypatch.setattr(_P, "is_file", poisoned)
+        monkeypatch.setenv("RITA_HOME", str(tmp_path / "rita"))
+        monkeypatch.delenv("GNUARMEMB_TOOLCHAIN_PATH", raising=False)
+        return bad
+
+    def test_roots_skip_the_unstatable_install(self, tmp_path, monkeypatch):
+        from rita.firmware import toolchain
+        self._poison(tmp_path, monkeypatch)
+        roots = toolchain._rita_roots()       # must not raise
+        assert all("arm-none-eabi-gcc.exe" not in str(r) for r in roots)
+
+    def test_detection_survives_the_quarantine(self, tmp_path, monkeypatch):
+        from rita.firmware import toolchain
+        self._poison(tmp_path, monkeypatch)
+        monkeypatch.setattr(toolchain.shutil, "which", lambda n: None)
+        monkeypatch.setenv("HOME", str(tmp_path))
+        monkeypatch.setenv("USERPROFILE", str(tmp_path))
+        assert toolchain.detect_arm_gcc() is None    # absent, not a crash
+
+    def test_install_completes_despite_the_quarantine(self, tmp_path,
+                                                      monkeypatch):
+        from rita.firmware import toolchain
+        self._poison(tmp_path, monkeypatch)
+        monkeypatch.setattr(
+            toolchain, "_download",
+            lambda url, dest: dest.write_bytes(_fake_archive_bytes()))
+        monkeypatch.setattr(toolchain, "_nap", lambda s: None)
+        res = toolchain.install_arm_gcc(release="13.2.rel1",
+                                        archive_suffix=".tar.gz")
+        assert res.ok, res.detail             # the owner's install, unblocked
+
+
 class TestSingleFlight:
     """Launch auto-setup, the Modules button, and 'set yourself up' can
     all fire the same install — only one may touch the disk."""

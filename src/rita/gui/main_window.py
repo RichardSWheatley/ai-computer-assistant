@@ -240,6 +240,8 @@ class RitaWindow(QMainWindow):
         v = QVBoxLayout(page)
         v.setContentsMargins(6, 6, 6, 6)
         self.chat_tabs = QTabWidget()
+        self.chat_tabs.setTabsClosable(True)
+        self.chat_tabs.tabCloseRequested.connect(self._close_chat_tab)
         newbtn = QToolButton()
         newbtn.setText("＋ New chat")
         newbtn.setToolTip("Open another chat — each one can have its own "
@@ -269,6 +271,23 @@ class RitaWindow(QMainWindow):
     def _add_chat_tab_clicked(self) -> None:
         cid = self.presenter.new_chat()
         self.chat_tabs.setCurrentWidget(self._open_tab(cid))
+
+    def _close_chat_tab(self, idx: int) -> None:
+        # The chat's data stays on disk (its binding and history area
+        # persist); closing hides the tab. A background task finishing
+        # in a closed chat reopens it — results are never lost. The
+        # last tab stays: a chat app with zero chats is a dead end.
+        if self.chat_tabs.count() <= 1:
+            return
+        tab = self.chat_tabs.widget(idx)
+        if not isinstance(tab, ChatTab):
+            return
+        self.chat_tabs.removeTab(idx)
+        self._tabs_by_chat.pop(tab.chat_id, None)
+        tab.deleteLater()
+        current = self.chat_tabs.currentWidget()
+        if isinstance(current, ChatTab):
+            self.presenter.set_active_chat(current.chat_id)
 
     def _tab_changed(self, idx: int) -> None:
         tab = self.chat_tabs.widget(idx)

@@ -125,6 +125,31 @@ def main(argv: list[str]) -> int:
                             "toolchain — the unit tier's compiler is "
                             "unaccounted for")
 
+        # 7. The FROZEN app's agent transport, proven with a scripted
+        # agent: a multi-line prompt must arrive intact through the
+        # exact CoderCli path the product uses. (The real bug: .CMD
+        # shims truncated prompts at the first newline while a one-line
+        # check said "ok".)
+        import json as _json
+
+        home = Path(env["RITA_HOME"])
+        home.mkdir(parents=True, exist_ok=True)
+        fake_agent = home / "fake_agent.py"
+        fake_agent.write_text(
+            "import sys\n"
+            "text = ' '.join(sys.argv[1:]) or sys.stdin.read()\n"
+            "print('INTACT LANTERN' if 'LANTERN' in text else 'TRUNCATED')\n")
+        cfg = home / "config"
+        cfg.write_text(
+            '[rita]\n'
+            f'coder_command = "{sys.executable} {fake_agent}"'
+            .replace("\\", "\\\\") + "\n")
+        p = _run([cli, "check", "--deep"], env)
+        if "transport verified" not in p.stdout:
+            failures.append(
+                "the frozen bundle's deep check did not verify the "
+                f"multi-line prompt transport: {p.stdout[-400:]}")
+
     if failures:
         print("\nBUNDLE SMOKE TEST FAILED:")
         for f in failures:

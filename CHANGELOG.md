@@ -3,6 +3,33 @@
 All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/); versions follow semver.
 
+## [0.30.0] - 2026-08-29
+
+### Added — RITA tests her own GUI before you ever see it
+The owner: "You should be installing and testing this program
+yourself." `packaging/gui_walk.py` drives the REAL window like a user
+— every page, every button, chat commands, tabs (open/bind/close),
+the mic toggle, Send-kills-mic, a live task with streamed stages,
+install-button busy states, settings round-trips — failing on any
+uncaught exception or dead control, with a screenshot of every step.
+It now gates every release locally AND runs on the Windows CI runner.
+The frozen-bundle smoke additionally proves the agent prompt
+transport inside the shipped artifact with a scripted agent.
+
+### Fixed — a quarantined file can no longer crash the installer
+The owner's traceback (v0.29's evidence output, working as designed)
+pinned it: their old gcc.exe is so locked that even `stat()` is
+denied, and `Path.is_file()` re-raises access-denied — detection
+crashed before the versioned fallback could run. Every filesystem
+probe in the toolchain module now treats an unreadable path as
+absent; the quarantined install becomes invisible and the fallback
+lands the new toolchain beside it.
+
+### Added — chat tabs close
+Every tab has a ✕ (the last tab stays); a closed chat's tab reopens
+by itself if a background task finishes there — results are never
+lost to a closed tab.
+
 ## [0.29.1] - 2026-08-29
 
 ### Changed — "check setup" now proves the prompt transport

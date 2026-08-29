@@ -52,6 +52,23 @@ def _rita_toolchain_dir() -> Path:
     return toolchains_dir() / "arm-none-eabi"
 
 
+def _is_file(p: Path) -> bool:
+    """Path.is_file that treats an UNREADABLE path as absent. On the
+    owner's machine an AV-quarantined exe denies even stat(), and
+    pathlib re-raises EACCES — a probe must never crash its caller."""
+    try:
+        return p.is_file()
+    except OSError:
+        return False
+
+
+def _mtime(p: Path) -> float:
+    try:
+        return p.stat().st_mtime
+    except OSError:
+        return 0.0
+
+
 def _rita_roots() -> list[Path]:
     """Every RITA-installed toolchain root, newest first: the legacy
     `arm-none-eabi` dir plus versioned `arm-none-eabi-<release>` dirs —
@@ -62,16 +79,16 @@ def _rita_roots() -> list[Path]:
     base = toolchains_dir()
     for cand in [base / "arm-none-eabi"] + sorted(base.glob("arm-none-eabi-*")):
         if cand.is_dir() and any(
-                (cand / "bin" / n).is_file()
+                _is_file(cand / "bin" / n)
                 for n in ("arm-none-eabi-gcc", "arm-none-eabi-gcc.exe")):
             roots.append(cand)
-    roots.sort(key=lambda p: p.stat().st_mtime, reverse=True)
+    roots.sort(key=_mtime, reverse=True)
     return roots
 
 
 def _root_gcc(root: Path) -> Path:
     exe = root / "bin" / "arm-none-eabi-gcc.exe"
-    return exe if exe.is_file() else root / "bin" / "arm-none-eabi-gcc"
+    return exe if _is_file(exe) else root / "bin" / "arm-none-eabi-gcc"
 
 
 def _run_cc(cc: str | Path, flag: str):
@@ -135,13 +152,13 @@ def _sdk_arm_gcc() -> Path | None:
     for rel in ("arm-zephyr-eabi/bin", "gnu/arm-zephyr-eabi/bin"):
         for name in _SDK_GCC_NAMES:
             cand = root / rel / name
-            if cand.is_file():
+            if _is_file(cand):
                 return cand
     for pattern in ("*/arm-zephyr-eabi/bin", "*/*/arm-zephyr-eabi/bin"):
         for bindir in sorted(root.glob(pattern)):
             for name in _SDK_GCC_NAMES:
                 cand = bindir / name
-                if cand.is_file():
+                if _is_file(cand):
                     return cand
     # A layout even the search missed: the LEARNED machine fact (agent-
     # investigated, RITA-validated at discovery time, path re-checked).
@@ -150,7 +167,7 @@ def _sdk_arm_gcc() -> Path | None:
     learned = facts.fact("sdk-arm-gcc")
     if learned and learned.get("path"):
         cand = Path(learned["path"])
-        if cand.is_file():
+        if _is_file(cand):
             return cand
     return None
 
@@ -198,7 +215,7 @@ def _candidates() -> list[tuple[str, Path]]:
     if gnu:
         for name in ("arm-none-eabi-gcc", "arm-none-eabi-gcc.exe"):
             cand = Path(gnu) / "bin" / name
-            if cand.is_file():
+            if _is_file(cand):
                 out.append(("gnuarmemb", cand))
                 break
     # The SDK's arm-zephyr-eabi-gcc is deliberately NOT a candidate: it is
@@ -251,12 +268,12 @@ def detect_qemu() -> str | None:
                     "hosttools/opt/qemu/bin/qemu-system-arm*")
         for pattern in patterns:
             for cand in sorted(Path(sdk["path"]).glob(pattern)):
-                if cand.is_file() and cand.suffix in ("", ".exe"):
+                if _is_file(cand) and cand.suffix in ("", ".exe"):
                     return str(cand)
     from ..learning import facts
 
     learned = facts.fact("qemu-system-arm")
-    if learned and learned.get("path") and Path(learned["path"]).is_file():
+    if learned and learned.get("path") and _is_file(Path(learned["path"])):
         return str(learned["path"])
     return None
 
