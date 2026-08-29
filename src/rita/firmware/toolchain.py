@@ -20,6 +20,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from .cerberus_setup import InstallResult
+from .install_guard import single_flight
 
 def release_for(version: tuple[int, int]) -> str:
     """Arm GNU release name for a gcc (major, minor) — the naming is
@@ -364,13 +365,61 @@ def _download(url: str, dest: Path) -> None:
         f"is never disabled.")
 
 
+def _nap(seconds: float) -> None:  # injectable for tests
+    import time
+
+    time.sleep(seconds)
+
+
+def _force_rmtree(path: Path) -> None:
+    """rmtree that survives Windows weather: clears read-only on the
+    blocked entry and retries the whole tree with backoff — antivirus
+    scanners hold freshly written executables briefly, and read-only
+    leftovers make bare rmtree fail with WinError 5."""
+    def _unblock(func, p, _exc):
+        os.chmod(p, 0o700)
+        func(p)
+
+    kwargs = ({"onexc": _unblock} if sys.version_info >= (3, 12)
+              else {"onerror": _unblock})
+    for attempt in range(3):
+        try:
+            shutil.rmtree(path, **kwargs)
+            return
+        except OSError:
+            if attempt == 2:
+                raise
+            _nap(0.5 * (2 ** attempt))
+
+
+def _replace_dir(src: Path, dst: Path) -> None:
+    """One swap attempt: drop the old dst, rename src into place.
+    Retried with backoff by the caller."""
+    if dst.exists():
+        _force_rmtree(dst)
+    os.rename(str(src), str(dst))
+
+
 def install_arm_gcc(release: str | None = None,
                     archive_suffix: str | None = None) -> InstallResult:
     """Download + extract the Arm GNU toolchain matching Zephyr's gcc.
 
     The release is chosen from the Zephyr SDK's gcc version when known
     (the owner's rule: versions must match); explicit `release` overrides.
-    """
+    Single-flight: launch auto-setup, the Modules button, and the CLI
+    can all fire this — only one may touch the disk at a time."""
+    from .install_guard import already_running_detail
+
+    with single_flight("the ARM toolchain") as mine:
+        if not mine:
+            return InstallResult(
+                ok=False, path=str(_rita_toolchain_dir()),
+                detail=already_running_detail("the ARM toolchain"))
+        return _install_arm_gcc_locked(release, archive_suffix)
+
+
+def _install_arm_gcc_locked(release: str | None,
+                            archive_suffix: str | None) -> InstallResult:
     import tarfile
     import tempfile
     import zipfile
@@ -407,6 +456,18 @@ def install_arm_gcc(release: str | None = None,
     if archive_suffix:
         ext = archive_suffix
     url = _url_for(release, archive_suffix)
+    toolroot = dest.parent
+    toolroot.mkdir(parents=True, exist_ok=True)
+    for stale in toolroot.glob(".staging-*"):
+        try:
+            _force_rmtree(stale)
+        except OSError:
+            pass
+    # Stage NEXT TO dest (same volume: the final step is one rename),
+    # and verify the staged tree BEFORE the old install is touched — a
+    # failure anywhere up to the swap leaves the existing toolchain
+    # working.
+    staging = toolroot / f".staging-arm-none-eabi-{os.getpid()}"
     try:
         with tempfile.TemporaryDirectory(prefix="rita-toolchain-") as tmp:
             archive = Path(tmp) / f"toolchain{ext}"
@@ -421,13 +482,42 @@ def install_arm_gcc(release: str | None = None,
             # The archive wraps everything in one release-named directory.
             roots = [p for p in extract.iterdir() if p.is_dir()]
             root = roots[0] if len(roots) == 1 else extract
-            if dest.exists():
-                shutil.rmtree(dest)
-            dest.parent.mkdir(parents=True, exist_ok=True)
-            shutil.move(str(root), str(dest))
+            if not any((root / "bin" / n).is_file() for n in
+                       ("arm-none-eabi-gcc", "arm-none-eabi-gcc.exe")):
+                return InstallResult(
+                    ok=False, path=str(dest),
+                    detail="extracted, but bin/arm-none-eabi-gcc is "
+                           "missing — wrong archive layout?")
+            if staging.exists():
+                _force_rmtree(staging)
+            shutil.move(str(root), str(staging))
     except Exception as exc:
         return InstallResult(ok=False, path=str(dest),
                              detail=f"download/extract of {url} failed: {exc}")
+    # The swap. Retried with backoff: antivirus scanners hold freshly
+    # written executables briefly — that's weather, not an error.
+    last: Exception | None = None
+    for attempt in range(3):
+        try:
+            _replace_dir(staging, dest)
+            last = None
+            break
+        except OSError as exc:
+            last = exc
+            _nap(0.5 * (2 ** attempt))
+    if last is not None:
+        try:
+            _force_rmtree(staging)
+        except OSError:
+            pass
+        return InstallResult(
+            ok=False, path=str(dest),
+            detail=f"the new toolchain downloaded and verified, but I "
+                   f"couldn't replace {dest}: {last}. A security "
+                   f"scanner may still be scanning files there, or a "
+                   f"previous partial install is stuck. Wait a minute "
+                   f"and press Install again — or delete {dest} "
+                   f"manually and retry.")
     info = detect_arm_gcc()
     if info is None or info.source != "rita":
         return InstallResult(ok=False, path=str(dest),

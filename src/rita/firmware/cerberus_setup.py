@@ -43,8 +43,21 @@ def install_cerberus(dest: str | Path | None = None,
                      url: str = CERBERUS_REPO_URL,
                      git: str = "git",
                      timeout: float = 300.0) -> InstallResult:
-    """Clone (or update) the CERBERUS repo. Honest failures, never fake."""
+    """Clone (or update) the CERBERUS repo. Honest failures, never fake.
+    Single-flight: concurrent launchers (auto-setup, Modules button,
+    CLI) must not race the same clone."""
+    from .install_guard import already_running_detail, single_flight
+
     d = Path(dest) if dest else _default_dest()
+    with single_flight("CERBERUS") as mine:
+        if not mine:
+            return InstallResult(ok=False, path=str(d),
+                                 detail=already_running_detail("CERBERUS"))
+        return _install_cerberus_locked(d, url, git, timeout)
+
+
+def _install_cerberus_locked(d: Path, url: str, git: str,
+                             timeout: float) -> InstallResult:
     try:
         if (d / ".git").is_dir():
             proc = subprocess.run([git, "-C", str(d), "pull", "--ff-only"],

@@ -572,6 +572,198 @@ class TestOnlineReleaseResolution:
         assert urls and "13.2.rel1" in urls[0]
 
 
+def _fake_archive_bytes():
+    import io
+    import tarfile
+
+    buf = io.BytesIO()
+    with tarfile.open(fileobj=buf, mode="w:gz") as tf:
+        import tarfile as _t
+        data = b"#!/bin/sh\necho fake\n"
+        info = _t.TarInfo("arm-gnu-toolchain-x/bin/arm-none-eabi-gcc")
+        info.size = len(data)
+        info.mode = 0o755
+        tf.addfile(info, io.BytesIO(data))
+    return buf.getvalue()
+
+
+class TestInstallSwap:
+    """The owner's WinError 5: the swap into ~/.rita/toolchains must
+    survive Windows weather — AV locks, read-only leftovers, double
+    launches — and must never destroy the old install before the new
+    one is proven in place."""
+
+    def test_old_install_survives_a_failed_download(self, tmp_path,
+                                                    monkeypatch):
+        from rita.firmware import toolchain
+        monkeypatch.setenv("RITA_HOME", str(tmp_path / "rita"))
+        old = _fake_gcc(tmp_path / "rita" / "toolchains" / "arm-none-eabi"
+                        / "bin")
+
+        def boom(url, dest):
+            raise OSError("network died mid-download")
+
+        monkeypatch.setattr(toolchain, "_download", boom)
+        res = toolchain.install_arm_gcc(release="13.2.rel1")
+        assert res.ok is False
+        assert old.is_file()                 # the old toolchain still works
+
+    def test_read_only_leftovers_are_replaced(self, tmp_path, monkeypatch):
+        import os
+        from rita.firmware import toolchain
+        monkeypatch.setenv("RITA_HOME", str(tmp_path / "rita"))
+        old_bin = tmp_path / "rita" / "toolchains" / "arm-none-eabi" / "bin"
+        _fake_gcc(old_bin)
+        os.chmod(old_bin, 0o555)             # deletion blocked without force
+        try:
+            monkeypatch.setattr(
+                toolchain, "_download",
+                lambda url, dest: dest.write_bytes(_fake_archive_bytes()))
+            res = toolchain.install_arm_gcc(release="13.2.rel1",
+                                            archive_suffix=".tar.gz")
+        finally:
+            if old_bin.exists():
+                os.chmod(old_bin, 0o755)
+        assert res.ok, res.detail
+
+    def test_transient_lock_is_retried(self, tmp_path, monkeypatch):
+        from rita.firmware import toolchain
+        monkeypatch.setenv("RITA_HOME", str(tmp_path / "rita"))
+        monkeypatch.setattr(
+            toolchain, "_download",
+            lambda url, dest: dest.write_bytes(_fake_archive_bytes()))
+        naps = []
+        monkeypatch.setattr(toolchain, "_nap", naps.append)
+        real_replace = toolchain._replace_dir
+        fails = {"n": 0}
+
+        def flaky(src, dst):
+            if fails["n"] < 2:
+                fails["n"] += 1
+                raise PermissionError("[WinError 5] Access is denied")
+            return real_replace(src, dst)
+
+        monkeypatch.setattr(toolchain, "_replace_dir", flaky)
+        res = toolchain.install_arm_gcc(release="13.2.rel1",
+                                        archive_suffix=".tar.gz")
+        assert res.ok, res.detail
+        assert len(naps) >= 2                # backed off between attempts
+
+    def test_permanent_lock_carries_evidence(self, tmp_path, monkeypatch):
+        from rita.firmware import toolchain
+        monkeypatch.setenv("RITA_HOME", str(tmp_path / "rita"))
+        monkeypatch.setattr(
+            toolchain, "_download",
+            lambda url, dest: dest.write_bytes(_fake_archive_bytes()))
+        monkeypatch.setattr(toolchain, "_nap", lambda s: None)
+
+        def locked(src, dst):
+            raise PermissionError("[WinError 5] Access is denied")
+
+        monkeypatch.setattr(toolchain, "_replace_dir", locked)
+        res = toolchain.install_arm_gcc(release="13.2.rel1",
+                                        archive_suffix=".tar.gz")
+        assert res.ok is False
+        assert "arm-none-eabi" in res.detail        # the exact directory
+        assert "scan" in res.detail.lower() or "security" in res.detail.lower()
+        assert "delete" in res.detail.lower()       # the manual fallback
+
+    def test_stale_staging_dirs_are_cleaned(self, tmp_path, monkeypatch):
+        from rita.firmware import toolchain
+        monkeypatch.setenv("RITA_HOME", str(tmp_path / "rita"))
+        stale = tmp_path / "rita" / "toolchains" / ".staging-arm-none-eabi-999"
+        stale.mkdir(parents=True)
+        (stale / "junk.txt").write_text("leftover")
+        monkeypatch.setattr(
+            toolchain, "_download",
+            lambda url, dest: dest.write_bytes(_fake_archive_bytes()))
+        res = toolchain.install_arm_gcc(release="13.2.rel1",
+                                        archive_suffix=".tar.gz")
+        assert res.ok, res.detail
+        left = list((tmp_path / "rita" / "toolchains").glob(".staging-*"))
+        assert left == []                    # no staging debris survives
+
+
+class TestSingleFlight:
+    """Launch auto-setup, the Modules button, and 'set yourself up' can
+    all fire the same install — only one may touch the disk."""
+
+    def _held_install(self, tmp_path, monkeypatch):
+        import threading
+
+        from rita.firmware import toolchain
+        monkeypatch.setenv("RITA_HOME", str(tmp_path / "rita"))
+        gate = threading.Event()
+        entered = threading.Event()
+        downloads = []
+
+        def held_download(url, dest):
+            downloads.append(url)
+            entered.set()
+            gate.wait(timeout=10)
+            dest.write_bytes(_fake_archive_bytes())
+
+        monkeypatch.setattr(toolchain, "_download", held_download)
+        return toolchain, gate, entered, downloads
+
+    def test_second_toolchain_install_reports_already_running(
+            self, tmp_path, monkeypatch):
+        import threading
+
+        toolchain, gate, entered, downloads = self._held_install(
+            tmp_path, monkeypatch)
+        results = {}
+
+        def first():
+            results["first"] = toolchain.install_arm_gcc(
+                release="13.2.rel1", archive_suffix=".tar.gz")
+
+        t = threading.Thread(target=first)
+        t.start()
+        assert entered.wait(timeout=10)
+        second = toolchain.install_arm_gcc(release="13.2.rel1",
+                                           archive_suffix=".tar.gz")
+        gate.set()
+        t.join(timeout=15)
+        assert second.ok is False
+        assert "already" in second.detail.lower()
+        assert len(downloads) == 1           # second never touched the disk
+        assert results["first"].ok, results["first"].detail
+
+    def test_second_cerberus_install_reports_already_running(
+            self, tmp_path, monkeypatch):
+        import threading
+
+        from rita.firmware import cerberus_setup as cs
+        monkeypatch.setenv("RITA_HOME", str(tmp_path / "rita"))
+        gate = threading.Event()
+        entered = threading.Event()
+        calls = []
+
+        def held_run(argv, **kwargs):
+            import subprocess as sp
+            calls.append(argv)
+            entered.set()
+            gate.wait(timeout=10)
+            return sp.CompletedProcess(argv, 1, stdout="", stderr="held")
+
+        monkeypatch.setattr(cs.subprocess, "run", held_run)
+        results = {}
+
+        def first():
+            results["first"] = cs.install_cerberus(dest=tmp_path / "c")
+
+        t = threading.Thread(target=first)
+        t.start()
+        assert entered.wait(timeout=10)
+        second = cs.install_cerberus(dest=tmp_path / "c")
+        gate.set()
+        t.join(timeout=15)
+        assert second.ok is False
+        assert "already" in second.detail.lower()
+        assert len(calls) == 1
+
+
 class TestDownloadTls:
     """Frozen apps don't reliably see the OS cert store: system trust is
     tried first (corporate CAs keep working), RITA's bundled Mozilla set

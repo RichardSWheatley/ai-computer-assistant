@@ -61,12 +61,22 @@ def detect_unity(home_root: str | Path | None = None) -> Path | None:
 
 def install_unity(dest: str | Path | None = None,
                   url: str = UNITY_REPO_URL, git: str = "git"):
-    """Clone/update Unity next to CERBERUS — same acquisition contract."""
+    """Clone/update Unity next to CERBERUS — same acquisition contract,
+    same single-flight rule."""
     from ..home import unity_dir
 
     from .cerberus_setup import InstallResult
+    from .install_guard import already_running_detail, single_flight
 
     d = Path(dest) if dest else unity_dir()
+    with single_flight("Unity") as mine:
+        if not mine:
+            return InstallResult(ok=False, path=str(d),
+                                 detail=already_running_detail("Unity"))
+        return _install_unity_locked(d, url, git, InstallResult)
+
+
+def _install_unity_locked(d, url, git, InstallResult):
     try:
         if (d / ".git").is_dir():
             proc = subprocess.run([git, "-C", str(d), "pull", "--ff-only"],

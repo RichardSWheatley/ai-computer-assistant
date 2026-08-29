@@ -3,6 +3,30 @@
 All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/); versions follow semver.
 
+## [0.24.1] - 2026-08-29
+
+### Fixed — toolchain install survives Windows weather
+The owner's install died at the very last step: `[WinError 5] Access
+is denied` replacing `~\.rita\toolchains\arm-none-eabi` (the download
+and the 14.3.rel1 selection were already correct).
+
+- **Staged swap**: the archive extracts and verifies NEXT to the
+  destination first; the old install is only removed once the new one
+  is proven ready, and the final step is a single same-volume rename.
+  A failure at any earlier point leaves the existing toolchain intact.
+- **Force + retry on Windows locks**: deletes clear read-only
+  attributes and both the delete and the swap retry with backoff —
+  antivirus scanners hold freshly written executables briefly; that's
+  weather, not an error. A permanent failure names the exact
+  directory, the likely holder, and the manual fallback.
+- **Single-flight installs**: launch auto-setup, the Modules button,
+  "set yourself up", and the CLI can no longer run the same install
+  concurrently (a proven Access-denied generator) — the second caller
+  is told an install is already running and touches nothing. Applied
+  to the ARM toolchain, CERBERUS, and Unity alike.
+- Stale staging directories from interrupted installs are cleaned on
+  the next run.
+
 ## [0.24.0] - 2026-08-29
 
 ### Added — the learning layer: RITA learns the system, not the program

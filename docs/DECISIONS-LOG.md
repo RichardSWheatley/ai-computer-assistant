@@ -3,6 +3,25 @@
 Compromises, proxies, and deferred decisions — with the reason and what would
 remove them. Newest first. (Required by the working rules in `docs/WORKING-RULES.md`.)
 
+## 2026-08-29 — Install mutations are staged, forced, single-flight
+
+- **Never destroy the old install before the new one is proven.**
+  Extract + verify happen in a staging dir beside the destination;
+  the swap is one rename. The prior extract-to-temp-then-move flow
+  could leave NOTHING after a failed move — strictly worse than not
+  installing.
+- **Windows locks are weather, not errors**: deletes clear read-only
+  and retry with backoff (0.5/1/2 s) — AV scanners hold fresh
+  executables briefly. Verification of the failure theory: the owner's
+  WinError 5 arrived at the replace step of an otherwise-correct
+  install. Three attempts, then an evidence-bearing failure naming
+  the directory and the manual fallback — never a bare WinError.
+- **One writer per component, process-wide** (`install_guard`):
+  auto-setup, the Modules button, and phrases can all fire the same
+  install; the second caller is refused honestly instead of racing
+  the delete-and-replace window. Cross-process locking (two RITA
+  instances) is out of scope — noted, not solved.
+
 ## 2026-08-29 — The learning layer
 
 - **Trust but verify, structurally.** Agent investigation answers are
