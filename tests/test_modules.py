@@ -198,7 +198,7 @@ class TestSupervisor:
         from rita.supervisor import Supervisor
         from rita.voice.tts import FakeTTS
 
-        cfg = RitaConfig(workspace=str(WS))
+        cfg = RitaConfig(workspace=str(WS), ai_routing=False)
         fit = json.dumps({"fit": "sample.basic.blinky", "reason": "fits"})
         sup = Supervisor(
             rita_cfg=cfg, config_path=tmp_path / "config",

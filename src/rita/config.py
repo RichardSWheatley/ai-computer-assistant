@@ -90,6 +90,11 @@ class RitaConfig:
     # First-run autonomy: on launch RITA installs every missing piece she
     # can (CERBERUS, Unity, ARM toolchain, modules, sync) by herself.
     auto_setup: bool = True
+    # The intelligent manager (the owner's rule): work-shaped requests
+    # go to the coding agent, which decides action/board/sample; RITA
+    # validates the order against synced reality and runs the gates.
+    # Off = pure grammar routing (also the automatic no-coder fallback).
+    ai_routing: bool = True
     # Device tier stays off until the bench milestone proves flash/serial/harness.
     device_tier_enabled: bool = False
 

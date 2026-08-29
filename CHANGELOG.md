@@ -3,6 +3,34 @@
 All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/); versions follow semver.
 
+## [0.31.0] - 2026-08-29
+
+### Added — the intelligent manager: say what you want
+The owner's rule, twice stated: "RITA can use the AI to decide what to
+do" / "there still needs to be an intelligent manager to route."
+
+- **Work requests go to the coding agent for interpretation.** It sees
+  your exact words plus RITA's synced reality — your boards, your
+  samples, this machine's facts ("Windows; native_sim is POSIX-only
+  and cannot run here") — and answers one JSON work order: what to do
+  (build / modify / scaffold / chat), which sample, which board, why.
+- **RITA validates the order against reality** (a board not in your
+  sync or a sample not in your index is rejected with evidence), says
+  the decision out loud ("The agent read that as: modify
+  sample.basic.blinky for qemu_x86 — native_sim can't run on
+  Windows"), and runs the same deterministic gates as ever. The LLM
+  decides intent; it still never grades its own work.
+- **Modify works on a copy**: "add an output string to hello_world"
+  copies the sample into RITA's applications area, the agent edits the
+  copy, and every gate applies to it — your tree is never touched.
+- **No board needed, ever**: the manager picks one this machine can
+  run; the no-agent fallback default is now machine-aware too
+  (qemu_x86 on Windows — native_sim was the old hardcoded default and
+  can't even run there).
+- Meta phrases (pause/stop, status, setup, toolsets, chat binding)
+  keep their instant deterministic paths; `ai_routing` in config turns
+  the manager off if you ever want pure grammar routing.
+
 ## [0.30.2] - 2026-08-29
 
 ### Fixed

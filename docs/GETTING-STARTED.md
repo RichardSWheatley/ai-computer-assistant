@@ -87,7 +87,13 @@ Two more things grow out of this:
 ## 4. Talking to RITA
 
 Type into the prompt bar on the **Chat** page — put commands in quotes if
-you like; RITA strips them and routes the contents.
+you like; RITA strips them and routes the contents. **Just say what you
+want** — no board or SoC required: the coding agent reads your request
+against your synced boards and samples, decides what to do and which
+target this machine can run, and RITA tells you the decision before
+running the gates. "Modify the hello_world example: add an output
+string with the SoC and vendor" is a complete request; sample edits
+happen on a copy, never in your tree.
 
 **Voice: the 🎤 button is the gate.** Click the mic button next to the
 prompt bar: while it's lit, everything you say is a command — no wake
@@ -99,9 +105,11 @@ two sentences — code and logs stay on screen).
 
 Prefer hands-free? Turn on **Settings → Require the wake word**: RITA
 then ignores speech until you say **"hello Rita"** (or just "Rita"),
-and goes back to sleep after the awake window. Routing is
-deterministic grammar over *your* board and sample names — never an
-LLM guessing.
+and goes back to sleep after the awake window. Control phrases
+(pause/stop, status, setup, toolsets) stay instant deterministic
+grammar; work requests go to the intelligent manager, whose decision
+is always validated against your synced boards and samples and spoken
+back before anything runs.
 
 ### Workflow examples
 

@@ -41,8 +41,11 @@ def make_presenter(tmp_path, *, workspace=str(WS), build_seq=("ok",),
         runner = gate
     # auto_setup off: presenter/window tests exercise routing and
     # rendering — the launch hook must not start real installs.
+    # ai_routing off: these tests exercise the deterministic grammar
+    # path; the intelligent-manager path has its own tests.
     sup = Supervisor(rita_cfg=RitaConfig(workspace=workspace,
-                                         auto_setup=False),
+                                         auto_setup=False,
+                                         ai_routing=False),
                      config_path=tmp_path / "config", tts=FakeTTS(),
                      runner=runner, coder=FakeCoder(completions=[blinky_fit()]),
                      workdir=tmp_path / "work")

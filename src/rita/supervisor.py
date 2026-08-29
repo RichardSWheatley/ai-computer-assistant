@@ -11,7 +11,12 @@ pattern the legacy worker boundary uses.
 
 from __future__ import annotations
 
+import os
 from pathlib import Path
+
+# Module-level so tests can pin the platform; the POSIX-only native_sim
+# was the hardcoded default board — useless on the owner's Windows box.
+_WINDOWS = os.name == "nt"
 
 from .config import RitaConfig, load_rita_config
 from .core.tasks import TaskManager, make_control_handler
@@ -131,7 +136,27 @@ class Supervisor:
 
     # --- dispatch handlers ---------------------------------------------------
 
-    def handle_work(self, d: Dispatch) -> str:
+    def _default_board(self) -> str:
+        # No table: one machine-aware line. native_sim is POSIX-only.
+        return "qemu_x86" if _WINDOWS else "native_sim"
+
+    def _build_pipeline(self, ws: str):
+        from .firmware.pipeline import IteratePipeline
+
+        self._task_seq += 1
+        workdir = self.workdir / f"task-{self._task_seq}"
+        cfg = self.cfg
+        if ws != self.cfg.workspace:
+            import dataclasses
+
+            cfg = dataclasses.replace(self.cfg, workspace=ws)
+        return IteratePipeline(
+            runner=self._make_runner(), coder=self._make_coder(),
+            index=self._make_index(), cfg=cfg, workdir=workdir,
+            static_checker=self._make_static_checker(),
+            unit_runner=self._make_unit_runner())
+
+    def handle_work(self, d: Dispatch, raw: str | None = None) -> str:
         ws = self.effective_workspace()
         if not ws:
             return ("No Zephyr workspace is configured yet. Run "
@@ -143,35 +168,81 @@ class Supervisor:
                     f"workspace, so the firmware pipeline doesn't apply "
                     f"— toolsets and learning still do. Bind a Zephyr "
                     f"workspace for firmware work.")
-        from .firmware.pipeline import IteratePipeline, describe
-
         coder = self._make_coder()
         if coder is None:
             return self._NO_CODER
-        self._task_seq += 1
-        workdir = self.workdir / f"task-{self._task_seq}"
-        cfg = self.cfg
-        if ws != self.cfg.workspace:
-            import dataclasses
 
-            cfg = dataclasses.replace(self.cfg, workspace=ws)
-        pipeline = IteratePipeline(
-            runner=self._make_runner(), coder=coder,
-            index=self._make_index(), cfg=cfg, workdir=workdir,
-            static_checker=self._make_static_checker(),
-            unit_runner=self._make_unit_runner())
+        # The intelligent manager (the owner's rule): the agent decides
+        # what to do; RITA validates the order against synced reality,
+        # states the decision, and runs the gates.
+        text = (raw or d.residual or "").strip()
+        order = None
+        note = ""
+        if self.cfg.ai_routing:
+            from .firmware.interpret import interpret_request
+
+            boards = list(self._boards_data().get("boards", {}))
+            try:
+                samples = [(en.id, en.path)
+                           for en in self._make_index().entries][:80]
+            except Exception:
+                samples = []
+            machine = ("Windows; native_sim is POSIX-only and cannot run "
+                       "here — qemu_* boards run under the SDK's QEMU"
+                       if _WINDOWS else
+                       "POSIX (Linux/macOS); native_sim runs natively")
+            order, note = interpret_request(coder.complete, text,
+                                            boards=boards, samples=samples,
+                                            machine=machine)
+        if order is not None and order.action == "chat":
+            return self.handle_chat(text)
+
+        if order is not None:
+            board = order.board or d.entities.board or self._default_board()
+            goal = order.goal or text
+            terms = [t for t in goal.split() if len(t) > 2]
+            modify_from = None
+            if order.action == "modify":
+                entry = next(
+                    (en for en in self._make_index().entries
+                     if en.id == order.sample or order.sample in en.id
+                     or order.sample in en.path), None)
+                if entry is not None:
+                    modify_from = Path(ws) / entry.path
+            pipeline = self._build_pipeline(ws)
+            self.manager.submit(
+                goal, lambda ctl: pipeline.run(
+                    goal=goal, board=board, terms=terms,
+                    scaffold=order.action == "scaffold",
+                    modify_from=modify_from, ctl=ctl))
+            what = order.action + (f" {order.sample}" if order.sample else "")
+            why = f" — {order.why}" if order.why else ""
+            extra = (" I'll work on a copy; your tree stays untouched."
+                     if modify_from is not None else "")
+            return (f"The agent read that as: {what} for {board}{why}."
+                    f"{extra} Say pause or stop any time; I'll report "
+                    f"when the gates finish.")
+
+        # Grammar fallback: no manager (ai_routing off) or its order
+        # didn't validate — say so, then route the old way.
         e = d.entities
-        board = e.board or "native_sim"
+        board = e.board or self._default_board()
         terms = [t for t in (e.sample, e.peripheral) if t] \
             or [t for t in d.residual.split() if len(t) > 2]
         goal = d.residual or "firmware work"
-        tid = self.manager.submit(
-            goal, lambda ctl: pipeline.run(goal=goal, board=board, terms=terms,
+        pipeline = self._build_pipeline(ws)
+        self.manager.submit(
+            goal, lambda ctl: pipeline.run(goal=goal, board=board,
+                                           terms=terms,
                                            scaffold=d.verb == "scaffold",
                                            ctl=ctl))
         verb = d.verb or "work"
-        return (f"Started {verb} for {board}. Say pause or stop any time; "
-                f"I'll report when the gates finish.")
+        prefix = ""
+        if self.cfg.ai_routing and note and note != "ok":
+            prefix = (f"(the routing manager's answer didn't validate — "
+                      f"{note[:140]} — using grammar routing) ")
+        return (f"{prefix}Started {verb} for {board}. Say pause or stop "
+                f"any time; I'll report when the gates finish.")
 
     def _boards_data(self) -> dict:
         """Synced boards.json when present, else scanned from the workspace —

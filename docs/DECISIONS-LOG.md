@@ -3,6 +3,24 @@
 Compromises, proxies, and deferred decisions — with the reason and what would
 remove them. Newest first. (Required by the working rules in `docs/WORKING-RULES.md`.)
 
+## 2026-08-29 — Interpretation moves to the agent (the owner's rule)
+
+- **The founding constraint "routing is grammar, not guessing" is
+  RETIRED for work requests, by the owner's explicit direction.** The
+  agent is the intelligent manager: it decides action/board/sample
+  from the user's words plus synced reality. What survives of the old
+  rule: meta phrases stay grammar (instant, deterministic), every
+  order is VALIDATED against the sync/index before execution, the
+  decision is spoken back, and the LLM still never grades work — the
+  gates are untouched.
+- **Upstream simulator targets (qemu_*, native_sim) always validate**
+  even when a sparse sync missed them — every Zephyr tree ships them.
+- **Modify = copy + full gates.** The user's tree is never edited;
+  the copy is RITA-owned code, so STATIC/UNIT/FINAL all apply.
+- **Lesson recorded at the owner's insistence**: founding constraints
+  are not sacred once they fight usability — surface the conflict and
+  the better idea instead of silently conserving the old design.
+
 ## 2026-08-29 — The .CMD shim lesson + always-visible progress
 
 - **Prompts travel via stdin whenever argv[0] is a .cmd/.bat shim.**

@@ -248,7 +248,42 @@ def main(out_dir: str | None = None) -> int:
         fail("install button did not re-enable")
     shot("6-modules")
 
-    # --- 7. settings: change + save round-trips ----------------------------
+    # --- 7. the intelligent manager routes a modify request -----------------
+    import json as _json
+
+    from rita.firmware.coder import FakeCoder
+
+    step("the manager decides a board-less modify request")
+    sup.cfg.applications_dir = str(home / "apps")
+    sup._coder = FakeCoder(completions=[_json.dumps({
+        "action": "modify", "board": "qemu_x86",
+        "sample": "sample.basic.blinky",
+        "goal": "add a log line to blinky",
+        "why": "qemu_x86 runs on this machine"})])
+    w.chat_tabs.setCurrentIndex(0)
+    pump(app)
+    before = len(replies)
+    tab.prompt.setText("add a log line to the blinky example")
+    tab._send()
+    # The decision reply may be followed quickly by the task's own
+    # announcements — find it among the replies, don't race the newest.
+    def _decision():
+        return next((r.lower() for r in replies[before:]
+                     if "read that as" in r.lower()), None)
+
+    if not wait_for(app, lambda: _decision() is not None):
+        fail("the manager's decision never came back")
+    else:
+        decided = _decision()
+        if "qemu_x86" not in decided:
+            fail(f"decision reply lacks the board: {decided[:120]!r}")
+        if "copy" not in decided:
+            fail("the modify reply does not promise a copy")
+    p.stop()          # the pipeline behind it isn't the walk's business
+    pump(app, 0.3)
+    shot("7-manager")
+
+    # --- 8. settings: change + save round-trips ----------------------------
     w._nav_buttons[4].click()
     pump(app)
     sp = w.settings_page
@@ -261,7 +296,7 @@ def main(out_dir: str | None = None) -> int:
     back = load_rita_config(home / "config")
     if back.voice_awake_seconds != 90:
         fail("settings Save did not persist the awake window")
-    shot("7-settings")
+    shot("8-settings")
 
     # --- verdict ------------------------------------------------------------
     w.close()

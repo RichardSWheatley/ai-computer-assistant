@@ -137,6 +137,18 @@ class RouterShell:
             return "Project handoff isn't wired up in this shell."
         if d.kind == "work":
             if self.work is not None:
+                # The intelligent-manager handler wants the RAW text
+                # (normalization strips slashes and case); legacy
+                # handlers take only the dispatch.
+                import inspect
+
+                try:
+                    takes_raw = "raw" in inspect.signature(
+                        self.work).parameters
+                except (TypeError, ValueError):
+                    takes_raw = False
+                if takes_raw:
+                    return self.work(d, raw=raw)
                 return self.work(d)
             what = d.verb or "work"
             target = d.entities.board or d.entities.sample or "the workspace"

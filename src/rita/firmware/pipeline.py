@@ -124,7 +124,8 @@ class IteratePipeline:
     # --- the loop -----------------------------------------------------------
 
     def run(self, *, goal: str, board: str, terms: list[str],
-            scaffold: bool = False, ctl=None) -> PipelineReport:
+            scaffold: bool = False, modify_from: str | Path | None = None,
+            ctl=None) -> PipelineReport:
         report = PipelineReport(goal=goal, outcome="failed")
         self.workdir.mkdir(parents=True, exist_ok=True)
 
@@ -133,7 +134,38 @@ class IteratePipeline:
         # with the shipped Zephyr conventions attached to the request.
         build_target: Path
         app_dir = self.workdir / "app"
-        if scaffold:
+        if modify_from is not None:
+            # The MODIFY primitive: the user's in-tree sample is copied
+            # into RITA's applications area and the agent edits the
+            # COPY — the user's tree stays untouched, and from here on
+            # the copy is RITA-owned code: every gate applies.
+            import shutil as _sh
+
+            from . import knowledge
+            from .agentmd import write_agent_context
+
+            src = Path(modify_from)
+            app_dir = applications_root(self.cfg) / _app_slug(goal)
+            if app_dir.exists():
+                _sh.rmtree(app_dir)
+            _sh.copytree(src, app_dir,
+                         ignore=_sh.ignore_patterns("build", "build_*"))
+            write_agent_context(app_dir, goal=goal, board=board, terms=terms)
+            notes = knowledge.notes_for(terms + goal.split())
+            enriched = (f"This directory is a COPY of the in-tree sample "
+                        f"at {src} — the user's tree stays untouched. "
+                        f"Modify THIS COPY: {goal}. It must keep building "
+                        f"with `west build -b {board}` unmodified.")
+            if notes:
+                enriched = f"{enriched}\n\nZephyr notes:\n{notes}"
+            edited = self.coder.scaffold(enriched, board, app_dir)
+            if not edited.ok:
+                self._record(report, StageResult(
+                    "RESOLVE", "failed",
+                    f"modify failed: {edited.detail}"))
+                return report
+            scaffold = True     # gate as RITA-owned code from here on
+        elif scaffold:
             from . import knowledge
             from .agentmd import write_agent_context
 
