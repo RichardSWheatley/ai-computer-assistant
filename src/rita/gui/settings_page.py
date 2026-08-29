@@ -54,9 +54,19 @@ class SettingsPage(QWidget):
             "Set up missing pieces automatically on launch")
         self.autosetup.setChecked(cfg.auto_setup)
         form.addRow("", self.autosetup)
-        self.voice = QCheckBox("Enable voice (wake word + speech)")
+        self.voice = QCheckBox("Turn the microphone on when RITA starts "
+                               "(the 🎤 button in chat toggles it any time)")
         self.voice.setChecked(cfg.voice_enabled)
         form.addRow("", self.voice)
+        self.wakeword = QCheckBox(
+            'Require the wake word ("hello Rita") — hands-free mode')
+        self.wakeword.setChecked(cfg.voice_wake_word)
+        self.wakeword.setToolTip(
+            "Off (default): the mic button is the gate — while it's on, "
+            "everything you say is a command. On: RITA ignores speech "
+            "until you say her name, and sleeps again after the awake "
+            "window.")
+        form.addRow("", self.wakeword)
         # WHICH microphone — the system default once transcribed the
         # whole living room as commands.
         from ..voice.mic import list_input_devices
@@ -109,6 +119,9 @@ class SettingsPage(QWidget):
         sup.cfg.cerberus_deep = self.cerberus_deep.isChecked()
         sup.cfg.host_cc = self.host_cc_edit.text().strip() or None
         sup.cfg.voice_enabled = self.voice.isChecked()
+        sup.cfg.voice_wake_word = self.wakeword.isChecked()
+        sup.shell.require_wake = sup.cfg.voice_wake_word
+        sup.shell.awake = not sup.cfg.voice_wake_word
         device_changed = (sup.cfg.voice_input_device
                           != self.mic_combo.currentData())
         sup.cfg.voice_input_device = self.mic_combo.currentData()

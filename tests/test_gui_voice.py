@@ -29,7 +29,8 @@ def make_presenter(tmp_path, utterances):
     from rita.voice.tts import FakeTTS
 
     tts = FakeTTS()
-    sup = Supervisor(rita_cfg=RitaConfig(workspace=str(WS)),
+    sup = Supervisor(rita_cfg=RitaConfig(workspace=str(WS),
+                                         voice_wake_word=True),
                      config_path=tmp_path / "config", tts=tts,
                      workdir=tmp_path / "work")
     stt = FakeSTT(utterances=[Utterance.from_text(u) for u in utterances])
@@ -133,7 +134,8 @@ class TestHonestUnavailability:
             return real_find(name, *a, **k)
 
         monkeypatch.setattr(importlib.util, "find_spec", find_spec)
-        sup = Supervisor(rita_cfg=RitaConfig(workspace=str(WS)),
+        sup = Supervisor(rita_cfg=RitaConfig(workspace=str(WS),
+                                         voice_wake_word=True),
                          config_path=tmp_path / "config", tts=FakeTTS(),
                          workdir=tmp_path / "work")
         p = GuiPresenter(sup)                  # default (real) backends
@@ -156,7 +158,8 @@ class TestHonestUnavailability:
         def boom():
             raise ImportError("No module named 'sounddevice'")
 
-        sup = Supervisor(rita_cfg=RitaConfig(workspace=str(WS)),
+        sup = Supervisor(rita_cfg=RitaConfig(workspace=str(WS),
+                                         voice_wake_word=True),
                          config_path=tmp_path / "config", tts=FakeTTS(),
                          workdir=tmp_path / "work")
         p = GuiPresenter(sup, voice_backends=boom)

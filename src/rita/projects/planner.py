@@ -74,10 +74,12 @@ def _classify(command: str, vocab: Vocabulary) -> str:
 
 def plan_project(goal: str, complete: Complete, vocab: Vocabulary,
                  store: ProjectStore | None = None) -> Project:
-    raw = complete(_PLAN_PROMPT.format(goal=goal, max_items=MAX_ITEMS))
+    from ..firmware.jsonio import ask_json
+
     try:
-        m = re.search(r"\{.*\}", raw, re.DOTALL)
-        data = json.loads(m.group(0) if m else raw)
+        data = ask_json(complete,
+                        _PLAN_PROMPT.format(goal=goal, max_items=MAX_ITEMS),
+                        what="planner")
         entries: Sequence[dict] = data["items"]
     except Exception as exc:
         raise PlanError(f"planner returned no parseable plan: {exc}") from exc

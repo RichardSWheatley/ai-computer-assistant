@@ -63,6 +63,7 @@ class GuiPresenter:
         # Tabbed chats: every event also arrives tagged with the chat
         # that owns it — (chat_id, kind, text), kind in user/reply/screen.
         self.on_chat_event = _noop
+        self.on_voice = _noop     # (bool) microphone state, for mic buttons
         self._task_chats: dict[str, str] = {}   # task id -> owning chat
         self._poll = poll_interval
         self._seen_states: dict[str, str] = {}
@@ -193,10 +194,12 @@ class GuiPresenter:
             target=self._listen, args=(recorder, stt), daemon=True,
             name="gui-voice-listen")
         self._voice_thread.start()
+        self.on_voice(True)
         return True
 
     def stop_voice(self) -> None:
         self._voice_stop.set()
+        self.on_voice(False)
 
     def restart_voice(self) -> bool:
         """Apply a changed microphone/settings: stop, then start fresh."""
@@ -230,6 +233,7 @@ class GuiPresenter:
                 utt = to_utterance(stt, wav)
             except Exception as exc:
                 self._emit_reply(f"Voice stopped: {exc}")
+                self.on_voice(False)
                 break
             if self._voice_stop.is_set():
                 break
@@ -239,13 +243,18 @@ class GuiPresenter:
                 continue
             chat = self._current_chat()
             if heard.lower().strip(" .!?") in _STOP_PHRASES:
-                # Back to sleep; the mic keeps waiting for the wake word.
-                self.sup.shell.awake = not self.sup.shell.require_wake
                 self.on_user(f"🎤 {heard}")
                 self.on_chat_event(chat, "user", f"🎤 {heard}")
-                self._emit_reply("Going quiet — say my name when you need me.",
-                                 chat=chat)
-                continue
+                if self.sup.shell.require_wake:
+                    # Wake-word mode: back to sleep, mic keeps waiting.
+                    self.sup.shell.awake = False
+                    self._emit_reply("Going quiet — say my name when you "
+                                     "need me.", chat=chat)
+                    continue
+                # Mic-button mode: the stop phrase turns the mic OFF.
+                self._emit_reply("Microphone off.", chat=chat)
+                self.stop_voice()
+                break
             said = self.sup.shell.handle(utt)
             if said:                    # asleep/ignored turns leave no trace
                 self.on_user(f"🎤 {heard}")

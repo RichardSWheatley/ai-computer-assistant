@@ -52,6 +52,28 @@ def _rita_toolchain_dir() -> Path:
     return toolchains_dir() / "arm-none-eabi"
 
 
+def _rita_roots() -> list[Path]:
+    """Every RITA-installed toolchain root, newest first: the legacy
+    `arm-none-eabi` dir plus versioned `arm-none-eabi-<release>` dirs —
+    the fallback landing spots when an old dir can't be replaced."""
+    from ..home import toolchains_dir
+
+    roots = []
+    base = toolchains_dir()
+    for cand in [base / "arm-none-eabi"] + sorted(base.glob("arm-none-eabi-*")):
+        if cand.is_dir() and any(
+                (cand / "bin" / n).is_file()
+                for n in ("arm-none-eabi-gcc", "arm-none-eabi-gcc.exe")):
+            roots.append(cand)
+    roots.sort(key=lambda p: p.stat().st_mtime, reverse=True)
+    return roots
+
+
+def _root_gcc(root: Path) -> Path:
+    exe = root / "bin" / "arm-none-eabi-gcc.exe"
+    return exe if exe.is_file() else root / "bin" / "arm-none-eabi-gcc"
+
+
 def _run_cc(cc: str | Path, flag: str):
     """One version query. stdin is pinned to DEVNULL: windowed frozen
     apps on Windows can hand children an invalid stdin handle."""
@@ -167,12 +189,8 @@ def zephyr_gcc_version() -> tuple[int, int] | None:
 def _candidates() -> list[tuple[str, Path]]:
     """(source, gcc path) in preference order; existence already checked."""
     out: list[tuple[str, Path]] = []
-    exe = "arm-none-eabi-gcc.exe" if os.name == "nt" else "arm-none-eabi-gcc"
-    own = _rita_toolchain_dir() / "bin" / exe
-    if not own.is_file():
-        own = _rita_toolchain_dir() / "bin" / "arm-none-eabi-gcc"
-    if own.is_file():
-        out.append(("rita", own))
+    for root in _rita_roots():
+        out.append(("rita", _root_gcc(root)))
     found = shutil.which("arm-none-eabi-gcc")
     if found:
         out.append(("path", Path(found)))
@@ -452,6 +470,22 @@ def _install_arm_gcc_locked(release: str | None,
                        f"rel1-rel3) — your SDK's branch has no matching "
                        f"standalone download. Install one manually or "
                        f"pass --release explicitly.")
+    # Check BEFORE downloading: a RITA install already matching the
+    # wanted GCC branch means there is nothing to do — the Install
+    # button is idempotent, never a blind 1.5 GB re-download.
+    branch = want
+    if branch is None:
+        m = re.match(r"^(\d+)\.(\d+)\.", release)
+        branch = (int(m.group(1)), int(m.group(2))) if m else None
+    if branch is not None:
+        for root in _rita_roots():
+            cc = _root_gcc(root)
+            if _gcc_version(cc) == branch:
+                return InstallResult(
+                    ok=True, path=str(root),
+                    detail=f"already installed: {cc} is gcc "
+                           f"{branch[0]}.{branch[1]}, matching what's "
+                           f"wanted — nothing to download.")
     _host, ext = _host_tag()
     if archive_suffix:
         ext = archive_suffix
@@ -506,18 +540,39 @@ def _install_arm_gcc_locked(release: str | None,
             last = exc
             _nap(0.5 * (2 ** attempt))
     if last is not None:
+        # The old dir won't let go (AV hold, stuck partial install,
+        # foreign ACLs). The verified download is NOT thrown away:
+        # it lands under a fresh versioned name and detection flips to
+        # it — deleting the blocked dir becomes best-effort cleanup.
+        fallback = toolroot / f"arm-none-eabi-{release}"
         try:
-            _force_rmtree(staging)
-        except OSError:
-            pass
-        return InstallResult(
-            ok=False, path=str(dest),
-            detail=f"the new toolchain downloaded and verified, but I "
-                   f"couldn't replace {dest}: {last}. A security "
-                   f"scanner may still be scanning files there, or a "
-                   f"previous partial install is stuck. Wait a minute "
-                   f"and press Install again — or delete {dest} "
-                   f"manually and retry.")
+            if fallback.exists():
+                _force_rmtree(fallback)
+            os.rename(str(staging), str(fallback))
+            dest = fallback
+        except OSError as exc:
+            try:
+                _force_rmtree(staging)
+            except OSError:
+                pass
+            return InstallResult(
+                ok=False, path=str(dest),
+                detail=f"the new toolchain downloaded and verified, but "
+                       f"I couldn't replace {dest} ({last}) or place it "
+                       f"beside the old one ({exc}). A security scanner "
+                       f"may be holding the folder — wait a minute and "
+                       f"press Install again, or delete {dest} manually.")
+    else:
+        # Successful swap: sweep superseded roots, best-effort — the
+        # just-installed dest is now the one and only. (In the fallback
+        # path the old dir is KNOWN to be held; it is left for the next
+        # successful run to sweep.)
+        for old_root in _rita_roots():
+            if old_root != dest and old_root.exists():
+                try:
+                    _force_rmtree(old_root)
+                except OSError:
+                    pass
     info = detect_arm_gcc()
     if info is None or info.source != "rita":
         return InstallResult(ok=False, path=str(dest),

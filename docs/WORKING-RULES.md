@@ -37,3 +37,11 @@ Read `BRIEF.md` first, then the RITA directive's specs under `docs/specs/`.
 
 Do not widen scope beyond the directive's fixes. When in doubt, harden what
 exists instead of widening.
+
+## Sections — depth over speed
+
+The program is mapped into modular sections in
+[`SECTIONS.md`](SECTIONS.md), each with its own quality bar and deep-pass
+definition. Work opens **one section at a time** and closes it with its
+bar met and evidence recorded — never a fastest-to-implement pass across
+many. Live-product bug fixes interrupt this order; nothing else does.

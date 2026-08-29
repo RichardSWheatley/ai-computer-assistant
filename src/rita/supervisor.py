@@ -49,6 +49,9 @@ class Supervisor:
             work=self.handle_work, chat=self.handle_chat,
             control=make_control_handler(self.manager, self.speaker),
             project=self.hand_off)
+        # The mic button is the gate; the wake word is opt-in config.
+        self.shell.require_wake = bool(self.cfg.voice_wake_word)
+        self.shell.awake = not self.shell.require_wake
 
     # --- capability wiring (module process when installed, seam otherwise) --
 

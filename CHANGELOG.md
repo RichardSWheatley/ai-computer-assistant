@@ -3,6 +3,33 @@
 All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/); versions follow semver.
 
+## [0.28.0] - 2026-08-29
+
+### Fixed — the toolchain install is idempotent and never hostage
+- **Checks before downloading**: a RITA-installed gcc already matching
+  the wanted version means "already installed — nothing to download",
+  never a blind 1.5 GB re-download.
+- **The blocked folder can't hold the install hostage**: when the old
+  install directory won't release (the owner's persistent WinError 5),
+  the already-downloaded, verified toolchain lands under a fresh
+  versioned name (`toolchains/arm-none-eabi-<release>`) and detection
+  flips to it — modules-style. Sweeping leftovers is best-effort
+  cleanup on later successful installs, never a blocker.
+
+### Changed — voice: the mic button is the gate, no wake word
+- **A 🎤 button lives in every chat tab**: mic on = everything you say
+  is a command; mic off = deaf. **Send turns the microphone off.**
+  "stop listening" turns it off too.
+- **No wake word by default.** Hands-free mode ("hello Rita" + the
+  awake window) is now an opt-in Settings checkbox.
+
+### Fixed — the agent JSON contract has a second chance and evidence
+- A prose reply to a JSON-only prompt (the live "Expecting value: line
+  1 column 1" failure) now gets ONE strict retry — "reply with ONLY
+  the JSON object" — and a final failure quotes the reply's head, so
+  it is diagnosable from the message alone. Applied to both test
+  writers and the project planner (fit judging already failed soft).
+
 ## [0.27.1] - 2026-08-29
 
 ### Docs

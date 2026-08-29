@@ -1,5 +1,9 @@
 # Specs
 
+> The section map and quality bar for all future work live in
+> [`../SECTIONS.md`](../SECTIONS.md) — one section at a time, depth
+> over speed.
+
 One spec per directive fix, written before its tests and implementation:
 
 | Spec | Fix | Status |

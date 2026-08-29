@@ -87,14 +87,21 @@ Two more things grow out of this:
 ## 4. Talking to RITA
 
 Type into the prompt bar on the **Chat** page — put commands in quotes if
-you like; RITA strips them and routes the contents. Turn on **Settings →
-Enable voice** and RITA listens in the app: say **"hello Rita"** (or just
-"Rita") to wake her, speak your command, and she answers out loud (at
-most two sentences — code and logs stay on screen). Say "stop listening"
-to put her back to sleep; the mic keeps waiting for the wake word. The
-setting persists and re-arms on launch. Typed input never needs a wake
-word. Routing is deterministic grammar over *your* board and
-sample names — never an LLM guessing.
+you like; RITA strips them and routes the contents.
+
+**Voice: the 🎤 button is the gate.** Click the mic button next to the
+prompt bar: while it's lit, everything you say is a command — no wake
+word needed. **Send turns the mic off** (you're typing now), and so
+does saying "stop listening". Pick *which* microphone on the Settings
+page, and use **Settings → turn the microphone on when RITA starts**
+if you want it live from launch. Replies are spoken out loud (at most
+two sentences — code and logs stay on screen).
+
+Prefer hands-free? Turn on **Settings → Require the wake word**: RITA
+then ignores speech until you say **"hello Rita"** (or just "Rita"),
+and goes back to sleep after the awake window. Routing is
+deterministic grammar over *your* board and sample names — never an
+LLM guessing.
 
 ### Workflow examples
 

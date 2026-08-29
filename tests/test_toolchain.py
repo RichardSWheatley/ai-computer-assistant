@@ -650,6 +650,11 @@ class TestInstallSwap:
         assert len(naps) >= 2                # backed off between attempts
 
     def test_permanent_lock_carries_evidence(self, tmp_path, monkeypatch):
+        # Both escape routes blocked — the swap AND the versioned
+        # fallback — is the only remaining failure, and it must carry
+        # the evidence and the manual way out.
+        import os as _os
+
         from rita.firmware import toolchain
         monkeypatch.setenv("RITA_HOME", str(tmp_path / "rita"))
         monkeypatch.setattr(
@@ -657,10 +662,11 @@ class TestInstallSwap:
             lambda url, dest: dest.write_bytes(_fake_archive_bytes()))
         monkeypatch.setattr(toolchain, "_nap", lambda s: None)
 
-        def locked(src, dst):
+        def locked(*_a):
             raise PermissionError("[WinError 5] Access is denied")
 
         monkeypatch.setattr(toolchain, "_replace_dir", locked)
+        monkeypatch.setattr(toolchain.os, "rename", locked)
         res = toolchain.install_arm_gcc(release="13.2.rel1",
                                         archive_suffix=".tar.gz")
         assert res.ok is False
@@ -682,6 +688,122 @@ class TestInstallSwap:
         assert res.ok, res.detail
         left = list((tmp_path / "rita" / "toolchains").glob(".staging-*"))
         assert left == []                    # no staging debris survives
+
+
+class TestVersionedFallback:
+    """The owner's machine holds the old install dir so firmly that
+    even forced, retried deletion fails. The install must not be
+    hostage to that directory: when the swap can't happen, the new
+    toolchain lands under a FRESH versioned name and detection flips
+    to it — modules-style. Deleting leftovers is best-effort cleanup,
+    never a blocker."""
+
+    def test_blocked_swap_falls_back_to_a_versioned_dir(self, tmp_path,
+                                                        monkeypatch):
+        from rita.firmware import toolchain
+        monkeypatch.setenv("RITA_HOME", str(tmp_path / "rita"))
+        old = _fake_gcc(tmp_path / "rita" / "toolchains" / "arm-none-eabi"
+                        / "bin")
+        monkeypatch.setattr(
+            toolchain, "_download",
+            lambda url, dest: dest.write_bytes(_fake_archive_bytes()))
+        monkeypatch.setattr(toolchain, "_nap", lambda s: None)
+
+        def locked(src, dst):
+            raise PermissionError("[WinError 5] Access is denied")
+
+        monkeypatch.setattr(toolchain, "_replace_dir", locked)
+        res = toolchain.install_arm_gcc(release="13.2.rel1",
+                                        archive_suffix=".tar.gz")
+        assert res.ok, res.detail                 # NOT hostage to the old dir
+        assert "arm-none-eabi-13.2.rel1" in res.detail
+        versioned = (tmp_path / "rita" / "toolchains"
+                     / "arm-none-eabi-13.2.rel1" / "bin" / "arm-none-eabi-gcc")
+        assert versioned.is_file()
+        info = toolchain.detect_arm_gcc()
+        assert info is not None and info.source == "rita"
+        assert info.cc == str(versioned)          # detection flipped
+        assert old.is_file()                      # the blocked dir untouched
+
+    def test_detection_prefers_the_version_matching_zephyr(self, tmp_path,
+                                                           monkeypatch):
+        from rita.firmware import toolchain
+        monkeypatch.setenv("RITA_HOME", str(tmp_path / "rita"))
+        monkeypatch.delenv("GNUARMEMB_TOOLCHAIN_PATH", raising=False)
+        monkeypatch.setattr(toolchain.shutil, "which", lambda n: None)
+        legacy = _fake_gcc(tmp_path / "rita" / "toolchains"
+                           / "arm-none-eabi" / "bin")
+        new = _fake_gcc(tmp_path / "rita" / "toolchains"
+                        / "arm-none-eabi-14.3.rel1" / "bin")
+        versions = {legacy.as_posix(): (12, 2), new.as_posix(): (14, 3)}
+        monkeypatch.setattr(
+            toolchain, "_gcc_version",
+            lambda cc: versions.get(Path(cc).as_posix()))
+        monkeypatch.setattr(toolchain, "zephyr_gcc_version",
+                            lambda: (14, 3))
+        monkeypatch.setattr(toolchain, "_sdk_arm_gcc",
+                            lambda: Path("/sdk/gcc"))
+        info = toolchain.detect_arm_gcc()
+        assert info.cc == str(new)
+        assert info.version == (14, 3)
+        assert info.mismatch is False
+
+    def test_matching_install_skips_the_download_entirely(self, tmp_path,
+                                                          monkeypatch):
+        # "It didn't even check to see if it was installed before trying
+        # to do it again?" — it does now: a RITA install matching the
+        # wanted version means NOTHING is downloaded.
+        from rita.firmware import toolchain
+        monkeypatch.setenv("RITA_HOME", str(tmp_path / "rita"))
+        monkeypatch.delenv("GNUARMEMB_TOOLCHAIN_PATH", raising=False)
+        monkeypatch.setattr(toolchain.shutil, "which", lambda n: None)
+        own = _fake_gcc(tmp_path / "rita" / "toolchains" / "arm-none-eabi"
+                        / "bin")
+        monkeypatch.setattr(
+            toolchain, "_gcc_version",
+            lambda cc: (13, 2) if Path(cc) == own else None)
+        downloads = []
+        monkeypatch.setattr(toolchain, "_download",
+                            lambda url, dest: downloads.append(url))
+        res = toolchain.install_arm_gcc(release="13.2.rel1")
+        assert res.ok
+        assert "already" in res.detail.lower()
+        assert downloads == []
+
+    def test_mismatching_install_still_downloads(self, tmp_path,
+                                                 monkeypatch):
+        from rita.firmware import toolchain
+        monkeypatch.setenv("RITA_HOME", str(tmp_path / "rita"))
+        monkeypatch.delenv("GNUARMEMB_TOOLCHAIN_PATH", raising=False)
+        monkeypatch.setattr(toolchain.shutil, "which", lambda n: None)
+        own = _fake_gcc(tmp_path / "rita" / "toolchains" / "arm-none-eabi"
+                        / "bin")
+        monkeypatch.setattr(
+            toolchain, "_gcc_version",
+            lambda cc: (12, 2) if Path(cc) == own else None)
+        downloads = []
+
+        def dl(url, dest):
+            downloads.append(url)
+            raise OSError("stop — url captured")
+
+        monkeypatch.setattr(toolchain, "_download", dl)
+        res = toolchain.install_arm_gcc(release="13.2.rel1")
+        assert downloads and "13.2.rel1" in downloads[0]
+
+    def test_stale_versioned_leftovers_are_cleaned_on_success(
+            self, tmp_path, monkeypatch):
+        from rita.firmware import toolchain
+        monkeypatch.setenv("RITA_HOME", str(tmp_path / "rita"))
+        stale = _fake_gcc(tmp_path / "rita" / "toolchains"
+                          / "arm-none-eabi-12.2.rel1" / "bin")
+        monkeypatch.setattr(
+            toolchain, "_download",
+            lambda url, dest: dest.write_bytes(_fake_archive_bytes()))
+        res = toolchain.install_arm_gcc(release="13.2.rel1",
+                                        archive_suffix=".tar.gz")
+        assert res.ok, res.detail                 # swap into the legacy dir
+        assert not stale.exists()                 # old fallback dir cleaned
 
 
 class TestSingleFlight:

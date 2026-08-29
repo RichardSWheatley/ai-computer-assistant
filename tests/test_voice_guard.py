@@ -148,6 +148,122 @@ class TestMicSelection:
         assert back.voice_awake_seconds == 60
 
 
+class TestMicButtonModel:
+    """The owner's model: the MIC BUTTON is the gate. No wake word by
+    default — mic on means every utterance is a command; Send turns
+    the mic off; the wake word is opt-in config."""
+
+    def _sup(self, tmp_path, **cfg_kw):
+        from rita.config import RitaConfig
+        from rita.supervisor import Supervisor
+        from rita.voice.tts import FakeTTS
+        return Supervisor(
+            rita_cfg=RitaConfig(workspace=str(WS), auto_setup=False,
+                                **cfg_kw),
+            config_path=tmp_path / "config", tts=FakeTTS(),
+            workdir=tmp_path / "work")
+
+    def test_no_wake_word_by_default(self, tmp_path):
+        from rita.config import RitaConfig
+        assert RitaConfig().voice_wake_word is False
+        sup = self._sup(tmp_path)
+        assert sup.shell.require_wake is False
+        # Heard speech routes immediately — no name needed.
+        assert sup.shell.handle("what zephyr version are we on") != ""
+
+    def test_wake_word_is_opt_in(self, tmp_path):
+        sup = self._sup(tmp_path, voice_wake_word=True)
+        assert sup.shell.require_wake is True
+        assert sup.shell.handle("what zephyr version are we on") == ""
+        assert sup.shell.handle("rita") == "Yes?"
+
+    def test_chat_tab_has_a_mic_button_and_send_kills_it(self, tmp_path,
+                                                         monkeypatch):
+        pytest.importorskip("PySide6")
+        monkeypatch.setenv("QT_QPA_PLATFORM", "offscreen")
+        from PySide6.QtWidgets import QApplication
+
+        from rita.gui.main_window import RitaWindow
+        from rita.gui.presenter import GuiPresenter
+        from rita.routing.model import Utterance
+        from rita.voice.mic import FakeRecorder
+        from rita.voice.stt import FakeSTT
+
+        app = QApplication.instance() or QApplication([])
+        sup = self._sup(tmp_path)
+        stt = FakeSTT(utterances=[Utterance.from_text("hello there")])
+        p = GuiPresenter(sup, voice_backends=lambda: (FakeRecorder(), stt,
+                                                      None))
+        w = RitaWindow(p)
+        try:
+            tab = w.chat_tabs.widget(0)
+            assert hasattr(tab, "mic_btn")       # the mic lives IN the chat
+            tab.mic_btn.setChecked(True)
+            tab._mic_toggled()
+            assert p.voice_active
+            tab.prompt.setText("list your toolsets")
+            tab._send()                          # Send turns the mic OFF
+            deadline = time.time() + 5
+            while time.time() < deadline and p.voice_active:
+                app.processEvents()
+                time.sleep(0.02)
+            assert not p.voice_active
+            while time.time() < deadline and tab.mic_btn.isChecked():
+                app.processEvents()
+                time.sleep(0.02)
+            assert not tab.mic_btn.isChecked()   # the button follows
+        finally:
+            p.close()
+            w.close()
+
+    def test_unavailable_voice_unchecks_the_button(self, tmp_path,
+                                                   monkeypatch):
+        pytest.importorskip("PySide6")
+        monkeypatch.setenv("QT_QPA_PLATFORM", "offscreen")
+        from PySide6.QtWidgets import QApplication
+
+        from rita.gui.main_window import RitaWindow
+        from rita.gui.presenter import GuiPresenter
+
+        app = QApplication.instance() or QApplication([])
+        sup = self._sup(tmp_path)
+
+        def boom():
+            raise ImportError("missing voice packages: sounddevice")
+
+        p = GuiPresenter(sup, voice_backends=boom)
+        w = RitaWindow(p)
+        try:
+            tab = w.chat_tabs.widget(0)
+            tab.mic_btn.setChecked(True)
+            tab._mic_toggled()
+            assert not p.voice_active
+            assert not tab.mic_btn.isChecked()
+        finally:
+            p.close()
+            w.close()
+
+    def test_stop_phrase_without_wake_word_turns_the_mic_off(self,
+                                                             tmp_path):
+        from rita.gui.presenter import GuiPresenter
+        from rita.routing.model import Utterance
+        from rita.voice.mic import FakeRecorder
+        from rita.voice.stt import FakeSTT
+
+        sup = self._sup(tmp_path)
+        stt = FakeSTT(utterances=[Utterance.from_text("stop listening")])
+        p = GuiPresenter(sup, voice_backends=lambda: (FakeRecorder(), stt,
+                                                      None))
+        try:
+            assert p.start_voice()
+            deadline = time.time() + 5
+            while time.time() < deadline and p.voice_active:
+                time.sleep(0.02)
+            assert not p.voice_active            # "stop listening" = mic off
+        finally:
+            p.close()
+
+
 class TestButtonsFeelLikeButtons:
     def test_qss_has_pressed_and_hover_states(self):
         from rita.gui.theme import QSS

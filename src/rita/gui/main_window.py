@@ -76,18 +76,38 @@ class ChatTab(QWidget):
         v.addLayout(controls)
 
         prompt_row = QHBoxLayout()
+        # The MIC BUTTON is the gate: on = everything you say is a
+        # command (no wake word); Send turns it off.
+        self.mic_btn = QPushButton("🎤", objectName="micButton")
+        self.mic_btn.setCheckable(True)
+        self.mic_btn.setToolTip(
+            "Microphone on/off. While on, everything you say is a "
+            "command — no wake word needed. Send turns it off. Pick "
+            "WHICH microphone on the Settings page.")
+        self.mic_btn.clicked.connect(self._mic_toggled)
         self.prompt = QLineEdit()
         self.prompt.setPlaceholderText(
-            'e.g.  "Rita, build blinky for the apollo510"')
+            'e.g.  "build blinky for the apollo510"')
         self.prompt.returnPressed.connect(self._send)
         send = QPushButton("Send", objectName="primary")
         send.clicked.connect(self._send)
+        prompt_row.addWidget(self.mic_btn)
         prompt_row.addWidget(self.prompt, 1)
         prompt_row.addWidget(send)
         v.addLayout(prompt_row)
         self.refresh_workspace()
 
+    def _mic_toggled(self) -> None:
+        if self.mic_btn.isChecked():
+            self.presenter.set_active_chat(self.chat_id)
+            if not self.presenter.start_voice():
+                self.mic_btn.setChecked(False)
+        else:
+            self.presenter.stop_voice()
+
     def _send(self) -> None:
+        # Sending typed input means you're TYPING now — the mic goes off.
+        self.presenter.stop_voice()
         text = self.prompt.text()
         self.prompt.clear()
         self.presenter.set_active_chat(self.chat_id)
@@ -123,6 +143,7 @@ class RitaWindow(QMainWindow):
     sig_chat_event = Signal(str, str, str)   # chat id, kind, text
     sig_task = Signal(object)
     sig_status = Signal(object)
+    sig_voice = Signal(bool)                 # microphone state
 
     def __init__(self, presenter: GuiPresenter) -> None:
         super().__init__()
@@ -137,9 +158,11 @@ class RitaWindow(QMainWindow):
         presenter.on_chat_event = self.sig_chat_event.emit
         presenter.on_task = self.sig_task.emit
         presenter.on_status = self.sig_status.emit
+        presenter.on_voice = self.sig_voice.emit
         self.sig_chat_event.connect(self._chat_event)
         self.sig_task.connect(self._task_update)
         self.sig_status.connect(self._status_update)
+        self.sig_voice.connect(self._voice_state)
 
         root = QWidget()
         layout = QHBoxLayout(root)
@@ -247,6 +270,11 @@ class RitaWindow(QMainWindow):
         if isinstance(tab, ChatTab):
             self.presenter.set_active_chat(tab.chat_id)
             tab.refresh_workspace()
+
+    def _voice_state(self, active: bool) -> None:
+        # One microphone, shown consistently on every tab's button.
+        for tab in self._tabs_by_chat.values():
+            tab.mic_btn.setChecked(active)
 
     def _active_tab(self) -> ChatTab:
         tab = self.chat_tabs.currentWidget()

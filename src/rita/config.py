@@ -76,6 +76,10 @@ class RitaConfig:
     # Voice in the app: wake-word listening + spoken replies. Applied live
     # from the Settings page; deps install with the Voice component.
     voice_enabled: bool = False
+    # The MIC BUTTON is the gate (the owner's model): mic on = every
+    # utterance is a command; Send turns the mic off. The wake word
+    # ("hello Rita") is OPT-IN for hands-free use.
+    voice_wake_word: bool = False
     # WHICH microphone RITA listens on (device name from the Settings
     # dropdown). None = system default — which may be the wrong room.
     voice_input_device: str | None = None

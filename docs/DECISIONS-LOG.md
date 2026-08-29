@@ -3,6 +3,24 @@
 Compromises, proxies, and deferred decisions — with the reason and what would
 remove them. Newest first. (Required by the working rules in `docs/WORKING-RULES.md`.)
 
+## 2026-08-29 — Install idempotence + the versioned escape hatch
+
+- **Install checks before it downloads** — a matching RITA install
+  short-circuits to "already installed". The owner's exact words
+  ("it didn't even check?") are the requirement.
+- **A held directory must never block an install**: the verified
+  download lands under a versioned name and detection flips; the held
+  dir becomes best-effort cleanup for a later successful run. Chosen
+  over fighting Windows for the directory — RITA cannot win against
+  an AV hold or foreign ACLs, so she routes around them.
+- **The agent JSON contract gets exactly ONE retry**, with the reply
+  quoted on final failure. One, not N: a model that ignores two
+  explicit JSON-only instructions won't obey a third, and budgets stay
+  bounded.
+- **The mic button is the gate; the wake word is opt-in.** The owner's
+  model: hardware-style push-to-listen beats ambient listening in a
+  live household. Wake-word mode remains for genuinely hands-free use.
+
 ## 2026-08-29 — Chat tabs
 
 - **The supervisor stays single with an `active_chat` pointer** rather

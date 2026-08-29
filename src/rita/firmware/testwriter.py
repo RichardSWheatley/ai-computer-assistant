@@ -51,13 +51,12 @@ def write_unity_tests(goal: str, functions, dest: str | Path,
                       complete: Complete) -> WrittenTest:
     """Unit-test authorship: every listed function must be covered.
     Deterministically validated before acceptance."""
+    from .jsonio import ask_json
+
     listing = "\n".join(f"- {f.name}  ({f.file}:{f.line})" for f in functions)
-    raw = complete(_UNITY_PROMPT.format(goal=goal, functions=listing))
-    try:
-        m = re.search(r"\{.*\}", raw, re.DOTALL)
-        files = json.loads(m.group(0) if m else raw)
-    except Exception as exc:
-        raise ValueError(f"unit-test writer returned unparseable output: {exc}") from exc
+    files = ask_json(complete,
+                     _UNITY_PROMPT.format(goal=goal, functions=listing),
+                     what="unit-test writer")
     if not isinstance(files, dict) or not files:
         raise ValueError("unit-test writer returned no files")
     corpus = "\n".join(str(v) for v in files.values())
@@ -85,12 +84,10 @@ def write_unity_tests(goal: str, functions, dest: str | Path,
 
 def write_ztest(goal: str, board: str, dest: str | Path,
                 complete: Complete) -> WrittenTest:
-    raw = complete(_PROMPT.format(goal=goal, board=board))
-    try:
-        m = re.search(r"\{.*\}", raw, re.DOTALL)
-        files = json.loads(m.group(0) if m else raw)
-    except Exception as exc:
-        raise ValueError(f"test writer returned unparseable output: {exc}") from exc
+    from .jsonio import ask_json
+
+    files = ask_json(complete, _PROMPT.format(goal=goal, board=board),
+                     what="test writer")
     if not isinstance(files, dict) or "testcase.yaml" not in files:
         raise ValueError("test writer output must include testcase.yaml")
 

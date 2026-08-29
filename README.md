@@ -95,6 +95,7 @@ The pictures are real offscreen renders of the app
 | **[BRIEF.md](BRIEF.md)** | What RITA is and the order of work |
 | **[Specs](docs/specs/)** | One spec per capability, with acceptance criteria |
 | **[Working rules](docs/WORKING-RULES.md)** | Spec first, tests first, verify the artifact — the process every change follows |
+| **[Sections](docs/SECTIONS.md)** | The modular map: each section's quality bar and deep-pass plan, worked one at a time |
 | **[Decisions log](docs/DECISIONS-LOG.md)** | Every compromise, on the record |
 | **[CHANGELOG.md](CHANGELOG.md)** | Versioned history |
 
