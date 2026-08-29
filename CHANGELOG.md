@@ -3,6 +3,16 @@
 All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/); versions follow semver.
 
+## [0.30.2] - 2026-08-29
+
+### Fixed
+- The GUI walk's reply assertions raced the user's own echoed text —
+  on the slower Windows runner the check ran before RITA's reply
+  arrived, and several checks were satisfied by the echo alone. The
+  walk now spies on actual reply events and asserts against RITA's
+  reply text, never the echo. (The Windows CI walk caught its own
+  weakness on its second run — working as intended.)
+
 ## [0.30.1] - 2026-08-29
 
 ### Fixed

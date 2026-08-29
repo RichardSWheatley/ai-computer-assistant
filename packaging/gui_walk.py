@@ -109,6 +109,19 @@ def main(out_dir: str | None = None) -> int:
     w.show()
     pump(app)
 
+    # Spy on REPLY events: waiting for "the transcript grew" races the
+    # user's own echo (it grew the transcript first on the slower
+    # Windows runner) — assertions must run against RITA's reply text.
+    replies: list[str] = []
+    _orig_chat_event = p.on_chat_event
+
+    def _spy(chat, kind, text):
+        if kind == "reply":
+            replies.append(text)
+        _orig_chat_event(chat, kind, text)
+
+    p.on_chat_event = _spy
+
     def shot(name: str) -> None:
         w.grab().save(str(out / f"{name}.png"))
 
@@ -126,22 +139,23 @@ def main(out_dir: str | None = None) -> int:
     w._nav_buttons[0].click()
     pump(app)
     tab = w.chat_tabs.widget(0)
-    for phrase, expect in (
-            ("status", "running"),           # or "nothing is running"
-            ("list your toolsets", "toolset"),
-            ("what did you learn", "learn"),
-            ("tell me about the apollo510", "apollo"),
+    for phrase, expects in (
+            ("status", ("nothing is running", "still on it")),
+            ("list your toolsets", ("toolset",)),
+            ("what did you learn", ("learn", "facts")),
+            ("tell me about the apollo510", ("apollo",)),
     ):
         step(f"type: {phrase!r}")
-        before = tab.transcript.toPlainText()
+        before = len(replies)
         tab.prompt.setText(phrase)
         tab._send()
-        if not wait_for(app, lambda: len(tab.transcript.toPlainText())
-                        > len(before)):
-            fail(f"no reply appeared for {phrase!r}")
-        text = tab.transcript.toPlainText().lower()
-        if expect not in text and "nothing is running" not in text:
-            fail(f"reply to {phrase!r} lacks {expect!r}")
+        if not wait_for(app, lambda: len(replies) > before):
+            fail(f"no reply arrived for {phrase!r}")
+            continue
+        reply = replies[-1].lower()
+        if not any(e in reply for e in expects):
+            fail(f"reply to {phrase!r} lacks any of {expects}: "
+                 f"{reply[:120]!r}")
     shot("2-chat-replies")
 
     # --- 3. tabs: open, isolate, bind --------------------------------------
