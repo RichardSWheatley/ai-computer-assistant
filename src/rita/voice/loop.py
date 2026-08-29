@@ -59,7 +59,10 @@ class RouterShell:
                  work: Callable[[Dispatch], str] | None = None,
                  chat: Callable[[str], str] | None = None,
                  control: Callable[[Dispatch], str] | None = None,
-                 project: Callable[[str], str] | None = None) -> None:
+                 project: Callable[[str], str] | None = None,
+                 clock: Callable[[], float] | None = None) -> None:
+        import time as _time
+
         self.vocab = vocab or Vocabulary.load()
         self.config_path = config_path
         self.cfg = load_rita_config(config_path)
@@ -70,6 +73,19 @@ class RouterShell:
         self.chat = chat
         self.control = control
         self.project = project
+        # The awake WINDOW: once woken RITA does not listen forever —
+        # house chatter was being transcribed as commands. Waking and
+        # real commands (work/control/project/rename) refresh it; chat
+        # fallback does not, so background talk dies out on its own.
+        self._clock = clock or _time.monotonic
+        self._awake_until = 0.0
+
+    def _window(self) -> float:
+        return float(getattr(self.cfg, "voice_awake_seconds", 120) or 0)
+
+    def _expired(self) -> bool:
+        return (self.require_wake and self._window() > 0
+                and self._clock() > self._awake_until)
 
     def handle(self, utt: Utterance | str) -> str:
         if isinstance(utt, str):
@@ -78,13 +94,19 @@ class RouterShell:
         decision = self.gate.feed(utt)
         if decision.woke:
             self.awake = True
+            self._awake_until = self._clock() + self._window()
             if decision.residual is None:
                 return "Yes?"
             utt = decision.residual
-        elif not self.awake:
+        elif not self.awake or self._expired():
+            if self.awake and self._expired():
+                self.awake = False   # window closed: back to sleep
             return ""  # asleep and not addressed: stay quiet
 
-        return self.dispatch(route(utt, self.vocab, self.cfg.assistant_name))
+        d = route(utt, self.vocab, self.cfg.assistant_name)
+        if d.kind in ("work", "control", "project", "rename"):
+            self._awake_until = self._clock() + self._window()
+        return self.dispatch(d)
 
     def handle_typed(self, text: str) -> str:
         """Typed input (the GUI prompt): no wake word required. A leading

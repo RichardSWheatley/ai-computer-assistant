@@ -2,9 +2,9 @@
 
 from __future__ import annotations
 
-from PySide6.QtWidgets import (QCheckBox, QFormLayout, QFrame, QLabel,
-                               QLineEdit, QPushButton, QSpinBox, QVBoxLayout,
-                               QWidget)
+from PySide6.QtWidgets import (QCheckBox, QComboBox, QFormLayout, QFrame,
+                               QLabel, QLineEdit, QPushButton, QSpinBox,
+                               QVBoxLayout, QWidget)
 
 from ..config import save_rita_config
 from .presenter import GuiPresenter
@@ -57,6 +57,32 @@ class SettingsPage(QWidget):
         self.voice = QCheckBox("Enable voice (wake word + speech)")
         self.voice.setChecked(cfg.voice_enabled)
         form.addRow("", self.voice)
+        # WHICH microphone — the system default once transcribed the
+        # whole living room as commands.
+        from ..voice.mic import list_input_devices
+
+        self.mic_combo = QComboBox()
+        self.mic_combo.addItem("System default", None)
+        for dev in list_input_devices():
+            self.mic_combo.addItem(dev, dev)
+        if cfg.voice_input_device:
+            idx = self.mic_combo.findText(cfg.voice_input_device)
+            if idx < 0:
+                self.mic_combo.addItem(
+                    f"{cfg.voice_input_device} (not detected right now)",
+                    cfg.voice_input_device)
+                idx = self.mic_combo.count() - 1
+            self.mic_combo.setCurrentIndex(idx)
+        form.addRow("Microphone", self.mic_combo)
+        self.awake_secs = QSpinBox()
+        self.awake_secs.setRange(0, 3600)
+        self.awake_secs.setValue(cfg.voice_awake_seconds)
+        self.awake_secs.setToolTip(
+            "After waking, RITA listens this many seconds past the last "
+            "real command, then sleeps until you say her name again "
+            "(0 = stay awake). Keeps background talk from becoming "
+            "commands.")
+        form.addRow("Awake window (s)", self.awake_secs)
         note = QLabel("The device tier stays off until the bench milestone — "
                       "it is never faked green.", objectName="dim")
         note.setWordWrap(True)
@@ -83,12 +109,18 @@ class SettingsPage(QWidget):
         sup.cfg.cerberus_deep = self.cerberus_deep.isChecked()
         sup.cfg.host_cc = self.host_cc_edit.text().strip() or None
         sup.cfg.voice_enabled = self.voice.isChecked()
+        device_changed = (sup.cfg.voice_input_device
+                          != self.mic_combo.currentData())
+        sup.cfg.voice_input_device = self.mic_combo.currentData()
+        sup.cfg.voice_awake_seconds = self.awake_secs.value()
         sup.cfg.auto_setup = self.autosetup.isChecked()
         save_rita_config(sup.cfg, sup.config_path)
         # Apply voice live — no restart. start_voice reports honestly if
         # the deps are missing (and the config stays set for next launch).
         if sup.cfg.voice_enabled:
-            if not self.presenter.start_voice():
+            started = (self.presenter.restart_voice() if device_changed
+                       else self.presenter.start_voice())
+            if not started:
                 self.voice.setChecked(False)
         else:
             self.presenter.stop_voice()

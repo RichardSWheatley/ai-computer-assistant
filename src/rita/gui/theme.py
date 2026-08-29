@@ -53,14 +53,26 @@ QPushButton {{
     background: {BG_INPUT}; border: 1px solid {BORDER}; border-radius: 8px;
     padding: 9px 16px;
 }}
-QPushButton:hover {{ border-color: {ACCENT}; }}
+QPushButton:hover {{ background: #2E3440; border-color: {ACCENT}; }}
+QPushButton:pressed {{
+    background: #101319; border-color: {ACCENT};
+    padding-top: 11px; padding-bottom: 7px;
+}}
 QPushButton#primary {{
-    background: {ACCENT}; border: none; color: white; font-weight: 600;
+    background: {ACCENT}; border: 1px solid {ACCENT}; color: white;
+    font-weight: 600;
 }}
 QPushButton#primary:hover {{ background: {ACCENT_HOVER}; }}
-QPushButton#pause {{ background: {WARN}; border: none; color: #1b1b1b; font-weight: 600; }}
-QPushButton#stop {{ background: {BAD}; border: none; color: white; font-weight: 600; }}
-QPushButton:disabled {{ color: {TEXT_DIM}; background: {BG_RAISED}; }}
+QPushButton#primary:pressed {{ background: #3D74AC; }}
+QPushButton#pause {{ background: {WARN}; border: 1px solid {WARN};
+    color: #1b1b1b; font-weight: 600; }}
+QPushButton#pause:pressed {{ background: #B58432; }}
+QPushButton#stop {{ background: {BAD}; border: 1px solid {BAD};
+    color: white; font-weight: 600; }}
+QPushButton#stop:pressed {{ background: #B85555; }}
+QPushButton:disabled {{
+    color: {TEXT_DIM}; background: {BG_RAISED}; border-color: {BORDER};
+}}
 QTextEdit, QPlainTextEdit, QListWidget {{
     background: {BG_RAISED}; border: 1px solid {BORDER}; border-radius: 10px;
     padding: 8px;

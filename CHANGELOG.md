@@ -3,6 +3,30 @@
 All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/); versions follow semver.
 
+## [0.25.0] - 2026-08-29
+
+### Fixed — voice listens to YOU, and buttons act like buttons
+The owner's living room: RITA transcribed speech nobody said to her —
+the system-default input device picked up the house, noise hallucinated
+words, and once woken she stayed awake forever. And the install
+buttons gave no visible feedback at all.
+
+- **Microphone picker**: Settings now lists every input device — pick
+  the one RITA listens on (persisted; applied live on Save). A device
+  that later disappears is shown as "not detected right now", never
+  silently swapped.
+- **Silence gate**: a recording below the speech threshold never
+  reaches the transcriber — Whisper hallucinates words on room noise;
+  now it is never asked about noise.
+- **Awake window**: after waking, RITA listens 120 s past the last
+  real command (configurable, 0 = forever), then sleeps until you say
+  her name again. Real commands extend the window; background chatter
+  does not, so the house talking dies out on its own.
+- **Buttons behave like buttons**: visible hover and pressed states
+  everywhere, one uniform style on the Modules row (no arbitrary blue
+  box), and an install button switches to "Installing…" and disables
+  until its result lands — a click is unmistakable.
+
 ## [0.24.1] - 2026-08-29
 
 ### Fixed — toolchain install survives Windows weather

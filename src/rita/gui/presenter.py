@@ -135,7 +135,9 @@ class GuiPresenter:
             tts = Pyttsx3TTS()
         except Exception:
             tts = None                 # listening still works, replies on screen
-        return MicRecorder(seconds=5.0), WhisperSTT(model="base"), tts
+        return (MicRecorder(seconds=5.0,
+                            device=self.sup.cfg.voice_input_device),
+                WhisperSTT(model="base"), tts)
 
     def start_voice(self) -> bool:
         """Begin wake-word listening on a background thread. Honest about
@@ -165,6 +167,15 @@ class GuiPresenter:
     def stop_voice(self) -> None:
         self._voice_stop.set()
 
+    def restart_voice(self) -> bool:
+        """Apply a changed microphone/settings: stop, then start fresh."""
+        self.stop_voice()
+        t = self._voice_thread
+        if t is not None:
+            t.join(timeout=0.2)        # best effort; recorder may be mid-window
+        self._voice_thread = None
+        return self.start_voice()
+
     @property
     def voice_active(self) -> bool:
         return self._voice_thread is not None and self._voice_thread.is_alive() \
@@ -174,9 +185,17 @@ class GuiPresenter:
         from ..voice.loop import _STOP_PHRASES
         from ..voice.stt import to_utterance
 
+        from ..voice.mic import SILENCE_RMS, rms_level
+
         while not self._voice_stop.is_set():
             try:
                 wav = recorder.record()
+                # Silence gate: Whisper hallucinates words on room
+                # noise — a quiet recording never reaches it.
+                level = rms_level(wav)
+                if level is not None and level < SILENCE_RMS:
+                    self._voice_stop.wait(0.05)
+                    continue
                 utt = to_utterance(stt, wav)
             except Exception as exc:
                 self._emit_reply(f"Voice stopped: {exc}")

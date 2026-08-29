@@ -76,6 +76,13 @@ class RitaConfig:
     # Voice in the app: wake-word listening + spoken replies. Applied live
     # from the Settings page; deps install with the Voice component.
     voice_enabled: bool = False
+    # WHICH microphone RITA listens on (device name from the Settings
+    # dropdown). None = system default — which may be the wrong room.
+    voice_input_device: str | None = None
+    # Seconds RITA stays awake after a wake or a real command; expired ->
+    # back to sleep so house chatter isn't transcribed as commands.
+    # 0 = never expire.
+    voice_awake_seconds: int = 120
     # First-run autonomy: on launch RITA installs every missing piece she
     # can (CERBERUS, Unity, ARM toolchain, modules, sync) by herself.
     auto_setup: bool = True

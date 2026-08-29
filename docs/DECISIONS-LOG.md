@@ -3,6 +3,20 @@
 Compromises, proxies, and deferred decisions — with the reason and what would
 remove them. Newest first. (Required by the working rules in `docs/WORKING-RULES.md`.)
 
+## 2026-08-29 — Voice guards
+
+- **The silence gate is a fixed RMS threshold (0.005 full-scale)**,
+  not a VAD model — deterministic, explainable, and it kills the
+  hallucination class the owner hit. A configurable threshold or a
+  real VAD is a hardening option if quiet speakers get gated.
+- **Chat does not extend the awake window; commands do.** A rule based
+  on "was that utterance meaningful" would need judgment; the
+  kind-based rule is deterministic and errs toward sleeping — saying
+  her name again is cheap, transcribing the television is not.
+- **An unreadable recording is never gated** (rms_level None passes
+  through): failing open on the gate keeps voice working when the wav
+  is odd; the transcriber's own empty result still drops it.
+
 ## 2026-08-29 — Install mutations are staged, forced, single-flight
 
 - **Never destroy the old install before the new one is proven.**

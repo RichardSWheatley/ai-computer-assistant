@@ -15,6 +15,7 @@ from .presenter import GuiPresenter
 class ModulesPage(QWidget):
     sig_cerberus = Signal(str)
     sig_log = Signal(str)
+    sig_done = Signal(object, str)      # (button, original label)
 
     def __init__(self, presenter: GuiPresenter) -> None:
         super().__init__()
@@ -42,8 +43,9 @@ class ModulesPage(QWidget):
         self.cerberus_status.setWordWrap(True)
         cv.addWidget(self.cerberus_status)
         row = QHBoxLayout()
-        self.cerberus_btn = QPushButton("Install / update CERBERUS",
-                                        objectName="primary")
+        # One row, ONE style — an arbitrary blue box among plain ones
+        # reads as broken, not as emphasis.
+        self.cerberus_btn = QPushButton("Install / update CERBERUS")
         self.cerberus_btn.clicked.connect(self._install_cerberus)
         self.unity_btn = QPushButton("Install / update Unity")
         self.unity_btn.clicked.connect(self._install_unity)
@@ -65,6 +67,7 @@ class ModulesPage(QWidget):
         v.addWidget(card)
         self.sig_cerberus.connect(self.cerberus_status.setText)
         self.sig_log.connect(self._append_log)
+        self.sig_done.connect(self._install_done)
         self._refresh_cerberus()
         self.refresh()
 
@@ -74,8 +77,16 @@ class ModulesPage(QWidget):
         # page switch.
         self.presenter.on_screen(text)
 
+    def _install_done(self, button, label: str) -> None:
+        button.setEnabled(True)
+        button.setText(label)
+
     def _run_install(self, name: str, button, fn, start_msg: str) -> None:
+        # A click must be UNMISTAKABLE: the button disables and says so
+        # until its install finishes (restored on the Qt thread).
+        original = button.text()
         button.setEnabled(False)
+        button.setText("Installing…")
         self.sig_log.emit(f"{name}: {start_msg}")
 
         def run() -> None:
@@ -87,7 +98,7 @@ class ModulesPage(QWidget):
                 self.sig_log.emit(f"{name} install FAILED: "
                                   f"{type(exc).__name__}: {exc}")
             finally:
-                button.setEnabled(True)
+                self.sig_done.emit(button, original)
 
         threading.Thread(target=run, daemon=True).start()
 

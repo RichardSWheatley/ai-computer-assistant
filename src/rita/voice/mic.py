@@ -13,6 +13,42 @@ from typing import Protocol, runtime_checkable
 
 SAMPLE_RATE = 16000
 
+# Below this full-scale RMS a recording is room noise: Whisper
+# hallucinates words on silence, so it never reaches the transcriber.
+SILENCE_RMS = 0.005
+
+
+def rms_level(wav_path) -> float | None:
+    """RMS of a 16-bit wav as a 0..1 full-scale fraction; None when the
+    file can't be judged (missing/odd format) — unknown is never gated."""
+    import array
+    import math
+
+    try:
+        with wave.open(str(wav_path), "rb") as wf:
+            if wf.getsampwidth() != 2:
+                return None
+            raw = wf.readframes(wf.getnframes())
+    except (OSError, wave.Error, EOFError):
+        return None
+    samples = array.array("h")
+    samples.frombytes(raw[: len(raw) - (len(raw) % 2)])
+    if not samples:
+        return 0.0
+    return math.sqrt(sum(s * s for s in samples) / len(samples)) / 32768.0
+
+
+def list_input_devices() -> list[str]:
+    """Names of input-capable audio devices; [] when audio is
+    unavailable — the Settings page shows what there is, never crashes."""
+    try:
+        import sounddevice as sd  # type: ignore
+
+        return [d["name"] for d in sd.query_devices()
+                if d.get("max_input_channels", 0) > 0]
+    except Exception:
+        return []
+
 
 @runtime_checkable
 class Recorder(Protocol):
@@ -28,10 +64,22 @@ def _default_audio_dir() -> str:
 
 class MicRecorder:
     def __init__(self, seconds: float = 5.0, out_dir: str | None = None,
-                 sample_rate: int = SAMPLE_RATE) -> None:
+                 sample_rate: int = SAMPLE_RATE,
+                 device: str | int | None = None) -> None:
         self.seconds = seconds
         self.out_dir = out_dir or _default_audio_dir()
         self.sample_rate = sample_rate
+        # The user picks WHICH microphone on the Settings page — the
+        # system default once transcribed a whole living room.
+        self.device = device
+
+    def _resolve_device(self):
+        d = self.device
+        if d in (None, ""):
+            return None
+        if isinstance(d, str) and d.isdigit():
+            return int(d)
+        return d
 
     def record(self) -> str:  # pragma: no cover - needs a microphone
         import sounddevice as sd  # type: ignore
@@ -39,7 +87,7 @@ class MicRecorder:
 
         frames = int(self.seconds * self.sample_rate)
         audio = sd.rec(frames, samplerate=self.sample_rate, channels=1,
-                       dtype="int16")
+                       dtype="int16", device=self._resolve_device())
         sd.wait()
         os.makedirs(self.out_dir, exist_ok=True)
         path = os.path.join(self.out_dir, "utterance.wav")
