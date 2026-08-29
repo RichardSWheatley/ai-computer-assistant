@@ -70,8 +70,9 @@ class SettingsPage(QWidget):
         self.coder_timeout.setValue(cfg.coder_timeout_seconds)
         self.coder_timeout.setToolTip(
             "How long ONE agent reply may take before RITA cuts it off. "
-            "She retries once, then reports the partial output. Raise "
-            "this if big coding steps get cut off mid-work.")
+            "She retries once, then reports the partial output. Every "
+            "call is one bounded step (a plan, one file, one patch), so "
+            "this can stay short.")
         form.addRow("Agent reply ceiling (s)", self.coder_timeout)
         self.cerberus_edit = QLineEdit(cfg.cerberus_command or "")
         self.cerberus_edit.setPlaceholderText(

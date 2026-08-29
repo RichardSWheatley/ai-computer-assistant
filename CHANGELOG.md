@@ -3,6 +3,28 @@
 All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/); versions follow semver.
 
+## [0.34.0] - 2026-08-29
+
+### Changed — smaller agent steps, shorter timeout
+The owner's rule: "I would rather have smaller tasks that return more
+quickly so that we can shorten the timeout."
+
+- **Scaffold is decomposed.** No more one "write the whole app" call:
+  the agent first answers a fast JSON plan (the file list), then
+  writes ONE file per bounded call — each narrated live ("writing
+  src/main.c (3/5)…"), each with its own timeout and retry. Modifying
+  a copy plans only the files to change, so it's usually one small
+  call.
+- **RITA validates the plan before any writing**: paths must stay
+  inside the app directory, and the files a Zephyr app can't build
+  without (CMakeLists.txt, prj.conf, a source file) are ensured. A
+  file the agent claims to have written but didn't gets exactly one
+  corrective call, then an honest failure naming it.
+- **The default reply ceiling drops from 30 to 5 minutes** — short
+  works because every call is now one bounded step. (Patch calls were
+  already one-failure-scoped; test writing was already per-function;
+  interpretation is one small JSON answer.)
+
 ## [0.33.1] - 2026-08-29
 
 ### Fixed — a hung agent no longer kills the task with a raw traceback

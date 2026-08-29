@@ -374,7 +374,9 @@ class TestPipelineUnitStage:
 
 class TestContractRule:
     def test_scaffold_brief_carries_the_rule(self):
-        from rita.firmware.coder import _SCAFFOLD_PROMPT
-        text = _SCAFFOLD_PROMPT.lower()
+        # Scaffold is decomposed now — the contract rule must travel
+        # with EVERY per-file write call, not a retired whole-app brief.
+        from rita.firmware.coder import _WRITE_PROMPT
+        text = _WRITE_PROMPT.lower()
         assert "restrict" in text and "validate" in text
         assert "input" in text and "output" in text

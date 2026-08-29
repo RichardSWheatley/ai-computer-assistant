@@ -3,6 +3,21 @@
 Compromises, proxies, and deferred decisions — with the reason and what would
 remove them. Newest first. (Required by the working rules in `docs/WORKING-RULES.md`.)
 
+## 2026-08-29 — Small steps over long timeouts (the owner's rule)
+
+- **Every agent call is one bounded step** — a plan, one file, one
+  patch, one JSON answer — so the reply ceiling defaults to 5 minutes
+  instead of 30. Scaffold decomposed into plan + per-file writes; the
+  plan is validated deterministically (paths inside the app dir,
+  mandatory Zephyr files ensured) before any write call is made.
+- **Trade-off accepted**: more agent invocations per app (one per
+  file) costs a little startup overhead per call; bought back in
+  legibility (per-file narration), retryability (a timeout loses one
+  file, not the whole app), and a short honest timeout.
+- **The corrective call is single-shot.** A file missing after its
+  write call gets exactly one "it was not created" retry, then an
+  honest failure naming the file — never a loop.
+
 ## 2026-08-29 — The Workspace page is retired (chats own workspaces)
 
 - **A page died because a feature superseded it.** Once every chat tab

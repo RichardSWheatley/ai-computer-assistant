@@ -109,19 +109,38 @@ Do not run tests, do not judge success — the orchestrator re-runs the gates.
 
 {artifact}"""
 
-_SCAFFOLD_PROMPT = """Create a complete Zephyr application in this directory
-for board {board}: {goal}
+# Scaffold is DECOMPOSED (the owner's rule: smaller tasks that return
+# quickly, so the timeout stays short): one fast plan call, then one
+# bounded call per file.
+_PLAN_PROMPT = """Plan only — do NOT create or edit any files in this step.
 
-It must build with `west build -b {board}` unmodified: include CMakeLists.txt,
-prj.conf, and src/main.c.
+Target: a complete Zephyr application in this directory for board {board}:
+{goal}
+
+Answer ONLY JSON, no prose:
+{{"files": [{{"path": "<relative path>", "purpose": "<one line>"}}]}}
+
+List every file the application needs (CMakeLists.txt, prj.conf, sources).
+If this directory already contains files (a copy being modified), list ONLY
+the files to change or add. Keep the list minimal."""
+
+_WRITE_PROMPT = """Write exactly ONE file and nothing else: {path}
+Purpose: {purpose}
+
+It belongs to a Zephyr application for board {board}: {goal}
+
+The full plan, for context only — do NOT write the other files now:
+{manifest}
 
 Mandatory coding contract: every function must either RESTRICT its input and
 output parameters (constrained types, enforced ranges) or VALIDATE them
 before executing (guard clauses that reject invalid input). Every function
 will be unit-tested for its input/output parameters and statically checked;
-unguarded parameters are a defect.
+unguarded parameters are a defect. The application must build with
+`west build -b {board}` unmodified.
 
-Do exactly this one step; the orchestrator checks and tests it."""
+Create or update {path} in this directory now, then stop; the orchestrator
+checks and tests it."""
 
 
 class CoderCli:
@@ -272,13 +291,89 @@ class CoderCli:
         return PatchResult(ok=proc.returncode == 0,
                            detail=(proc.stdout or proc.stderr or "")[-500:])
 
-    def scaffold(self, goal: str, board: str, dest: Path) -> ScaffoldResult:  # pragma: no cover - needs the coding-agent CLI
+    def _plan_files(self, goal: str, board: str,
+                    dest: Path) -> list[tuple[str, str]]:
+        """The agent's file plan, validated: relative paths inside dest
+        only, and the files a Zephyr app cannot build without ensured."""
+        from .jsonio import ask_json
+
+        def plan_complete(prompt: str) -> str:
+            proc = self._invoke(prompt, dest, allow_edits=False)
+            if proc.returncode != 0:
+                raise RuntimeError(self._failure_text(proc))
+            return proc.stdout or ""
+
+        self._note("→ planning the files (one bounded step)…")
+        data = ask_json(plan_complete,
+                        _PLAN_PROMPT.format(goal=goal, board=board),
+                        what="scaffold plan")
+        entries: list[tuple[str, str]] = []
+        root = dest.resolve()
+        for item in data.get("files") or []:
+            if not isinstance(item, dict):
+                continue
+            path = str(item.get("path", "")).strip().replace("\\", "/")
+            if not path:
+                continue
+            full = (dest / path).resolve()
+            if root != full and root not in full.parents:
+                raise ValueError(
+                    f"the plan tried to reach outside the app "
+                    f"directory: {path}")
+            purpose = (str(item.get("purpose", "")).strip()
+                       or "part of the application")
+            entries.append((path, purpose))
+        if not entries:
+            raise ValueError("the plan named no files")
+        planned = {p for p, _ in entries}
+        for req, why in (("CMakeLists.txt", "build definition"),
+                         ("prj.conf", "Kconfig for this application")):
+            if req not in planned and not (dest / req).exists():
+                entries.append((req, why))
+        if (not any(p.endswith(".c") for p in planned)
+                and not any(dest.rglob("*.c"))):
+            entries.append(("src/main.c", "application entry point"))
+        return entries
+
+    def scaffold(self, goal: str, board: str, dest: Path) -> ScaffoldResult:
+        """Plan, then ONE file per bounded agent call — never a single
+        'write the whole app' call that outlives any sane timeout."""
         dest.mkdir(parents=True, exist_ok=True)
-        prompt = _SCAFFOLD_PROMPT.format(goal=goal, board=board)
-        proc = self._invoke(prompt, dest, allow_edits=True)
-        ok = proc.returncode == 0 and (dest / "CMakeLists.txt").exists()
-        return ScaffoldResult(ok=ok, app_dir=str(dest),
-                              detail=(proc.stdout or "")[-500:])
+        try:
+            entries = self._plan_files(goal, board, dest)
+        except (RuntimeError, ValueError) as exc:
+            return ScaffoldResult(ok=False, app_dir=str(dest),
+                                  detail=str(exc))
+        manifest = "\n".join(f"- {p}: {why}" for p, why in entries)
+        written = []
+        for i, (path, purpose) in enumerate(entries, 1):
+            self._note(f"→ writing {path} ({i}/{len(entries)})…")
+            prompt = _WRITE_PROMPT.format(path=path, purpose=purpose,
+                                          board=board, goal=goal,
+                                          manifest=manifest)
+            try:
+                proc = self._invoke(prompt, dest, allow_edits=True)
+                if proc.returncode != 0:
+                    return ScaffoldResult(ok=False, app_dir=str(dest),
+                                          detail=self._failure_text(proc))
+                if not (dest / path).exists():
+                    # One second chance, then honesty — never a loop.
+                    self._invoke(f"The file {path} was not created. "
+                                 + prompt, dest, allow_edits=True)
+                if not (dest / path).exists():
+                    return ScaffoldResult(
+                        ok=False, app_dir=str(dest),
+                        detail=f"{path} was still missing after two "
+                               f"bounded attempts; wrote so far: "
+                               f"{', '.join(written) or 'nothing'}")
+            except RuntimeError as exc:       # double timeout, evidenced
+                return ScaffoldResult(ok=False, app_dir=str(dest),
+                                      detail=str(exc))
+            written.append(path)
+        return ScaffoldResult(
+            ok=True, app_dir=str(dest),
+            detail=f"planned and wrote {len(written)} files, one bounded "
+                   f"step each: {', '.join(written)}")
 
 
 class FakeCoder:
