@@ -313,7 +313,8 @@ class Supervisor:
     def _human_setup_items(self):
         items = []
         if not self.cfg.workspace:
-            items.append("pick your Zephyr workspace on the Workspace page")
+            items.append("bind a folder in your chat tab (or set a "
+                         "default workspace in Settings)")
         if not self.cfg.coder_command and self._coder is None:
             items.append("enter your coding agent's command on the "
                          "Settings page (then log it in from there)")
@@ -515,8 +516,8 @@ class Supervisor:
         from .projects.runner import run_project
 
         if not self.cfg.workspace:
-            return ("No Zephyr workspace is configured yet — point me at one "
-                    "on the Workspace page first.")
+            return ("No Zephyr workspace is configured yet — bind a folder "
+                    "in your chat tab, or set a default in Settings.")
         if self._make_coder() is None:
             return self._NO_CODER
         store = ProjectStore()

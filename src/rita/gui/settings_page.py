@@ -24,11 +24,38 @@ class SettingsPage(QWidget):
         form = QFormLayout(card)
         self.name_edit = QLineEdit(cfg.assistant_name)
         form.addRow("Assistant name", self.name_edit)
+        from .pickers import make_picker, row_with
+
+        # The default workspace lives here now — each chat tab binds its
+        # own folder and syncs from its strip; this is what unbound
+        # chats use.
+        self.workspace_edit = QLineEdit(cfg.workspace or "")
+        self.workspace_edit.setPlaceholderText(
+            r"e.g. C:\zephyrproject — chats without their own folder "
+            "use this")
+        self.workspace_pick = make_picker(
+            self, self.workspace_edit, mode="dir",
+            caption="Default Zephyr workspace")
+        form.addRow("Default workspace",
+                    row_with(self, self.workspace_edit, self.workspace_pick))
+        self.map_edit = QLineEdit(cfg.hardware_map or "")
+        self.map_edit.setPlaceholderText(
+            "optional: twister hardware map (map.yaml) for connected boards")
+        self.map_pick = make_picker(
+            self, self.map_edit, mode="file",
+            caption="Pick the twister hardware map",
+            name_filter="YAML (*.yaml *.yml)")
+        form.addRow("Hardware map",
+                    row_with(self, self.map_edit, self.map_pick))
         self.coder_edit = QLineEdit(cfg.coder_command or "")
         self.coder_edit.setPlaceholderText(
             "coding agent CLI — a command that takes a prompt and can edit "
             "files; empty = RITA can't code")
-        form.addRow("Coding agent", self.coder_edit)
+        self.coder_pick = make_picker(self, self.coder_edit, mode="command",
+                                      caption="Pick the coding agent "
+                                              "executable")
+        form.addRow("Coding agent",
+                    row_with(self, self.coder_edit, self.coder_pick))
         login = QPushButton("Log in coding agent")
         login.setToolTip("Opens your agent's own login window — finish "
                          "the login there; RITA verifies with 'check setup'.")
@@ -41,7 +68,11 @@ class SettingsPage(QWidget):
         self.cerberus_edit = QLineEdit(cfg.cerberus_command or "")
         self.cerberus_edit.setPlaceholderText(
             "custom CERBERUS command — empty = use the installed clone")
-        form.addRow("CERBERUS override", self.cerberus_edit)
+        self.cerberus_pick = make_picker(
+            self, self.cerberus_edit, mode="command",
+            caption="Pick the CERBERUS executable")
+        form.addRow("CERBERUS override",
+                    row_with(self, self.cerberus_edit, self.cerberus_pick))
         self.cerberus_deep = QCheckBox(
             "Deep mode: ALSO run the LLM analysis (Oracle + Unity heads) "
             "after the always-on scan")
@@ -50,7 +81,11 @@ class SettingsPage(QWidget):
         self.host_cc_edit = QLineEdit(cfg.host_cc or "")
         self.host_cc_edit.setPlaceholderText(
             "unit-test compiler — empty = host PATH, else your Zephyr SDK's gcc")
-        form.addRow("C compiler", self.host_cc_edit)
+        self.host_cc_pick = make_picker(
+            self, self.host_cc_edit, mode="file",
+            caption="Pick the unit-test compiler")
+        form.addRow("C compiler",
+                    row_with(self, self.host_cc_edit, self.host_cc_pick))
         self.autosetup = QCheckBox(
             "Set up missing pieces automatically on launch")
         self.autosetup.setChecked(cfg.auto_setup)
@@ -114,6 +149,8 @@ class SettingsPage(QWidget):
     def _save(self) -> None:
         sup = self.presenter.sup
         sup.cfg.assistant_name = self.name_edit.text().strip() or "Rita"
+        sup.cfg.workspace = self.workspace_edit.text().strip() or None
+        sup.cfg.hardware_map = self.map_edit.text().strip() or None
         sup.cfg.coder_command = self.coder_edit.text().strip() or None
         sup.cfg.max_patch_cycles = self.budget.value()
         sup.cfg.cerberus_command = self.cerberus_edit.text().strip() or None

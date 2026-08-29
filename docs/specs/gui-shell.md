@@ -48,16 +48,18 @@ thin:
 `RitaWindow` (dark, modern QSS theme — accent color, consistent radii and
 spacing, system font, monospace code pane):
 
-- Left sidebar: **Chat**, **Workspace**, **Modules**, **Settings**.
+- Left sidebar: **Chat**, **Projects**, **Modules**, **Settings**.
 - Chat page: transcript (user entries + Rita's speech-channel replies),
   a separate read-only monospace **screen pane** for code/diffs/logs
   (Fix 5's two channels, visibly two panes), prompt bar with Send.
 - **Persistent control bar: PAUSE and RESUME/STOP buttons** — always
   visible, per Fix 4. Button state reflects the task state machine
   ("pausing after current step…" → "paused").
-- Workspace page: "Point RITA at your Zephyr workspace" folder picker,
-  sync progress, last-sync summary; shown first when no workspace is
-  configured (first-run flow).
+- No Workspace page: each chat tab carries its own workspace strip —
+  a bind field with a folder picker, "Use for this chat", and **Sync**.
+  The default workspace (for unbound chats) and the twister hardware
+  map live in Settings, each with its own picker. On first run the
+  cursor lands in the chat tab's bind field.
 - Modules page: discovered modules with current-version markers; install
   bundled modules button.
 - Settings page: assistant name, patch budget, voice on/off,

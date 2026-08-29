@@ -1,7 +1,9 @@
 """RitaWindow: the native shell around the headless presenter.
 
-Layout: sidebar (Chat / Projects / Workspace / Modules / Settings) +
-stacked pages.
+Layout: sidebar (Chat / Projects / Modules / Settings) + stacked pages.
+There is no Workspace page: each chat tab carries its own workspace
+strip (bind + Sync); the default workspace and hardware map live in
+Settings.
 The chat page shows the two output channels as two visible panes —
 transcript (speech) and a monospace screen pane (code/diffs/logs) — with
 the prompt bar below and the persistent PAUSE / RESUME / STOP control bar
@@ -24,7 +26,11 @@ from .theme import ACCENT, TEXT_DIM
 
 class ChatTab(QWidget):
     """One chat: its own transcript, screen pane, prompt, controls, and
-    its own workspace strip — chats are tabs, not a single lane."""
+    its own workspace strip — chats are tabs, not a single lane. The
+    strip IS the workspace UI (bind + Sync); there is no separate
+    Workspace page any more."""
+
+    sig_sync_done = Signal()
 
     def __init__(self, presenter: GuiPresenter, chat_id: str) -> None:
         super().__init__()
@@ -41,11 +47,24 @@ class ChatTab(QWidget):
         self.bind_edit.setPlaceholderText(
             "path or git URL for THIS chat — empty keeps the global "
             "workspace")
+        from .pickers import make_picker
+
+        self.bind_pick = make_picker(self, self.bind_edit, mode="dir",
+                                     caption="Folder for THIS chat")
         bind_btn = QPushButton("Use for this chat")
         bind_btn.clicked.connect(self._bind)
+        self.sync_btn = QPushButton("Sync")
+        self.sync_btn.setToolTip(
+            "Re-index THIS chat's workspace — boards, samples, and "
+            "tests. Unbound chats sync the default workspace from "
+            "Settings.")
+        self.sync_btn.clicked.connect(self._sync)
+        self.sig_sync_done.connect(self._sync_done)
         top.addWidget(self.workspace_label, 1)
         top.addWidget(self.bind_edit, 1)
+        top.addWidget(self.bind_pick)
         top.addWidget(bind_btn)
+        top.addWidget(self.sync_btn)
         v.addLayout(top)
 
         split = QSplitter(Qt.Orientation.Vertical)
@@ -118,6 +137,26 @@ class ChatTab(QWidget):
         self.presenter.set_active_chat(self.chat_id)
         self.presenter.submit_text(text)
 
+    def _sync(self) -> None:
+        import threading
+
+        self.presenter.set_active_chat(self.chat_id)
+        self.sync_btn.setEnabled(False)
+        self.sync_btn.setText("Syncing…")
+
+        def run() -> None:
+            try:
+                self.presenter.sync_chat(self.chat_id)
+            finally:
+                self.sig_sync_done.emit()
+
+        threading.Thread(target=run, daemon=True).start()
+
+    def _sync_done(self) -> None:
+        self.sync_btn.setEnabled(True)
+        self.sync_btn.setText("Sync")
+        self.refresh_workspace()
+
     def _bind(self) -> None:
         target = self.bind_edit.text().strip()
         if not target:
@@ -177,15 +216,12 @@ class RitaWindow(QMainWindow):
         self.pages = QStackedWidget()
         self.pages.addWidget(self._build_chat_page())
         from .projects_page import ProjectsPage
-        from .workspace_page import WorkspacePage
         from .modules_page import ModulesPage
         from .settings_page import SettingsPage
         self.projects_page = ProjectsPage(presenter)
-        self.workspace_page = WorkspacePage(presenter)
         self.modules_page = ModulesPage(presenter)
         self.settings_page = SettingsPage(presenter)
         self.pages.addWidget(self.projects_page)
-        self.pages.addWidget(self.workspace_page)
         self.pages.addWidget(self.modules_page)
         self.pages.addWidget(self.settings_page)
         layout.addWidget(self.pages, 1)
@@ -195,9 +231,10 @@ class RitaWindow(QMainWindow):
         self.setStatusBar(self.status_bar)
         self._status_update(presenter.status())
 
-        # First run: no workspace yet -> land on the Workspace page.
+        # First run: no workspace yet — the chat tab's own strip is the
+        # place to bind one, so the cursor lands there.
         if not presenter.sup.cfg.workspace:
-            self._nav_buttons[2].click()
+            self._active_tab().bind_edit.setFocus()
 
         # Voice was left on last session: start listening right away.
         if presenter.sup.cfg.voice_enabled:
@@ -221,7 +258,7 @@ class RitaWindow(QMainWindow):
         v.addSpacing(18)
         self._nav_buttons: list[QPushButton] = []
         group = QButtonGroup(bar)
-        for i, label in enumerate(("Chat", "Projects", "Workspace", "Modules",
+        for i, label in enumerate(("Chat", "Projects", "Modules",
                                    "Settings")):
             b = QPushButton(label, objectName="navButton")
             b.setCheckable(True)
@@ -357,7 +394,8 @@ class RitaWindow(QMainWindow):
         self.task_label.setText(f"{snap.name}: {pretty.get(snap.state, snap.state)}")
 
     def _status_update(self, st: StatusInfo) -> None:
-        ws = st.workspace or "no workspace — set one on the Workspace page"
+        ws = (st.workspace or "no workspace — bind a folder in your chat "
+                              "tab, or set a default in Settings")
         zephyr = f"Zephyr {st.zephyr_version}" if st.zephyr_version else "Zephyr ?"
         sdk = f"SDK {st.sdk_version}" if st.sdk_version else "SDK not found"
         coder = "coder ✓" if st.coder_cli else "coder not configured"

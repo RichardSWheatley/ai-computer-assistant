@@ -3,6 +3,23 @@
 Compromises, proxies, and deferred decisions — with the reason and what would
 remove them. Newest first. (Required by the working rules in `docs/WORKING-RULES.md`.)
 
+## 2026-08-29 — The Workspace page is retired (chats own workspaces)
+
+- **A page died because a feature superseded it.** Once every chat tab
+  bound its own workspace (v0.26.0), the standalone Workspace page
+  edited state a focused tab might not even use — two UIs for one
+  concept. The owner spotted it ("why do we still have a workspace
+  tab?"); the page's jobs moved to where they belong: bind + Sync in
+  the tab strip, default workspace + hardware map in Settings.
+- **Per-chat Sync deliberately does NOT write `cfg.workspace`** when
+  the chat is bound — syncing your side project must not silently
+  repoint every unbound chat. The boards/index files in `~/.rita` are
+  still global (last sync wins); making them per-chat is the next
+  hardening step if two active chats on different trees ever fight.
+- **Pickers are one shared helper** (`gui/pickers.py`), so every path
+  box looks and cancels the same; command-mode quotes spaced paths
+  because `split_command` would otherwise split the executable.
+
 ## 2026-08-29 — Interpretation moves to the agent (the owner's rule)
 
 - **The founding constraint "routing is grammar, not guessing" is

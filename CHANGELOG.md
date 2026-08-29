@@ -3,6 +3,35 @@
 All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/); versions follow semver.
 
+## [0.32.0] - 2026-08-29
+
+### Changed — the Workspace page is gone; chats own their workspaces
+The owner's question answered in code: "If each tab has its own
+workspace, why do we still have a workspace tab?"
+
+- **Each chat tab IS its workspace UI now**: the strip at the top holds
+  the bind field with a folder picker, "Use for this chat", and a
+  **Sync** button that re-indexes THIS chat's workspace (unbound chats
+  sync the default). Syncing a bound chat never clobbers the default
+  workspace other chats rely on.
+- **Settings holds the machine-level pieces**: the default workspace
+  (used by chats without their own folder) and the twister hardware
+  map, each with its own picker.
+- The sidebar is Chat / Projects / Modules / Settings; on a first run
+  the cursor lands in the chat tab's bind field instead of a page hop.
+
+### Added — a browse button on every path box
+Nobody hand-types `C:\` paths any more (the owner's request):
+
+- Chat tab: folder picker on the bind field.
+- Settings: pickers on the default workspace, hardware map, coding
+  agent, CERBERUS override, and C compiler. A picked executable path
+  containing spaces arrives pre-quoted so the command parser keeps it
+  whole.
+- Cancel in any picker leaves the field untouched.
+- The GUI walk now clicks a picker and the tab Sync button before any
+  release ships.
+
 ## [0.31.0] - 2026-08-29
 
 ### Added — the intelligent manager: say what you want

@@ -374,6 +374,42 @@ class GuiPresenter:
             pass
         return result
 
+    def sync_chat(self, chat_id: str | None = None) -> None:
+        """Sync THIS chat's workspace — its bound folder, else the
+        global default from Settings. Replies land in the chat like any
+        other answer; safe to call from a worker thread."""
+        from ..firmware.workspace import workspace_kind
+        from ..learning import chats
+
+        cid = chat_id or self._current_chat()
+        bound = chats.bound_workspace(cid)
+        path = bound or self.sup.cfg.workspace
+        if not path:
+            self._emit_reply(
+                "This chat has no folder yet — bind one right above, or "
+                "set a default workspace in Settings.", chat=cid)
+            return
+        if workspace_kind(path) != "zephyr":
+            self._emit_reply(
+                f"{path} isn't a Zephyr workspace — nothing to index; "
+                "the coding agent works in it directly.", chat=cid)
+            return
+        try:
+            if bound:
+                # A chat-bound workspace: index it without clobbering
+                # the global default other chats rely on.
+                res = sync_workspace(path, hw_map=self.sup.cfg.hardware_map)
+                self.sup._facts.clear()
+                self.sup.shell.vocab = Vocabulary.load()
+                self.on_status(self.status())
+            else:
+                res = self.sync(path, hw_map=self.sup.cfg.hardware_map)
+            self._emit_reply(
+                f"Synced {res.boards} boards and {res.entries} suites "
+                f"from {path}.", chat=cid)
+        except Exception as exc:
+            self._emit_reply(f"Sync failed: {exc}", chat=cid)
+
     def maybe_auto_setup(self) -> None:
         """OpenClaw rule: launching RITA IS the setup. When the toggle is
         on and fixable gaps exist, RITA announces them and fixes them

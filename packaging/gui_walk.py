@@ -126,7 +126,7 @@ def main(out_dir: str | None = None) -> int:
         w.grab().save(str(out / f"{name}.png"))
 
     # --- 1. every navigation page opens -----------------------------------
-    for idx, name in enumerate(("chat", "projects", "workspace", "modules",
+    for idx, name in enumerate(("chat", "projects", "modules",
                                 "settings")):
         step(f"open page: {name}")
         w._nav_buttons[idx].click()
@@ -179,6 +179,33 @@ def main(out_dir: str | None = None) -> int:
         fail("tab 1 leaked tab 2's workspace binding")
     shot("3-tabs")
 
+    step("use the folder picker on the bind field")
+    from rita.gui import pickers as _pickers
+
+    picked = Path(os.environ["RITA_HOME"]) / "picked-repo"
+    picked.mkdir(exist_ok=True)
+    _orig_dlg = _pickers.QFileDialog.getExistingDirectory
+    _pickers.QFileDialog.getExistingDirectory = staticmethod(
+        lambda *a, **k: str(picked))
+    try:
+        second.bind_pick.click()
+        pump(app)
+        if second.bind_edit.text() != str(picked):
+            fail("the bind folder picker did not fill the field")
+    finally:
+        _pickers.QFileDialog.getExistingDirectory = _orig_dlg
+
+    step("Sync from the chat tab strip (no Workspace page any more)")
+    before = len(replies)
+    first = w.chat_tabs.widget(0)
+    w.chat_tabs.setCurrentIndex(0)
+    pump(app)
+    first.sync_btn.click()
+    if not wait_for(app, lambda: any("board" in r.lower()
+                                     for r in replies[before:]), timeout=30):
+        fail("the tab Sync button produced no boards/suites reply")
+    shot("3b-tab-sync")
+
     step("close the second tab (the last one must survive)")
     w._close_chat_tab(1)
     pump(app)
@@ -229,7 +256,7 @@ def main(out_dir: str | None = None) -> int:
     shot("5-progress")
 
     # --- 6. modules page: buttons show busy + results append ---------------
-    w._nav_buttons[3].click()
+    w._nav_buttons[2].click()
     pump(app)
     mp = w.modules_page
     step("modules install button shows Installing… and reports")
@@ -284,7 +311,7 @@ def main(out_dir: str | None = None) -> int:
     shot("7-manager")
 
     # --- 8. settings: change + save round-trips ----------------------------
-    w._nav_buttons[4].click()
+    w._nav_buttons[3].click()
     pump(app)
     sp = w.settings_page
     step("settings save round-trips")

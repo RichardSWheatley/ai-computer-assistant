@@ -251,7 +251,8 @@ the same reason.
   `%USERPROFILE%\.rita` first and keeps what you have; updating those
   tools is an explicit button on the Modules page.
 - **A work request says "that pipeline isn't wired up yet" or asks for
-  sync** — sync a workspace first (Workspace page).
+  sync** — sync a workspace first: press **Sync** in your chat tab
+  (bind a folder there, or set a default workspace in Settings).
 - **A task ends "retries exhausted"** — that's RITA stopping at its patch
   budget and telling you, with the failing log in the screen pane. Raise
   the budget in Settings if you want more attempts.
@@ -259,7 +260,8 @@ the same reason.
 ## First smoke test on your machine (5 minutes)
 
 1. Install → launch → status bar shows workspace/Zephyr/SDK/coder. 
-2. Workspace page → point at `C:\zephyrproject` → Sync → boards + suites counted.
+2. In your chat tab: pick `C:\zephyrproject` with the folder button →
+   **Use for this chat** → **Sync** → boards + suites counted.
 3. Type `"tell me about the apollo510"` → real board facts.
 4. Type `"build blinky"` → watch the task run; green report lands in the transcript, details in the screen pane.
 5. Click **Pause** mid-build → "pausing after current step…" → **Resume** → completes without rebuilding.

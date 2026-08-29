@@ -136,6 +136,12 @@ QPushButton#stop {{
 }}
 QPushButton#stop:hover {{ background: #E88080; }}
 QPushButton#stop:pressed {{ background: #BC5252; }}
+QPushButton#pickButton {{
+    padding: 8px 10px; min-width: 18px;
+}}
+QPushButton#pickButton:pressed {{
+    padding-top: 9px; padding-bottom: 7px;
+}}
 QPushButton#micButton {{
     padding: 9px 14px; font-weight: 500;
 }}

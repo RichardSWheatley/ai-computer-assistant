@@ -82,7 +82,7 @@ def main() -> None:
         app.processEvents()
     w.grab().save(str(OUT / "chat-tabs.png"))
 
-    for idx, name in ((3, "modules.png"), (4, "settings.png")):
+    for idx, name in ((2, "modules.png"), (3, "settings.png")):
         w.pages.setCurrentIndex(idx)
         app.processEvents()
         w.grab().save(str(OUT / name))

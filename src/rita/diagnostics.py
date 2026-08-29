@@ -135,7 +135,7 @@ def _mcp(cfg: RitaConfig) -> Check:
     p = mcp_config_path()
     if not p.exists():
         return Check("workspace MCP", False,
-                     "Not wired yet — press Sync on the Workspace page. "
+                     "Not wired yet — press Sync in your chat tab. "
                      "(RITA still codes without it.)")
     try:
         server = json.loads(p.read_text())["mcpServers"]["rita-workspace"]
@@ -156,7 +156,7 @@ def _mcp(cfg: RitaConfig) -> Check:
         return Check("workspace MCP", False,
                      f"{p.name} was written by an older version "
                      f"({command} {' '.join(args[:3])}…) and cannot start — "
-                     f"press Sync on the Workspace page to rewrite it.")
+                     f"press Sync in your chat tab to rewrite it.")
     from .mcpserver.server import mcp_available
 
     if not mcp_available():

@@ -9,4 +9,4 @@ agent loop is testable anywhere. Real perception/action/LLM backends are
 optional plugins/extras you enable per machine.
 """
 
-__version__ = "0.31.0"
+__version__ = "0.32.0"
