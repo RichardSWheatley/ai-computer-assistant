@@ -61,6 +61,10 @@ class Supervisor:
         self._facts: dict = {}   # lazy workspace-fact cache (cleared on sync)
         # Agent-activity narration sink (the GUI presenter subscribes).
         self.on_activity = None
+        # The last agent-activity line and when it arrived: status
+        # quotes it while a task runs — stage checkpoints are too
+        # coarse to answer "is it alive?" mid-step.
+        self._last_activity: tuple[str, float] | None = None
         self.shell = RouterShell(
             vocab or Vocabulary.load(), config_path=config_path,
             work=self.handle_work, chat=self.handle_chat,
@@ -98,9 +102,17 @@ class Supervisor:
                        timeout=float(self.cfg.coder_timeout_seconds))
         # Narrate agent activity into the GUI's screen pane when a
         # presenter has subscribed (self.on_activity set by the GUI).
-        cli.on_activity = lambda msg: (self.on_activity(msg)
-                                       if self.on_activity else None)
+        cli.on_activity = self._activity
         return cli
+
+    def _activity(self, msg: str) -> None:
+        """Record the narration line (status quotes the newest one) and
+        forward it to the GUI sink when one is subscribed."""
+        import time
+
+        self._last_activity = (msg, time.monotonic())
+        if self.on_activity:
+            self.on_activity(msg)
 
     _NO_CODER = ("No coding agent is configured, so I can't write or patch "
                  "code yet. Set the coding agent command on the Settings "
@@ -677,6 +689,10 @@ class Supervisor:
                     line += f" (last progress {_age(now - rep.stage_at)} ago)"
                 lines.append(line)
         if lines:
+            if self._last_activity is not None:
+                msg, at = self._last_activity
+                lines.append(f"last activity {msg.strip()} "
+                             f"({_age(now - at)} ago)")
             return "Yes — still on it:\n" + "\n".join(lines)
         msg = "Nothing is running right now."
         status = self._project_status()

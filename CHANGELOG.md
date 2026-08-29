@@ -3,6 +3,19 @@
 All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/); versions follow semver.
 
+## [0.34.1] - 2026-08-29
+
+### Fixed — status answers mid-step, not just between stages
+Your live trace: a task 4m 32s in still said "done so far: just
+started" — true (stage checkpoints are coarse; the whole authoring
+step is stage one) but useless while the agent is mid-call.
+
+- **Status now quotes the newest agent-activity line with its age**:
+  "last activity → writing src/main.c (3/5)… (40s ago)". The same
+  narration that streams into the screen pane is now the answer to
+  "is it alive?" — from the Status button, typing "status", or voice.
+- Idle status never shows stale narration.
+
 ## [0.34.0] - 2026-08-29
 
 ### Changed — smaller agent steps, shorter timeout
