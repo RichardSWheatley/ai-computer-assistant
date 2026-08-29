@@ -3,6 +3,29 @@
 Compromises, proxies, and deferred decisions — with the reason and what would
 remove them. Newest first. (Required by the working rules in `docs/WORKING-RULES.md`.)
 
+## 2026-08-29 — The learning layer
+
+- **Trust but verify, structurally.** Agent investigation answers are
+  strict JSON validated by a deterministic callback (RITA runs the
+  claimed compiler, checks the claimed path) before use or storage.
+  An answer that can't be verified is discarded WITH its claim quoted
+  — silent trust of agent output would put an LLM inside the gates.
+- **Facts are verified pointers, not truth.** Every machine fact
+  re-validates on read; a vanished path makes the fact stale (None),
+  and staleness is the re-investigation trigger. The machine outranks
+  the notes about it.
+- **Toolset validation is one smoke run**, not the full gate sequence.
+  A toolset is host-side tooling, not firmware: exit-0 on its own
+  self-test, written only inside its own directory. CERBERUS applies
+  when it lands in a pipeline workdir, not here. Deeper vetting
+  (static scan of toolset code) is a hardening option.
+- **Generic-workspace discovery validates resolvability, not success**
+  — the claimed build tool must exist on PATH; actually running a
+  repo's build is the task pipeline's job, not discovery's.
+- **Chat state is a directory, not a database.** chat.toml + files
+  under ~/.rita/chats/<id>; the current-chat marker is one file. Kept
+  greppable and hand-fixable like every other RITA artifact.
+
 ## 2026-08-29 — Search, don't assume (SDK layouts rot)
 
 - **Tool discovery searches the SDK instead of pinning paths.** The

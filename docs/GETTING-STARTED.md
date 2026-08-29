@@ -66,6 +66,23 @@ sample and test suite's metadata, and the Zephyr version from
 through RITA's local MCP server. The status bar now shows your workspace,
 Zephyr version, and SDK. **Re-sync after `west update`.**
 
+**Syncing is also a learning pass.** Anything RITA's own detection
+can't see on your machine (an SDK laid out in a way she's never met,
+a tool in an odd place, how a non-Zephyr repo builds), she has the
+coding agent investigate — it can read the machine and search online —
+then **verifies the answer herself** before remembering it under
+`~/.rita/knowledge/machine/`. Ask **"what did you learn"** any time.
+Two more things grow out of this:
+
+- **Toolsets** — say *"make a toolset that summarizes build logs"* and
+  the agent builds a small tool; RITA test-runs it before keeping it,
+  and *"use the &lt;name&gt; toolset"* reruns it forever after.
+- **Chats with their own areas** — the **New chat** button starts a
+  fresh chat; type *"use &lt;path or git url&gt; for this chat"* to give it
+  its own repo (RITA clones URLs herself). Chats without a binding use
+  the global workspace, and non-Zephyr repos simply skip the firmware
+  machinery.
+
 ## 4. Talking to RITA
 
 Type into the prompt bar on the **Chat** page — put commands in quotes if

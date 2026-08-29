@@ -57,7 +57,7 @@ class Supervisor:
             return self._runner
         from .firmware.west import WestCli
 
-        return WestCli(self.cfg.workspace)
+        return WestCli(self.effective_workspace())
 
     def _make_coder(self):
         """The coding-agent seam: injected worker first, else the CLI named
@@ -111,6 +111,10 @@ class Supervisor:
         from .firmware.index import VerificationIndex
         from .home import verification_index_path
 
+        ws = self.effective_workspace()
+        if ws and ws != self.cfg.workspace:
+            # A chat-bound workspace: index IT, not the global sync data.
+            return VerificationIndex.build(ws)
         if verification_index_path().exists():
             return VerificationIndex.load()
         return VerificationIndex.build(self.cfg.workspace)
@@ -118,9 +122,17 @@ class Supervisor:
     # --- dispatch handlers ---------------------------------------------------
 
     def handle_work(self, d: Dispatch) -> str:
-        if not self.cfg.workspace:
+        ws = self.effective_workspace()
+        if not ws:
             return ("No Zephyr workspace is configured yet. Run "
                     "sync with your workspace path first.")
+        from .firmware.workspace import workspace_kind
+
+        if workspace_kind(ws) != "zephyr":
+            return (f"This chat's workspace ({ws}) is not a Zephyr "
+                    f"workspace, so the firmware pipeline doesn't apply "
+                    f"— toolsets and learning still do. Bind a Zephyr "
+                    f"workspace for firmware work.")
         from .firmware.pipeline import IteratePipeline, describe
 
         coder = self._make_coder()
@@ -128,9 +140,14 @@ class Supervisor:
             return self._NO_CODER
         self._task_seq += 1
         workdir = self.workdir / f"task-{self._task_seq}"
+        cfg = self.cfg
+        if ws != self.cfg.workspace:
+            import dataclasses
+
+            cfg = dataclasses.replace(self.cfg, workspace=ws)
         pipeline = IteratePipeline(
             runner=self._make_runner(), coder=coder,
-            index=self._make_index(), cfg=self.cfg, workdir=workdir,
+            index=self._make_index(), cfg=cfg, workdir=workdir,
             static_checker=self._make_static_checker(),
             unit_runner=self._make_unit_runner())
         e = d.entities
@@ -154,8 +171,19 @@ class Supervisor:
 
             from .home import boards_json_path
 
+            ws = self.effective_workspace()
             p = boards_json_path()
-            if p.exists():
+            if ws and ws != self.cfg.workspace:
+                # Chat-bound workspace: its facts, not the global sync.
+                from .firmware.workspace import workspace_kind
+
+                if workspace_kind(ws) == "zephyr":
+                    from .firmware.boards import build_boards_json
+
+                    self._facts["boards_data"] = build_boards_json(ws)
+                else:
+                    self._facts["boards_data"] = {"boards": {}}
+            elif p.exists():
                 self._facts["boards_data"] = json.loads(p.read_text())
             elif self.cfg.workspace:
                 from .firmware.boards import build_boards_json
@@ -169,10 +197,13 @@ class Supervisor:
 
     def _setup_steps(self):
         """(name, fix) for every FIXABLE gap. Detection at call time so
-        tests and reruns see current state."""
+        tests and reruns see current state. The firmware machinery
+        (CERBERUS, Unity, toolchain, board sync) queues only for Zephyr
+        workspaces — Zephyr is a flavor RITA detects, not an assumption."""
         from .firmware import cerberus_setup as cs
         from .firmware import toolchain as tc
         from .firmware import unity as un
+        from .firmware.workspace import workspace_kind
         from .home import mcp_config_path
 
         steps = []
@@ -181,14 +212,17 @@ class Supervisor:
 
             steps.append(("modules", lambda: (
                 f"registered {len(dev_install())} capability modules")))
-        if cs.detect_cerberus() is None:
+        ws = self.effective_workspace()
+        zephyr = bool(ws) and workspace_kind(ws) == "zephyr"
+        if zephyr and cs.detect_cerberus() is None:
             steps.append(("CERBERUS", lambda: cs.install_cerberus().detail))
-        if un.detect_unity() is None:
+        if zephyr and un.detect_unity() is None:
             steps.append(("Unity", lambda: un.install_unity().detail))
-        if tc.detect_arm_gcc() is None and tc.zephyr_gcc_version() is not None:
+        if zephyr and tc.detect_arm_gcc() is None \
+                and tc.zephyr_gcc_version() is not None:
             steps.append(("ARM toolchain",
                           lambda: tc.install_arm_gcc().detail))
-        if self.cfg.workspace and not mcp_config_path().exists():
+        if zephyr and self.cfg.workspace and not mcp_config_path().exists():
             from .firmware.sync import sync_workspace
 
             steps.append(("workspace sync", lambda: (
@@ -236,6 +270,126 @@ class Supervisor:
         if human:
             msg += " Meanwhile: " + "; ".join(human) + "."
         return msg
+
+    # --- per-chat work areas -------------------------------------------------
+
+    def effective_workspace(self) -> str | None:
+        """The current chat's bound workspace, else the global default —
+        each chat can have its own repo/area; unbound chats keep today's
+        single-workspace behavior."""
+        from .learning import chats
+
+        return chats.bound_workspace() or self.cfg.workspace
+
+    def bind_chat(self, spec: str) -> str:
+        from .learning import chats
+
+        path, msg = chats.bind(spec)
+        if path is not None:
+            self._facts.clear()               # workspace facts changed
+        return msg
+
+    def new_chat(self) -> str:
+        from .learning import chats
+
+        cid = chats.new_chat()
+        self._facts.clear()
+        return (f"Started {cid}. It uses the global workspace until you "
+                f"bind one — say 'use <path or git url> for this chat'.")
+
+    # --- system discovery: the agent investigates, RITA validates ------------
+
+    def _discovery_gaps(self):
+        """(fact name, question, schema, validate) for everything RITA's
+        own detection can't see on this machine right now."""
+        from pathlib import Path as _P
+
+        from .firmware import toolchain as tc
+        from .firmware import workspace as wsmod
+
+        gaps = []
+        ws = self.effective_workspace()
+        if not ws:
+            return gaps
+        if wsmod.workspace_kind(ws) == "zephyr":
+            sdk = wsmod.read_sdk_info()
+            if sdk and tc.zephyr_gcc_version() is None:
+                def validate_gcc(claim):
+                    p = str(claim.get("path", ""))
+                    if not _P(p).is_file():
+                        return None
+                    ver, _raw = tc._gcc_version_raw(p)
+                    if ver is None:
+                        return None
+                    return f"{p} runs and reports gcc {ver[0]}.{ver[1]}"
+
+                gaps.append((
+                    "sdk-arm-gcc",
+                    f"Find the arm-zephyr-eabi cross-compiler executable "
+                    f"inside the Zephyr SDK at {sdk['path']} on this "
+                    f"machine. Its layout may be newer than you expect — "
+                    f"look at the actual directories, and search online "
+                    f"for this SDK version's layout if needed.",
+                    '{"path": "<absolute path to arm-zephyr-eabi-gcc>"}',
+                    validate_gcc))
+            if tc.detect_qemu() is None:
+                def validate_qemu(claim):
+                    p = _P(str(claim.get("path", "")))
+                    if p.is_file() and p.name.startswith("qemu-system-arm"):
+                        return f"{p} exists"
+                    return None
+
+                gaps.append((
+                    "qemu-system-arm",
+                    "Find the qemu-system-arm executable on this machine "
+                    "(the Zephyr SDK ships one in its host tools).",
+                    '{"path": "<absolute path>"}', validate_qemu))
+        else:
+            def validate_cmds(claim):
+                import shutil as _sh
+
+                build = claim.get("build")
+                if not isinstance(build, list) or not build:
+                    return None
+                exe = str(build[0])
+                if _sh.which(exe) is None and not _P(exe).exists():
+                    return None
+                return f"build tool {exe} resolves on this machine"
+
+            gaps.append((
+                f"workspace-{_P(ws).name}-commands",
+                f"Inspect the repository at {ws} and determine how it is "
+                f"built and tested — read its build files, and search "
+                f"online for the build system's documentation if needed.",
+                '{"build": ["<argv>"], "test": ["<argv>"]}', validate_cmds))
+        return gaps
+
+    def discover_system(self) -> str:
+        """The sync learning pass: the agent (which may read this machine
+        and search online) investigates each gap; RITA validates every
+        claim herself and remembers only what checked out."""
+        from .learning import facts
+        from .learning.investigate import investigate
+
+        coder = self._make_coder()
+        if coder is None:
+            return ("No coding agent is configured, so I can't "
+                    "investigate this machine — set one on the Settings "
+                    "page and sync again.")
+        gaps = self._discovery_gaps()
+        if not gaps:
+            return ("Nothing to investigate — my own detection covers "
+                    "this system.")
+        lines = []
+        for name, question, schema, validate in gaps:
+            finding, note = investigate(coder.complete, question,
+                                        schema=schema, validate=validate)
+            if finding is not None:
+                facts.save_fact(name, finding.answer, evidence=note)
+                lines.append(f"learned {name}: {note}")
+            else:
+                lines.append(f"{name}: {note}")
+        return "System discovery finished.\n" + "\n".join(lines)
 
     def _learn(self, question: str) -> str:
         """Ask the coding agent a Zephyr question ONCE; remember the
@@ -336,6 +490,20 @@ class Supervisor:
 
             return report(self.cfg, deep=bool(self.cfg.coder_command))
 
+        # Raw-lowered matching for phrases carrying paths/names that
+        # normalization would mangle (slashes, hyphens, URLs).
+        low = text.strip().lower()
+        req = _grammar.toolset_request(low)
+        if req:
+            return self._handle_toolset(req)
+        if _grammar.is_learning_question(normalize(text)):
+            return self._learning_report()
+        target = _grammar.chat_bind_target(text.strip())
+        if target:
+            return self.bind_chat(target)
+        if _grammar.CHAT_NEW.match(low):
+            return self.new_chat()
+
         data = self._boards_data()
 
         if "project" in norm:
@@ -388,6 +556,52 @@ class Supervisor:
 
         return ("We can chat, but nothing in that matched a work command. "
                 "Name a board or sample to put me to work.")
+
+    def _handle_toolset(self, req) -> str:
+        from .learning import toolsets
+
+        kind, arg = req
+        if kind == "list":
+            items = toolsets.list_toolsets()
+            if not items:
+                return ("No toolsets yet — say 'make a toolset that …' "
+                        "and I'll have the coding agent build one, "
+                        "validate it, and keep it for reuse.")
+            return "Toolsets I keep:\n" + "\n".join(
+                f"{t.name}: {t.purpose}" for t in items)
+        if kind == "run":
+            name, args = arg
+            ok, output = toolsets.run_toolset(
+                name, tuple(a for a in (args or "").split() if a))
+            return output
+        coder = self._make_coder()
+        if coder is None:
+            return self._NO_CODER
+        request = arg
+
+        def build(ctl=None):
+            _info, detail = toolsets.create_toolset(coder.complete, request)
+            return detail
+
+        self.manager.submit(f"toolset: {request[:40]}", build)
+        return ("I'm having the coding agent build that toolset now — "
+                "I'll validate it with a real run before keeping it.")
+
+    def _learning_report(self) -> str:
+        from .firmware.knowledge import _learned
+        from .learning import facts
+
+        text = facts.describe()
+        learned = _learned()
+        if learned:
+            titles = ", ".join(v["title"] for v in learned.values())
+            text += f"\nLearned answers I keep: {titles}"
+        from .learning import toolsets
+
+        items = toolsets.list_toolsets()
+        if items:
+            text += "\nToolsets: " + ", ".join(t.name for t in items)
+        return text
 
     def task_summary(self, tid: str) -> str:
         from .firmware.pipeline import describe

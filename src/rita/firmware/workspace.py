@@ -73,6 +73,18 @@ def read_sdk_info() -> dict | None:
     return None
 
 
+def workspace_kind(path: str | Path) -> str:
+    """'zephyr' when the directory is a Zephyr workspace (contains
+    zephyr/, or IS the zephyr tree), else 'generic'. Zephyr is a
+    flavor RITA detects — never an assumption about the work."""
+    ws = Path(path)
+    if (ws / "zephyr").is_dir():
+        return "zephyr"
+    if (ws / "samples").is_dir() and (ws / "VERSION").is_file():
+        return "zephyr"
+    return "generic"
+
+
 def read_workspace_info(workspace: str | Path) -> dict:
     ws = Path(workspace)
     zephyr_base = ws / "zephyr"

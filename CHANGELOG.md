@@ -3,6 +3,39 @@
 All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/); versions follow semver.
 
+## [0.24.0] - 2026-08-29
+
+### Added — the learning layer: RITA learns the system, not the program
+The owner's direction: RITA is too reliant on knowledge compiled into
+her; she has an agent — use it at sync time, verify what it says,
+remember it, and don't assume Zephyr-only work
+(`docs/specs/learning.md`).
+
+- **Syncing is a learning pass**: after the deterministic sync, every
+  gap RITA's own detection can't close becomes an agent investigation
+  — the agent may read this machine and search online, answers strict
+  JSON, and RITA validates every claim herself (runs the claimed
+  compiler, checks the claimed path) before trusting it. Unverifiable
+  claims are discarded and reported, never stored.
+- **Machine facts**: validated findings persist under
+  `~/.rita/knowledge/machine/` with provenance and evidence,
+  re-validated on every read; the deterministic detectors use them
+  directly (an SDK layout nobody has seen yet now costs one agent
+  call, not a support conversation), and AGENTS.md carries them to
+  the agent. Ask "what did you learn" any time.
+- **Toolsets**: "make a toolset that …" has the agent build a small
+  reusable tool; RITA writes its files (nothing may escape the
+  toolset's own directory), smoke-runs it, and registers it only when
+  the run passes. "list your toolsets" / "use the <name> toolset" —
+  reuse is automation, persisted across launches.
+- **Per-chat work areas**: every chat can bind its own repo/area —
+  "use <path or git url> for this chat" (RITA clones URLs herself),
+  New chat button + "start a new chat". Unbound chats keep the global
+  workspace; work, board facts, and the index follow the binding.
+- **Zephyr is a flavor, not an assumption**: a non-Zephyr workspace
+  queues no firmware setup steps and gets an honest redirect from
+  firmware work; toolsets and learning apply everywhere.
+
 ## [0.23.1] - 2026-08-29
 
 ### Fixed — find the SDK's gcc, never assume its layout

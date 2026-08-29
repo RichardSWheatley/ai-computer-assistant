@@ -69,6 +69,45 @@ def is_diagnostic(norm: str) -> bool:
     return any(p.match(norm) for p in DIAGNOSTIC_PATTERNS)
 
 
+# Toolsets: the agent builds tools RITA keeps. Matched BEFORE the verb
+# table — "make a toolset ..." must never be swallowed by scaffold.
+TOOLSET_CREATE = re.compile(
+    r"^(?:make|create|build) (?:me )?a toolset (?:that |to |for |which )?(.+)$")
+TOOLSET_LIST = re.compile(r"^(?:list|show) (?:your |my |the )?toolsets$")
+TOOLSET_RUN = re.compile(r"^(?:use|run) the ([\w-]+) toolset(?:\s+(?:on|with)\s+(.+))?$")
+
+
+def toolset_request(norm: str):
+    """('create', request) | ('list', None) | ('run', (name, args)) | None."""
+    m = TOOLSET_CREATE.match(norm)
+    if m:
+        return ("create", m.group(1))
+    if TOOLSET_LIST.match(norm):
+        return ("list", None)
+    m = TOOLSET_RUN.match(norm)
+    if m:
+        return ("run", (m.group(1), m.group(2) or ""))
+    return None
+
+
+# Learning report + per-chat binding phrases.
+LEARNED_PATTERNS = (
+    re.compile(r"^what (?:did|have) you learn(?:ed)?(?: so far)?$"),
+    re.compile(r"^what do you know about this (?:machine|system)$"),
+)
+CHAT_BIND = re.compile(r"^use (.+?) for this chat$")
+CHAT_NEW = re.compile(r"^(?:start|open) a new chat$")
+
+
+def is_learning_question(norm: str) -> bool:
+    return any(p.match(norm) for p in LEARNED_PATTERNS)
+
+
+def chat_bind_target(norm: str) -> str | None:
+    m = CHAT_BIND.match(norm)
+    return m.group(1) if m else None
+
+
 def project_goal(norm: str) -> str | None:
     for pat in PROJECT_PATTERNS:
         m = pat.match(norm)

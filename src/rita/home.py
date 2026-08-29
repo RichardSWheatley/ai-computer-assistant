@@ -81,6 +81,21 @@ def learned_dir() -> Path:
     return rita_home() / "knowledge" / "learned"
 
 
+def machine_dir() -> Path:
+    """Validated machine facts (agent-investigated, RITA-verified)."""
+    return rita_home() / "knowledge" / "machine"
+
+
+def toolsets_dir() -> Path:
+    """Agent-built, RITA-validated reusable tools."""
+    return _sub("toolsets")
+
+
+def chats_dir() -> Path:
+    """Per-chat work areas: each chat can bind its own repo/workspace."""
+    return _sub("chats")
+
+
 def modules_dir() -> Path:
     return _sub("modules")
 

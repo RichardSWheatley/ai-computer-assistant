@@ -237,6 +237,16 @@ class GuiPresenter:
         self.sup._facts.clear()                       # facts changed
         self.sup.shell.vocab = Vocabulary.load()      # synced boards feed routing
         self.on_status(self.status())
+        # Syncing IS a learning pass: whatever RITA's own detection
+        # can't see, the agent investigates (it may read this machine
+        # and search online); RITA validates and remembers.
+        try:
+            if self.sup._make_coder() is not None and self.sup._discovery_gaps():
+                self.sup.manager.submit(
+                    "learn the system",
+                    lambda ctl: self.sup.discover_system())
+        except Exception:
+            pass
         return result
 
     def maybe_auto_setup(self) -> None:
@@ -251,6 +261,16 @@ class GuiPresenter:
             return
         if gaps:
             self._emit_reply(self.sup.auto_setup())
+
+    def chat_info(self) -> str:
+        """One line for the chat header: which chat, bound to what."""
+        from ..learning import chats
+
+        bound = chats.bound_workspace()
+        return f"{chats.current_chat()} — {bound or 'global workspace'}"
+
+    def new_chat(self) -> None:
+        self._emit_reply(self.sup.new_chat())
 
     def login_coder(self) -> None:
         """One click: open the agent's own login window and say what to

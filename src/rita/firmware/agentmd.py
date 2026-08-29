@@ -63,6 +63,14 @@ def write_agent_context(dest: str | Path, *, goal: str, board: str,
     if facts:
         parts.append(f"## Board facts (from the user's synced workspace)\n\n{facts}")
     parts.append(_CONTRACT)
+    from ..learning import facts as machine_facts
+
+    known = machine_facts.all_facts()
+    if known:
+        lines = "\n".join(f"- {name}: {json.dumps(value)}"
+                          for name, value in known.items())
+        parts.append("## Machine facts (agent-investigated, verified "
+                     f"by RITA)\n\n{lines}\n")
     notes = knowledge.notes_for(list(terms or []) + goal.split(),
                                 max_chars=3000)
     if notes.strip():

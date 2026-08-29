@@ -120,6 +120,15 @@ def _sdk_arm_gcc() -> Path | None:
                 cand = bindir / name
                 if cand.is_file():
                     return cand
+    # A layout even the search missed: the LEARNED machine fact (agent-
+    # investigated, RITA-validated at discovery time, path re-checked).
+    from ..learning import facts
+
+    learned = facts.fact("sdk-arm-gcc")
+    if learned and learned.get("path"):
+        cand = Path(learned["path"])
+        if cand.is_file():
+            return cand
     return None
 
 
@@ -225,6 +234,11 @@ def detect_qemu() -> str | None:
             for cand in sorted(Path(sdk["path"]).glob(pattern)):
                 if cand.is_file() and cand.suffix in ("", ".exe"):
                     return str(cand)
+    from ..learning import facts
+
+    learned = facts.fact("qemu-system-arm")
+    if learned and learned.get("path") and Path(learned["path"]).is_file():
+        return str(learned["path"])
     return None
 
 

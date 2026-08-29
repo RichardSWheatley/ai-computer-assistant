@@ -20,5 +20,6 @@ One spec per directive fix, written before its tests and implementation:
 | `diagnostics.md` | In-app setup checks + packaged-bundle verification | **done** |
 | `self-setup.md` | RITA bootstraps herself; runtime AGENTS.md; learned knowledge | **done** |
 | `unit-tier-toolchain.md` | Unit tier on Zephyr's ARM gcc; RITA installs it | **done** |
+| `learning.md` | Agent-driven discovery, machine facts, toolsets, per-chat areas | **done** |
 
 Update the status column as each lands.

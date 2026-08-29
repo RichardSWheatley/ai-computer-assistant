@@ -46,6 +46,12 @@ def route(utt: Utterance, vocab: Vocabulary, assistant_name: str = "Rita") -> Di
         return Dispatch(kind="project", argument=goal, matched_by="control",
                         residual=norm)
 
+    # Toolset / learning / chat-binding phrases likewise beat the verb
+    # table ("make a toolset ..." is not scaffold work) — chat handles them.
+    if (grammar.toolset_request(norm) or grammar.is_learning_question(norm)
+            or grammar.chat_bind_target(norm) or grammar.CHAT_NEW.match(norm)):
+        return Dispatch(kind="chat", matched_by="control", residual=norm)
+
     if grammar.is_interrogative(norm):
         return Dispatch(kind="chat", matched_by="fallback", residual=norm)
 

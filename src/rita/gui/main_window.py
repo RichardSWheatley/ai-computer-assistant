@@ -43,6 +43,8 @@ class RitaWindow(QMainWindow):
         presenter.on_status = self.sig_status.emit
         self.sig_user.connect(lambda t: self._transcript_add("You", t))
         self.sig_reply.connect(lambda t: self._transcript_add(name, t))
+        # Binding phrases change the chat's area; keep the header honest.
+        self.sig_reply.connect(lambda _t: self._refresh_chat_label())
         self.sig_screen.connect(self._screen_add)
         self.sig_task.connect(self._task_update)
         self.sig_status.connect(self._status_update)
@@ -72,6 +74,7 @@ class RitaWindow(QMainWindow):
         self.status_bar = QStatusBar()
         self.setStatusBar(self.status_bar)
         self._status_update(presenter.status())
+        self._refresh_chat_label()
 
         # First run: no workspace yet -> land on the Workspace page.
         if not presenter.sup.cfg.workspace:
@@ -117,6 +120,18 @@ class RitaWindow(QMainWindow):
         v.setContentsMargins(18, 18, 18, 18)
         v.setSpacing(12)
 
+        # Per-chat work areas: which chat this is and what it's bound to.
+        top = QHBoxLayout()
+        self.chat_label = QLabel("", objectName="dim")
+        newchat = QPushButton("New chat")
+        newchat.setToolTip("Start a fresh chat with its own repo/area — "
+                           "bind one by typing 'use <path or git url> "
+                           "for this chat'.")
+        newchat.clicked.connect(self._new_chat)
+        top.addWidget(self.chat_label, 1)
+        top.addWidget(newchat)
+        v.addLayout(top)
+
         split = QSplitter(Qt.Orientation.Vertical)
         self.transcript = QTextEdit(readOnly=True)
         self.transcript.setPlaceholderText(
@@ -161,6 +176,16 @@ class RitaWindow(QMainWindow):
         text = self.prompt.text()
         self.prompt.clear()
         self.presenter.submit_text(text)
+
+    def _new_chat(self) -> None:
+        self.presenter.new_chat()
+        self._refresh_chat_label()
+
+    def _refresh_chat_label(self) -> None:
+        try:
+            self.chat_label.setText(self.presenter.chat_info())
+        except Exception:
+            pass
 
     def _transcript_add(self, who: str, text: str) -> None:
         from html import escape
