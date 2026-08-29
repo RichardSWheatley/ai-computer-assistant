@@ -3,6 +3,18 @@
 All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/); versions follow semver.
 
+## [0.29.1] - 2026-08-29
+
+### Changed — "check setup" now proves the prompt transport
+The live agent check said "ok" for weeks over its own one-line prompt
+while the product's multi-line prompts were being truncated. It now
+goes through the SAME transport the pipeline uses (CoderCli) and sends
+a multi-line prompt with a codeword on the middle line: an intact
+round trip reports "multi-line prompt transport verified end to end";
+a truncated one names the .cmd-shim problem and the fix; an off-topic
+reply is flagged suspect with the reply quoted. A diagnostic that
+doesn't exercise the product's exact failure mode certifies nothing.
+
 ## [0.29.0] - 2026-08-29
 
 ### Fixed — the agent finally hears the whole prompt

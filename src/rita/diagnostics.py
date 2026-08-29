@@ -67,39 +67,63 @@ def _coder(cfg: RitaConfig) -> Check:
                  f"{cfg.coder_command!r} -> {resolved[0]}")
 
 
+# The transport check MUST be multi-line: the owner's agent received
+# one-line "ok" checks perfectly for weeks while cmd.exe was truncating
+# every real multi-line prompt at its first newline. A diagnostic that
+# doesn't exercise the product's exact failure mode certifies nothing.
+_TRANSPORT_PROMPT = (
+    "This is a prompt-transport check and it has several lines.\n"
+    "The middle line contains the codeword: LANTERN.\n"
+    "If you can read the codeword on the middle line, reply with "
+    "exactly: INTACT LANTERN. If this message seems cut off before "
+    "the codeword, reply with exactly: TRUNCATED.")
+
+
 def _coder_live(cfg: RitaConfig) -> Check:
-    """Actually run the agent. Configured != working."""
+    """Actually run the agent — through the SAME transport the pipeline
+    uses (CoderCli), never a private invocation path: this check once
+    said 'ok' over its own one-liner while the product's multi-line
+    prompts were being truncated by the .CMD shim."""
     name = "coding agent (live)"
     if not cfg.coder_command:
         return Check(name, False, "Not configured — nothing to run.")
-    from .firmware.static_check import resolve_argv, split_command
+    from .firmware.coder import CoderCli
+    from .firmware.static_check import split_command
 
     try:
-        argv = resolve_argv(split_command(cfg.coder_command))
+        cli = CoderCli(cfg.workspace or ".",
+                       command=tuple(split_command(cfg.coder_command)),
+                       timeout=_SMOKE_TIMEOUT)
+        out = cli.complete(_TRANSPORT_PROMPT).strip()
     except FileNotFoundError as exc:
         return Check(name, False, str(exc))
-    args = [*argv, "Reply with the single word: ok", "--output-format", "text"]
-    try:
-        proc = subprocess.run(args, capture_output=True, text=True,
-                              cwd=cfg.workspace or None, timeout=_SMOKE_TIMEOUT)
     except subprocess.TimeoutExpired:
         return Check(name, False,
                      f"no reply within {_SMOKE_TIMEOUT:.0f}s — is the agent "
                      f"waiting for a login or a prompt?")
-    except OSError as exc:
-        return Check(name, False, f"could not start: {exc}")
-    out, err = _tail(proc.stdout), _tail(proc.stderr)
-    if proc.returncode != 0 or not out:
-        blob = f"{out} {err}".lower()
+    except RuntimeError as exc:
+        blob = str(exc).lower()
         hint = ""
         if any(h in blob for h in _AUTH_HINTS):
             hint = (" — the agent isn't logged in: click 'Log in coding "
                     "agent' on the Settings page (RITA opens the login "
                     "window for you), then run this check again.")
+        return Check(name, False, f"{exc}{hint}")
+    upper = out.upper()
+    if "TRUNCATED" in upper or "CUT OFF" in upper or "ENDS AT" in upper:
         return Check(name, False,
-                     f"exit {proc.returncode}. stdout: {out or '(empty)'} | "
-                     f"stderr: {err or '(empty)'}{hint}")
-    return Check(name, True, f"replied: {out[:120]}")
+                     f"the agent runs, but MULTI-LINE PROMPTS ARE BEING "
+                     f"TRUNCATED in transit (it replied: {out[:120]!r}). "
+                     f"This happens when the agent command is a .cmd/.bat "
+                     f"shim — update RITA (v0.29+ sends prompts via "
+                     f"stdin), or configure the agent's real executable.")
+    if "INTACT" in upper and "LANTERN" in upper:
+        return Check(name, True,
+                     "replied correctly — multi-line prompt transport "
+                     "verified end to end.")
+    return Check(name, False,
+                 f"the agent replied, but not to the question asked — "
+                 f"transport is suspect. It said: {out[:160]!r}")
 
 
 def _mcp(cfg: RitaConfig) -> Check:

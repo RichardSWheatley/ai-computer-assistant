@@ -61,6 +61,41 @@ def run_deep(diagnostics, cfg):
     return diagnostics.run_checks(cfg, deep=True)
 
 
+class TestPromptTransportCheck:
+    """The live check once said 'ok' over a one-liner while every real
+    multi-line prompt was truncated. It now proves the round trip."""
+
+    def _agent(self, tmp_path, reply: str) -> str:
+        import sys
+        script = tmp_path / "agent.py"
+        script.write_text(f"print({reply!r})\n")
+        return f'"{sys.executable}" "{script}"'
+
+    def _live(self, tmp_path, reply):
+        from rita.config import RitaConfig
+        from rita.diagnostics import _coder_live
+        return _coder_live(RitaConfig(workspace=str(tmp_path),
+                                      coder_command=self._agent(tmp_path,
+                                                                reply)))
+
+    def test_intact_reply_verifies_transport(self, tmp_path):
+        check = self._live(tmp_path, "INTACT LANTERN")
+        assert check.ok is True
+        assert "verified" in check.detail.lower()
+
+    def test_truncated_reply_names_the_shim_problem(self, tmp_path):
+        check = self._live(tmp_path, "TRUNCATED")
+        assert check.ok is False
+        assert "truncat" in check.detail.lower()
+        assert ".cmd" in check.detail.lower()
+
+    def test_off_topic_reply_is_suspect_not_ok(self, tmp_path):
+        check = self._live(tmp_path, "Hello! How can I help you today?")
+        assert check.ok is False
+        assert "suspect" in check.detail.lower()
+        assert "How can I help" in check.detail       # quoted evidence
+
+
 class TestReportRouting:
     @pytest.mark.parametrize("text", ["check setup", "run diagnostics",
                                       "check your setup"])
