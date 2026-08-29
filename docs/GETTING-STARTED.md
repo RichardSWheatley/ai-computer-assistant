@@ -77,11 +77,12 @@ Two more things grow out of this:
 - **Toolsets** — say *"make a toolset that summarizes build logs"* and
   the agent builds a small tool; RITA test-runs it before keeping it,
   and *"use the &lt;name&gt; toolset"* reruns it forever after.
-- **Chats with their own areas** — the **New chat** button starts a
-  fresh chat; type *"use &lt;path or git url&gt; for this chat"* to give it
-  its own repo (RITA clones URLs herself). Chats without a binding use
-  the global workspace, and non-Zephyr repos simply skip the firmware
-  machinery.
+- **Chat tabs, each with its own workspace** — the Chat page is a tab
+  bar: **＋ New chat** opens another chat, and every tab shows what
+  it's bound to with a field to bind a path or git URL right there
+  (RITA clones URLs herself). Replies and build reports land in the
+  tab that started them. Chats without a binding use the global
+  workspace, and non-Zephyr repos simply skip the firmware machinery.
 
 ## 4. Talking to RITA
 

@@ -73,6 +73,36 @@ QPushButton#stop:pressed {{ background: #B85555; }}
 QPushButton:disabled {{
     color: {TEXT_DIM}; background: {BG_RAISED}; border-color: {BORDER};
 }}
+QTabWidget::pane {{
+    border: 1px solid {BORDER}; border-radius: 8px; background: {BG};
+    top: -1px;
+}}
+QTabBar::tab {{
+    background: {BG_RAISED}; color: {TEXT_DIM};
+    border: 1px solid {BORDER}; border-bottom: none;
+    border-top-left-radius: 8px; border-top-right-radius: 8px;
+    padding: 8px 18px; margin-right: 2px;
+}}
+QTabBar::tab:hover {{ color: {TEXT}; }}
+QTabBar::tab:selected {{
+    background: {BG_INPUT}; color: {TEXT};
+    border-top: 2px solid {ACCENT};
+}}
+QToolButton {{
+    background: {BG_INPUT}; border: 1px solid {BORDER}; border-radius: 8px;
+    padding: 6px 12px; color: {TEXT};
+}}
+QToolButton:hover {{ background: #2E3440; border-color: {ACCENT}; }}
+QToolButton:pressed {{ background: #101319; }}
+QComboBox {{
+    background: {BG_INPUT}; border: 1px solid {BORDER}; border-radius: 8px;
+    padding: 8px 12px;
+}}
+QComboBox:hover {{ border-color: {ACCENT}; }}
+QComboBox QAbstractItemView {{
+    background: {BG_RAISED}; border: 1px solid {BORDER};
+    selection-background-color: {ACCENT};
+}}
 QTextEdit, QPlainTextEdit, QListWidget {{
     background: {BG_RAISED}; border: 1px solid {BORDER}; border-radius: 10px;
     padding: 8px;

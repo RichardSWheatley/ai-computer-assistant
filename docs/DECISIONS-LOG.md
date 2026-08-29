@@ -3,6 +3,22 @@
 Compromises, proxies, and deferred decisions — with the reason and what would
 remove them. Newest first. (Required by the working rules in `docs/WORKING-RULES.md`.)
 
+## 2026-08-29 — Chat tabs
+
+- **The supervisor stays single with an `active_chat` pointer** rather
+  than one supervisor per tab. Tabs set it per interaction and every
+  event is tagged with its owning chat, so replies route correctly —
+  but two tabs issuing commands in the same instant could interleave
+  the pointer. Human-speed risk accepted; a per-call chat parameter
+  through the whole dispatch chain is the hardening path.
+- **Task→chat ownership is recorded at submit time** (task-id map in
+  the presenter); announcements go to the owning tab. Tasks started
+  outside a chat context fall back to the active tab.
+- **Chat handlers receive RAW text** (dispatch carries it alongside
+  the normalized form): normalization strips slashes/hyphens, which
+  silently mangled "use <path> for this chat". Norm remains the
+  routing currency; raw is the payload currency.
+
 ## 2026-08-29 — Voice guards
 
 - **The silence gate is a fixed RMS threshold (0.005 full-scale)**,

@@ -15,16 +15,112 @@ from PySide6.QtCore import Qt, Signal
 from PySide6.QtWidgets import (QButtonGroup, QFrame, QHBoxLayout, QLabel,
                                QLineEdit, QMainWindow, QPlainTextEdit,
                                QPushButton, QSplitter, QStackedWidget,
-                               QStatusBar, QTextEdit, QVBoxLayout, QWidget)
+                               QStatusBar, QTabWidget, QTextEdit,
+                               QToolButton, QVBoxLayout, QWidget)
 
 from .presenter import GuiPresenter, StatusInfo, TaskSnapshot
 from .theme import ACCENT, TEXT_DIM
 
 
+class ChatTab(QWidget):
+    """One chat: its own transcript, screen pane, prompt, controls, and
+    its own workspace strip — chats are tabs, not a single lane."""
+
+    def __init__(self, presenter: GuiPresenter, chat_id: str) -> None:
+        super().__init__()
+        self.presenter = presenter
+        self.chat_id = chat_id
+        v = QVBoxLayout(self)
+        v.setContentsMargins(18, 18, 18, 18)
+        v.setSpacing(12)
+
+        # THIS chat's workspace: shown and bindable right here.
+        top = QHBoxLayout()
+        self.workspace_label = QLabel("", objectName="dim")
+        self.bind_edit = QLineEdit()
+        self.bind_edit.setPlaceholderText(
+            "path or git URL for THIS chat — empty keeps the global "
+            "workspace")
+        bind_btn = QPushButton("Use for this chat")
+        bind_btn.clicked.connect(self._bind)
+        top.addWidget(self.workspace_label, 1)
+        top.addWidget(self.bind_edit, 1)
+        top.addWidget(bind_btn)
+        v.addLayout(top)
+
+        split = QSplitter(Qt.Orientation.Vertical)
+        self.transcript = QTextEdit(readOnly=True)
+        self.transcript.setPlaceholderText(
+            "Say or type a command — put commands in quotes if you like.")
+        self.screen_pane = QPlainTextEdit(objectName="screenPane",
+                                          readOnly=True)
+        self.screen_pane.setPlaceholderText(
+            "Code, diffs, logs, and reports land here — never in speech.")
+        split.addWidget(self.transcript)
+        split.addWidget(self.screen_pane)
+        split.setSizes([420, 220])
+        v.addWidget(split, 1)
+
+        controls = QHBoxLayout()
+        self.task_label = QLabel("", objectName="dim")
+        pause = QPushButton("Pause", objectName="pause")
+        resume = QPushButton("Resume")
+        stop = QPushButton("Stop", objectName="stop")
+        pause.clicked.connect(presenter.pause)
+        resume.clicked.connect(presenter.resume)
+        stop.clicked.connect(presenter.stop)
+        controls.addWidget(self.task_label, 1)
+        controls.addWidget(pause)
+        controls.addWidget(resume)
+        controls.addWidget(stop)
+        v.addLayout(controls)
+
+        prompt_row = QHBoxLayout()
+        self.prompt = QLineEdit()
+        self.prompt.setPlaceholderText(
+            'e.g.  "Rita, build blinky for the apollo510"')
+        self.prompt.returnPressed.connect(self._send)
+        send = QPushButton("Send", objectName="primary")
+        send.clicked.connect(self._send)
+        prompt_row.addWidget(self.prompt, 1)
+        prompt_row.addWidget(send)
+        v.addLayout(prompt_row)
+        self.refresh_workspace()
+
+    def _send(self) -> None:
+        text = self.prompt.text()
+        self.prompt.clear()
+        self.presenter.set_active_chat(self.chat_id)
+        self.presenter.submit_text(text)
+
+    def _bind(self) -> None:
+        target = self.bind_edit.text().strip()
+        if not target:
+            return
+        self.bind_edit.clear()
+        self.presenter.set_active_chat(self.chat_id)
+        self.presenter.submit_text(f"use {target} for this chat")
+
+    def refresh_workspace(self) -> None:
+        self.workspace_label.setText(self.presenter.chat_info(self.chat_id))
+
+    def transcript_add(self, who: str, text: str) -> None:
+        from html import escape
+
+        color = ACCENT if who != "You" else TEXT_DIM
+        # Escape: this pane renders HTML, so an error naming <module> or
+        # a diff containing <stdio.h> would otherwise vanish silently.
+        body = escape(text).replace("\n", "<br/>")
+        self.transcript.append(
+            f'<p style="margin:6px 0"><b style="color:{color}">{escape(who)}'
+            f"</b><br/>{body}</p>")
+
+    def screen_add(self, text: str) -> None:
+        self.screen_pane.appendPlainText(text + "\n")
+
+
 class RitaWindow(QMainWindow):
-    sig_user = Signal(str)
-    sig_reply = Signal(str)
-    sig_screen = Signal(str)
+    sig_chat_event = Signal(str, str, str)   # chat id, kind, text
     sig_task = Signal(object)
     sig_status = Signal(object)
 
@@ -35,17 +131,13 @@ class RitaWindow(QMainWindow):
         self.setWindowTitle(f"RITA — {name}")
         self.resize(1180, 760)
 
-        # Presenter callbacks -> Qt signals (thread-safe hop).
-        presenter.on_user = self.sig_user.emit
-        presenter.on_reply = self.sig_reply.emit
-        presenter.on_screen = self.sig_screen.emit
+        # Presenter callbacks -> Qt signals (thread-safe hop). Every
+        # chat event arrives tagged with its owning chat and lands in
+        # that chat's TAB, not whichever one is focused.
+        presenter.on_chat_event = self.sig_chat_event.emit
         presenter.on_task = self.sig_task.emit
         presenter.on_status = self.sig_status.emit
-        self.sig_user.connect(lambda t: self._transcript_add("You", t))
-        self.sig_reply.connect(lambda t: self._transcript_add(name, t))
-        # Binding phrases change the chat's area; keep the header honest.
-        self.sig_reply.connect(lambda _t: self._refresh_chat_label())
-        self.sig_screen.connect(self._screen_add)
+        self.sig_chat_event.connect(self._chat_event)
         self.sig_task.connect(self._task_update)
         self.sig_status.connect(self._status_update)
 
@@ -74,7 +166,6 @@ class RitaWindow(QMainWindow):
         self.status_bar = QStatusBar()
         self.setStatusBar(self.status_bar)
         self._status_update(presenter.status())
-        self._refresh_chat_label()
 
         # First run: no workspace yet -> land on the Workspace page.
         if not presenter.sup.cfg.workspace:
@@ -115,91 +206,87 @@ class RitaWindow(QMainWindow):
         return bar
 
     def _build_chat_page(self) -> QWidget:
+        from ..learning import chats
+
         page = QWidget()
         v = QVBoxLayout(page)
-        v.setContentsMargins(18, 18, 18, 18)
-        v.setSpacing(12)
-
-        # Per-chat work areas: which chat this is and what it's bound to.
-        top = QHBoxLayout()
-        self.chat_label = QLabel("", objectName="dim")
-        newchat = QPushButton("New chat")
-        newchat.setToolTip("Start a fresh chat with its own repo/area — "
-                           "bind one by typing 'use <path or git url> "
-                           "for this chat'.")
-        newchat.clicked.connect(self._new_chat)
-        top.addWidget(self.chat_label, 1)
-        top.addWidget(newchat)
-        v.addLayout(top)
-
-        split = QSplitter(Qt.Orientation.Vertical)
-        self.transcript = QTextEdit(readOnly=True)
-        self.transcript.setPlaceholderText(
-            "Say or type a command — put commands in quotes if you like.")
-        self.screen_pane = QPlainTextEdit(objectName="screenPane", readOnly=True)
-        self.screen_pane.setPlaceholderText(
-            "Code, diffs, logs, and reports land here — never in speech.")
-        split.addWidget(self.transcript)
-        split.addWidget(self.screen_pane)
-        split.setSizes([420, 220])
-        v.addWidget(split, 1)
-
-        # The persistent control bar (Fix 4's two buttons).
-        controls = QHBoxLayout()
-        self.task_label = QLabel("", objectName="dim")
-        self.pause_btn = QPushButton("Pause", objectName="pause")
-        self.resume_btn = QPushButton("Resume")
-        self.stop_btn = QPushButton("Stop", objectName="stop")
-        self.pause_btn.clicked.connect(self.presenter.pause)
-        self.resume_btn.clicked.connect(self.presenter.resume)
-        self.stop_btn.clicked.connect(self.presenter.stop)
-        controls.addWidget(self.task_label, 1)
-        controls.addWidget(self.pause_btn)
-        controls.addWidget(self.resume_btn)
-        controls.addWidget(self.stop_btn)
-        v.addLayout(controls)
-
-        prompt = QHBoxLayout()
-        self.prompt = QLineEdit()
-        self.prompt.setPlaceholderText('e.g.  "Rita, build blinky for the apollo510"')
-        self.prompt.returnPressed.connect(self._send)
-        send = QPushButton("Send", objectName="primary")
-        send.clicked.connect(self._send)
-        prompt.addWidget(self.prompt, 1)
-        prompt.addWidget(send)
-        v.addLayout(prompt)
+        v.setContentsMargins(6, 6, 6, 6)
+        self.chat_tabs = QTabWidget()
+        newbtn = QToolButton()
+        newbtn.setText("＋ New chat")
+        newbtn.setToolTip("Open another chat — each one can have its own "
+                          "repo/workspace.")
+        newbtn.clicked.connect(self._add_chat_tab_clicked)
+        self.chat_tabs.setCornerWidget(newbtn)
+        self._tabs_by_chat: dict[str, ChatTab] = {}
+        for cid in (chats.list_chats() or [chats.current_chat()]):
+            self._open_tab(cid)
+        current = chats.current_chat()
+        if current in self._tabs_by_chat:
+            self.chat_tabs.setCurrentWidget(self._tabs_by_chat[current])
+        self.chat_tabs.currentChanged.connect(self._tab_changed)
+        v.addWidget(self.chat_tabs)
         return page
 
-    # --- slots ----------------------------------------------------------------
+    # --- chat tabs ------------------------------------------------------------
+
+    def _open_tab(self, chat_id: str) -> ChatTab:
+        tab = self._tabs_by_chat.get(chat_id)
+        if tab is None:
+            tab = ChatTab(self.presenter, chat_id)
+            self._tabs_by_chat[chat_id] = tab
+            self.chat_tabs.addTab(tab, chat_id)
+        return tab
+
+    def _add_chat_tab_clicked(self) -> None:
+        cid = self.presenter.new_chat()
+        self.chat_tabs.setCurrentWidget(self._open_tab(cid))
+
+    def _tab_changed(self, idx: int) -> None:
+        tab = self.chat_tabs.widget(idx)
+        if isinstance(tab, ChatTab):
+            self.presenter.set_active_chat(tab.chat_id)
+            tab.refresh_workspace()
+
+    def _active_tab(self) -> ChatTab:
+        tab = self.chat_tabs.currentWidget()
+        if isinstance(tab, ChatTab):
+            return tab
+        return next(iter(self._tabs_by_chat.values()))
+
+    def _chat_event(self, chat_id: str, kind: str, text: str) -> None:
+        tab = self._open_tab(chat_id)
+        if kind == "user":
+            tab.transcript_add("You", text)
+        elif kind == "reply":
+            tab.transcript_add(self.presenter.sup.cfg.assistant_name, text)
+            tab.refresh_workspace()      # bindings change via phrases
+        elif kind == "screen":
+            tab.screen_add(text)
+
+    # --- legacy single-chat surface (delegates to the active tab) -------------
+
+    @property
+    def transcript(self):
+        return self._active_tab().transcript
+
+    @property
+    def screen_pane(self):
+        return self._active_tab().screen_pane
+
+    @property
+    def prompt(self):
+        return self._active_tab().prompt
+
+    @property
+    def task_label(self):
+        return self._active_tab().task_label
 
     def _send(self) -> None:
-        text = self.prompt.text()
-        self.prompt.clear()
-        self.presenter.submit_text(text)
-
-    def _new_chat(self) -> None:
-        self.presenter.new_chat()
-        self._refresh_chat_label()
-
-    def _refresh_chat_label(self) -> None:
-        try:
-            self.chat_label.setText(self.presenter.chat_info())
-        except Exception:
-            pass
+        self._active_tab()._send()
 
     def _transcript_add(self, who: str, text: str) -> None:
-        from html import escape
-
-        color = ACCENT if who != "You" else TEXT_DIM
-        # Escape: this pane renders HTML, so an error naming <module> or a
-        # diff containing <stdio.h> would otherwise vanish silently.
-        body = escape(text).replace("\n", "<br/>")
-        self.transcript.append(
-            f'<p style="margin:6px 0"><b style="color:{color}">{escape(who)}'
-            f"</b><br/>{body}</p>")
-
-    def _screen_add(self, text: str) -> None:
-        self.screen_pane.appendPlainText(text + "\n")
+        self._active_tab().transcript_add(who, text)
 
     def _task_update(self, snap: TaskSnapshot) -> None:
         pretty = {"PAUSING": "pausing after current step…",

@@ -75,7 +75,7 @@ class ModulesPage(QWidget):
         self.log.appendPlainText(text)
         # Mirror to the chat screen pane so a result is never lost to a
         # page switch.
-        self.presenter.on_screen(text)
+        self.presenter.mirror_screen(text)
 
     def _install_done(self, button, label: str) -> None:
         button.setEnabled(True)

@@ -38,15 +38,29 @@ def set_current(chat_id: str) -> None:
 
 
 def new_chat() -> str:
-    """The next chat id, made current. New chats start unbound."""
+    """The next chat id, made current. New chats start unbound. The
+    default current chat may have no directory yet — it still counts
+    as taken, or "new chat" would hand back the one already open."""
     root = _root()
     root.mkdir(parents=True, exist_ok=True)
+    taken = set(list_chats()) | {current_chat()}
     n = 1
-    while (root / f"chat-{n}").exists():
+    while f"chat-{n}" in taken or (root / f"chat-{n}").exists():
         n += 1
     (root / f"chat-{n}").mkdir()
     set_current(f"chat-{n}")
     return f"chat-{n}"
+
+
+def list_chats() -> list[str]:
+    """Existing chat ids, oldest first (chat-1, chat-2, …)."""
+    root = _root()
+    if not root.is_dir():
+        return []
+    out = [d.name for d in root.iterdir()
+           if d.is_dir() and d.name.startswith("chat-")]
+    return sorted(out, key=lambda n: int(n.split("-")[1])
+                  if n.split("-")[1].isdigit() else 0)
 
 
 def chat_area(chat_id: str | None = None) -> Path:

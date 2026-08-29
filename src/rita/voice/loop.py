@@ -106,7 +106,7 @@ class RouterShell:
         d = route(utt, self.vocab, self.cfg.assistant_name)
         if d.kind in ("work", "control", "project", "rename"):
             self._awake_until = self._clock() + self._window()
-        return self.dispatch(d)
+        return self.dispatch(d, raw=utt.text)
 
     def handle_typed(self, text: str) -> str:
         """Typed input (the GUI prompt): no wake word required. A leading
@@ -118,9 +118,10 @@ class RouterShell:
             if decision.residual is None:
                 return "Yes?"
             utt = decision.residual
-        return self.dispatch(route(utt, self.vocab, self.cfg.assistant_name))
+        return self.dispatch(route(utt, self.vocab, self.cfg.assistant_name),
+                             raw=utt.text)
 
-    def dispatch(self, d: Dispatch) -> str:
+    def dispatch(self, d: Dispatch, raw: str | None = None) -> str:
         if d.kind == "rename":
             self.cfg.assistant_name = d.argument.capitalize()
             save_rita_config(self.cfg, self.config_path)
@@ -141,7 +142,10 @@ class RouterShell:
             target = d.entities.board or d.entities.sample or "the workspace"
             return f"I heard a {what} request for {target}, but that pipeline isn't wired up yet."
         if self.chat is not None:
-            return self.chat(d.residual)
+            # RAW text when we have it: normalization strips slashes and
+            # hyphens, mangling paths/URLs in phrases like "use <path>
+            # for this chat". Chat normalizes internally where needed.
+            return self.chat(raw if raw is not None else d.residual)
         return "I'm listening."
 
 

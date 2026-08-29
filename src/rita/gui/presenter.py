@@ -60,6 +60,10 @@ class GuiPresenter:
         self.on_screen = _noop    # (text) screen-channel artifacts
         self.on_task = _noop      # (TaskSnapshot) state transitions
         self.on_status = _noop    # (StatusInfo)
+        # Tabbed chats: every event also arrives tagged with the chat
+        # that owns it — (chat_id, kind, text), kind in user/reply/screen.
+        self.on_chat_event = _noop
+        self._task_chats: dict[str, str] = {}   # task id -> owning chat
         self._poll = poll_interval
         self._seen_states: dict[str, str] = {}
         self._closing = threading.Event()
@@ -72,25 +76,52 @@ class GuiPresenter:
 
     # --- input ---------------------------------------------------------------
 
+    def _current_chat(self) -> str:
+        from ..learning import chats
+
+        return self.sup.active_chat or chats.current_chat()
+
+    def set_active_chat(self, chat_id: str) -> None:
+        """The GUI's tabs call this per interaction; the persisted
+        current-chat marker follows so a restart lands where you were."""
+        from ..learning import chats
+
+        if self.sup.active_chat != chat_id:
+            self.sup.active_chat = chat_id
+            chats.set_current(chat_id)
+            self.sup._facts.clear()
+
     def submit_text(self, text: str) -> None:
         clean = strip_quotes(text)
         if not clean:
             return
+        chat = self._current_chat()
         self.on_user(clean)
-        threading.Thread(target=self._handle, args=(clean,), daemon=True,
-                         name="gui-handle").start()
+        self.on_chat_event(chat, "user", clean)
+        threading.Thread(target=self._handle, args=(clean, chat),
+                         daemon=True, name="gui-handle").start()
 
-    def _handle(self, clean: str) -> None:
+    def _handle(self, clean: str, chat: str | None = None) -> None:
+        if chat is not None:
+            # Act FOR the chat that sent this, even if the user has
+            # already clicked to another tab.
+            self.sup.active_chat = chat
+        before = set(self.sup.manager.tasks())
         said = self.sup.shell.handle_typed(clean)
-        self._emit_reply(said)
+        for tid in set(self.sup.manager.tasks()) - before:
+            self._task_chats[tid] = chat or self._current_chat()
+        self._emit_reply(said, chat=chat)
 
-    def _emit_reply(self, said: str) -> None:
+    def _emit_reply(self, said: str, chat: str | None = None) -> None:
         if not said:
             return
+        chat = chat or self._current_chat()
         reply = split_response(said)
         self.on_reply(reply.speech)
+        self.on_chat_event(chat, "reply", reply.speech)
         if reply.screen.strip() != reply.speech.strip():
             self.on_screen(reply.screen)
+            self.on_chat_event(chat, "screen", reply.screen)
         if self.sup.speaker is not None:
             self.sup.speaker.say(reply.speech)
 
@@ -206,16 +237,20 @@ class GuiPresenter:
             if not heard:
                 self._voice_stop.wait(0.05)
                 continue
+            chat = self._current_chat()
             if heard.lower().strip(" .!?") in _STOP_PHRASES:
                 # Back to sleep; the mic keeps waiting for the wake word.
                 self.sup.shell.awake = not self.sup.shell.require_wake
                 self.on_user(f"🎤 {heard}")
-                self._emit_reply("Going quiet — say my name when you need me.")
+                self.on_chat_event(chat, "user", f"🎤 {heard}")
+                self._emit_reply("Going quiet — say my name when you need me.",
+                                 chat=chat)
                 continue
             said = self.sup.shell.handle(utt)
             if said:                    # asleep/ignored turns leave no trace
                 self.on_user(f"🎤 {heard}")
-                self._emit_reply(said)
+                self.on_chat_event(chat, "user", f"🎤 {heard}")
+                self._emit_reply(said, chat=chat)
             else:
                 self._voice_stop.wait(0.05)
 
@@ -236,7 +271,10 @@ class GuiPresenter:
                     self._announce_finished(tid, rep)
 
     def _announce_finished(self, tid: str, rep) -> None:
-        self._emit_reply(self.sup.task_summary(tid))
+        # The announcement lands in the chat that STARTED the task,
+        # not whichever tab the user is looking at now.
+        chat = self._task_chats.get(tid)
+        self._emit_reply(self.sup.task_summary(tid), chat=chat)
         result = rep.result
         if result is not None and getattr(result, "stages", None):
             lines = [f"[{s.stage}] {s.outcome}: {s.detail}" for s in result.stages]
@@ -244,6 +282,8 @@ class GuiPresenter:
                 for f in stage.failures:
                     lines.append(f.describe())
             self.on_screen("\n".join(lines))
+            self.on_chat_event(chat or self._current_chat(), "screen",
+                               "\n".join(lines))
 
     # --- workspace + status --------------------------------------------------
 
@@ -281,15 +321,26 @@ class GuiPresenter:
         if gaps:
             self._emit_reply(self.sup.auto_setup())
 
-    def chat_info(self) -> str:
-        """One line for the chat header: which chat, bound to what."""
+    def mirror_screen(self, text: str) -> None:
+        """Auxiliary output (e.g. the Modules install log) mirrored into
+        the active chat's screen pane so results survive a page switch."""
+        self.on_screen(text)
+        self.on_chat_event(self._current_chat(), "screen", text)
+
+    def chat_info(self, chat_id: str | None = None) -> str:
+        """One line for a chat header: which chat, bound to what."""
         from ..learning import chats
 
-        bound = chats.bound_workspace()
-        return f"{chats.current_chat()} — {bound or 'global workspace'}"
+        cid = chat_id or self._current_chat()
+        bound = chats.bound_workspace(cid)
+        return f"{cid} — {bound or 'global workspace'}"
 
-    def new_chat(self) -> None:
-        self._emit_reply(self.sup.new_chat())
+    def new_chat(self) -> str:
+        """Open a fresh chat, make it active, return its id."""
+        msg = self.sup.new_chat()
+        cid = self.sup.active_chat or self._current_chat()
+        self._emit_reply(msg, chat=cid)
+        return cid
 
     def login_coder(self) -> None:
         """One click: open the agent's own login window and say what to

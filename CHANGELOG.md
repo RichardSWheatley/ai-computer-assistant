@@ -3,6 +3,27 @@
 All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/); versions follow semver.
 
+## [0.26.0] - 2026-08-29
+
+### Added — chat tabs: several chats open at once, each with its own workspace
+The owner: "Workspace and chat are still linear. We need chat tabs so
+I can open more than one at a time. Each chat tab should have its own
+Workspace tab as well."
+
+- The Chat page is now a tab bar: **＋ New chat** opens another chat;
+  every tab has its own transcript, screen pane, prompt, controls —
+  and its own **workspace strip** showing what that chat is bound to,
+  with a field to bind a path or git URL right there.
+- Replies and task results land in the tab that started them, not
+  whichever tab you're looking at — start a build in chat-1, plan in
+  chat-2, and the build report still lands in chat-1.
+- Chats persist: reopening RITA restores your tabs and the one you
+  were on.
+- Fixed en route: phrases carrying paths/URLs ("use C:\repo for this
+  chat") were being normalized before the chat handler saw them —
+  slashes stripped, the path unrecognizable. The chat handler now
+  receives the raw text.
+
 ## [0.25.0] - 2026-08-29
 
 ### Fixed — voice listens to YOU, and buttons act like buttons

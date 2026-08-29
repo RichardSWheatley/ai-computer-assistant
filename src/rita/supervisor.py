@@ -273,18 +273,23 @@ class Supervisor:
 
     # --- per-chat work areas -------------------------------------------------
 
+    # The chat this supervisor is acting FOR right now. The GUI's tabs
+    # set it per interaction; None falls back to the persisted current-
+    # chat marker, so the single-chat flow keeps working.
+    active_chat: str | None = None
+
     def effective_workspace(self) -> str | None:
-        """The current chat's bound workspace, else the global default —
+        """The active chat's bound workspace, else the global default —
         each chat can have its own repo/area; unbound chats keep today's
         single-workspace behavior."""
         from .learning import chats
 
-        return chats.bound_workspace() or self.cfg.workspace
+        return chats.bound_workspace(self.active_chat) or self.cfg.workspace
 
     def bind_chat(self, spec: str) -> str:
         from .learning import chats
 
-        path, msg = chats.bind(spec)
+        path, msg = chats.bind(spec, self.active_chat)
         if path is not None:
             self._facts.clear()               # workspace facts changed
         return msg
@@ -293,6 +298,7 @@ class Supervisor:
         from .learning import chats
 
         cid = chats.new_chat()
+        self.active_chat = cid
         self._facts.clear()
         return (f"Started {cid}. It uses the global workspace until you "
                 f"bind one — say 'use <path or git url> for this chat'.")
