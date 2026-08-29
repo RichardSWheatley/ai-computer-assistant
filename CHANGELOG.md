@@ -3,6 +3,15 @@
 All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/); versions follow semver.
 
+## [0.28.1] - 2026-08-29
+
+### Docs
+- **ADR 0003**: the language question re-examined — Python + Qt
+  reaffirmed (the felt costs are model- and network-bound; Rust's wins
+  are comfort wins), with three named revisit triggers and an
+  incremental-native-shell path if ever reopened. Cross-referenced
+  from TECH-STACK and the decisions log.
+
 ## [0.28.0] - 2026-08-29
 
 ### Fixed — the toolchain install is idempotent and never hostage

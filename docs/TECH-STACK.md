@@ -16,6 +16,8 @@ platform-agnostic. Run `rita doctor` to see what's detected on each machine.
 ## Language
 
 - **Python 3.11+** — best ecosystem for AI, automation, and Office generation.
+  Reaffirmed for the RITA era with named Rust-revisit triggers in
+  [ADR 0003](adr/0003-python-qt-reaffirmed.md).
   (A Tauri/Electron or .NET shell can wrap the UI later if desired.)
 
 ## Reasoning / LLM

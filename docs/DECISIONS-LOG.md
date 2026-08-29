@@ -3,6 +3,18 @@
 Compromises, proxies, and deferred decisions — with the reason and what would
 remove them. Newest first. (Required by the working rules in `docs/WORKING-RULES.md`.)
 
+## 2026-08-29 — Language question re-examined, Python + Qt reaffirmed
+
+- The owner asked whether Rust/Slint/Tauri would have been faster on
+  their hardware. Assessment and decision recorded in
+  **[ADR 0003](adr/0003-python-qt-reaffirmed.md)**: the felt costs are
+  model-bound (TOPS) and network-bound — language-irrelevant; Rust's
+  real wins (startup, footprint, no PyInstaller bug class) are comfort
+  wins that don't justify rewriting 12k lines + 519 tests
+  mid-evolution. Three named revisit triggers; if reopened, the path
+  is an incremental native shell over the deterministic core (ADR
+  0002's polyglot rule), never a big-bang rewrite.
+
 ## 2026-08-29 — Install idempotence + the versioned escape hatch
 
 - **Install checks before it downloads** — a matching RITA install
