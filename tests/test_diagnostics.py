@@ -133,7 +133,10 @@ class TestTranscriptKeepsAngleBrackets:
         from rita.voice.tts import FakeTTS
 
         app = QApplication.instance() or QApplication([])
-        sup = Supervisor(rita_cfg=RitaConfig(workspace=str(WS)),
+        # auto_setup off: this test renders text; it must not launch
+        # real background installs from the window's launch hook.
+        sup = Supervisor(rita_cfg=RitaConfig(workspace=str(WS),
+                                             auto_setup=False),
                          config_path=tmp_path / "config", tts=FakeTTS(),
                          workdir=tmp_path / "work")
         p = GuiPresenter(sup)

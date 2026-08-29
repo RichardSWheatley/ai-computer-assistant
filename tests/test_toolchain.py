@@ -324,6 +324,178 @@ class TestVersionMatchesZephyr:
         assert urls and "14.3.rel1" in urls[0]
 
 
+class TestSdkGccDiscovery:
+    """SDK layouts rot (1.0 moved GNU toolchains under gnu/): RITA
+    SEARCHES the SDK for its gcc instead of assuming one path, and her
+    failure messages carry the evidence of what she searched."""
+
+    def _sdk(self, tmp_path, monkeypatch, rel_bin: str, gcc_name="arm-zephyr-eabi-gcc"):
+        sdk = tmp_path / "zephyr-sdk-1.0.1"
+        bindir = sdk / Path(rel_bin)
+        bindir.mkdir(parents=True)
+        gcc = bindir / gcc_name
+        gcc.write_text("")
+        (sdk / "sdk_version").write_text("1.0.1")
+        monkeypatch.setenv("ZEPHYR_SDK_INSTALL_DIR", str(sdk))
+        return sdk, gcc
+
+    def test_0x_layout_still_found(self, tmp_path, monkeypatch):
+        from rita.firmware import toolchain
+        _, gcc = self._sdk(tmp_path, monkeypatch, "arm-zephyr-eabi/bin")
+        assert toolchain._sdk_arm_gcc() == gcc
+
+    def test_sdk_1_0_gnu_layout_found(self, tmp_path, monkeypatch):
+        # The owner's live failure: SDK 1.0 puts toolchains under gnu/.
+        from rita.firmware import toolchain
+        _, gcc = self._sdk(tmp_path, monkeypatch, "gnu/arm-zephyr-eabi/bin")
+        assert toolchain._sdk_arm_gcc() == gcc
+
+    def test_windows_exe_in_gnu_layout_found(self, tmp_path, monkeypatch):
+        from rita.firmware import toolchain
+        _, gcc = self._sdk(tmp_path, monkeypatch, "gnu/arm-zephyr-eabi/bin",
+                           gcc_name="arm-zephyr-eabi-gcc.exe")
+        assert toolchain._sdk_arm_gcc() == gcc
+
+    def test_future_layout_found_by_bounded_search(self, tmp_path, monkeypatch):
+        # A layout nobody has seen yet: two levels deep still resolves.
+        from rita.firmware import toolchain
+        _, gcc = self._sdk(tmp_path, monkeypatch,
+                           "toolchains/gnu/arm-zephyr-eabi/bin")
+        assert toolchain._sdk_arm_gcc() == gcc
+
+    def test_missing_gcc_probe_names_the_sdk_path_searched(self, tmp_path,
+                                                           monkeypatch):
+        # Evidence, not guesses: the owner must never have to debug
+        # RITA's assumptions from a vague message again.
+        from rita.firmware import toolchain
+        monkeypatch.setenv("RITA_HOME", str(tmp_path / "rita"))
+        sdk = tmp_path / "zephyr-sdk-1.0.1"
+        sdk.mkdir()
+        (sdk / "sdk_version").write_text("1.0.1")
+        monkeypatch.setenv("ZEPHYR_SDK_INSTALL_DIR", str(sdk))
+        ver, evidence = toolchain.zephyr_gcc_probe()
+        assert ver is None
+        assert str(sdk) in evidence
+        res = toolchain.install_arm_gcc()
+        assert res.ok is False
+        assert str(sdk) in res.detail        # the searched path, in the error
+        assert "--release" in res.detail     # escape hatch still named
+
+    def test_no_sdk_probe_says_so(self, tmp_path, monkeypatch):
+        from rita.firmware import toolchain
+        monkeypatch.delenv("ZEPHYR_SDK_INSTALL_DIR", raising=False)
+        monkeypatch.setenv("HOME", str(tmp_path))
+        monkeypatch.setenv("USERPROFILE", str(tmp_path))
+        ver, evidence = toolchain.zephyr_gcc_probe()
+        assert ver is None
+        assert "no zephyr sdk" in evidence.lower()
+
+
+class TestGccVersionParsing:
+    """SDK 1.0's --version line is 'arm-zephyr-eabi-gcc (Zephyr SDK
+    1.0.1) 14.3.0' — the naive regex matches the SDK version in the
+    parenthetical FIRST. RITA asks -dumpfullversion (bare version, no
+    vendor text) and only falls back to a paren-stripped --version."""
+
+    def _cc(self, monkeypatch, script: dict, seen: dict | None = None):
+        import subprocess as sp
+
+        from rita.firmware import toolchain
+
+        def fake_run(argv, capture_output=True, text=True, timeout=30,
+                     **kwargs):
+            if seen is not None:
+                seen.update(kwargs)
+                seen.setdefault("flags", []).append(argv[1])
+            rc, out = script.get(argv[1], (1, ""))
+            return sp.CompletedProcess(argv, rc, stdout=out, stderr="")
+
+        monkeypatch.setattr(toolchain.subprocess, "run", fake_run)
+
+    def test_dumpfullversion_wins(self, monkeypatch):
+        from rita.firmware import toolchain
+        self._cc(monkeypatch, {"-dumpfullversion": (0, "14.3.0\n")})
+        assert toolchain._gcc_version("cc") == (14, 3)
+
+    def test_sdk_1_0_parenthetical_does_not_trap_the_parse(self, monkeypatch):
+        # Old gcc without -dumpfullversion AND vendor text in --version:
+        # the parse must yield 14.3, never the parenthetical 1.0.
+        from rita.firmware import toolchain
+        self._cc(monkeypatch, {
+            "--version": (0, "arm-zephyr-eabi-gcc (Zephyr SDK 1.0.1) "
+                             "14.3.0\nCopyright (C) 2024 FSF\n")})
+        assert toolchain._gcc_version("cc") == (14, 3)
+
+    def test_bare_dumpversion_major_only_falls_through(self, monkeypatch):
+        # gcc >= 7 prints just '14' for -dumpversion: not enough — the
+        # minor must come from --version.
+        from rita.firmware import toolchain
+        self._cc(monkeypatch, {
+            "-dumpversion": (0, "14\n"),
+            "--version": (0, "arm-zephyr-eabi-gcc (Zephyr SDK 1.0.1) "
+                             "14.3.0\n")})
+        assert toolchain._gcc_version("cc") == (14, 3)
+
+    def test_children_never_inherit_a_broken_stdin(self, monkeypatch):
+        # Windowed frozen apps on Windows can hand children an invalid
+        # stdin handle; every version probe pins stdin to DEVNULL.
+        import subprocess as sp
+
+        from rita.firmware import toolchain
+        seen: dict = {}
+        self._cc(monkeypatch, {"-dumpfullversion": (0, "14.3.0\n")},
+                 seen=seen)
+        toolchain._gcc_version("cc")
+        assert seen.get("stdin") is sp.DEVNULL
+
+    def test_unrunnable_cc_reports_the_error_as_evidence(self, tmp_path,
+                                                         monkeypatch):
+        from rita.firmware import toolchain
+
+        def boom(argv, **kwargs):
+            raise OSError("WinError 6: the handle is invalid")
+
+        sdk = tmp_path / "zephyr-sdk-1.0.1"
+        bindir = sdk / "gnu" / "arm-zephyr-eabi" / "bin"
+        bindir.mkdir(parents=True)
+        (bindir / "arm-zephyr-eabi-gcc").write_text("")
+        (sdk / "sdk_version").write_text("1.0.1")
+        monkeypatch.setenv("ZEPHYR_SDK_INSTALL_DIR", str(sdk))
+        monkeypatch.setattr(toolchain.subprocess, "run", boom)
+        ver, evidence = toolchain.zephyr_gcc_probe()
+        assert ver is None
+        assert "arm-zephyr-eabi-gcc" in evidence   # the binary it found
+        assert "handle is invalid" in evidence     # and why it failed
+
+
+class TestQemuInSdk10:
+    def test_hosttools_per_tool_dir_found(self, tmp_path, monkeypatch):
+        # SDK 1.0 on Windows: each host tool in hosttools/<tool>/.
+        from rita.firmware import toolchain
+        sdk = tmp_path / "zephyr-sdk-1.0.1"
+        qdir = sdk / "hosttools" / "qemu"
+        qdir.mkdir(parents=True)
+        q = qdir / "qemu-system-arm"
+        q.write_text("")
+        (sdk / "sdk_version").write_text("1.0.1")
+        monkeypatch.setenv("ZEPHYR_SDK_INSTALL_DIR", str(sdk))
+        monkeypatch.setattr(toolchain.shutil, "which", lambda n: None)
+        assert toolchain.detect_qemu() == str(q)
+
+    def test_hosttools_poky_sysroot_found(self, tmp_path, monkeypatch):
+        # SDK 1.0 on Linux: hosttools/sysroots/<arch>-pokysdk-linux/usr.
+        from rita.firmware import toolchain
+        sdk = tmp_path / "zephyr-sdk-1.0.1"
+        qdir = sdk / "hosttools" / "sysroots" / "x86_64-pokysdk-linux" / "usr" / "bin"
+        qdir.mkdir(parents=True)
+        q = qdir / "qemu-system-arm"
+        q.write_text("")
+        (sdk / "sdk_version").write_text("1.0.1")
+        monkeypatch.setenv("ZEPHYR_SDK_INSTALL_DIR", str(sdk))
+        monkeypatch.setattr(toolchain.shutil, "which", lambda n: None)
+        assert toolchain.detect_qemu() == str(q)
+
+
 class TestOnlineReleaseResolution:
     """The release is VERIFIED online, not assumed: RITA probes Arm's
     server for the SDK's GCC branch and picks the release that is

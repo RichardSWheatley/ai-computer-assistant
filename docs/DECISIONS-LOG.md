@@ -3,6 +3,30 @@
 Compromises, proxies, and deferred decisions — with the reason and what would
 remove them. Newest first. (Required by the working rules in `docs/WORKING-RULES.md`.)
 
+## 2026-08-29 — Search, don't assume (SDK layouts rot)
+
+- **Tool discovery searches the SDK instead of pinning paths.** The
+  hardcoded release table rotted (14.2 vs the owner's 14.3); the
+  hardcoded SDK layout rotted the same week (SDK 1.0 moved toolchains
+  under `gnu/`, host tools under `hosttools/`). Known layouts are
+  probed first for speed, then a bounded two-level search — never a
+  full walk of a multi-GB tree, and never one blessed path.
+- **Version questions go to the compiler, not to regex-over-prose.**
+  `-dumpfullversion` prints the bare version; parsing `--version`
+  prose regex-trapped on SDK 1.0's `(Zephyr SDK 1.0.1)` parenthetical,
+  reading gcc 14.3 as 1.0. Prose parsing survives only as a stripped
+  last resort.
+- **Failure messages carry the probe's evidence** (path searched, file
+  found, raw unparseable output). A vague error made the owner debug
+  RITA's assumptions by pasting logs — that conversation is the thing
+  to eliminate. Deeper fix (RITA investigates unknowns via the coding
+  agent at runtime) lands with the learning layer (v0.24.0 spec).
+- **The suite may never touch the real `~/.rita`** — enforced by an
+  autouse fixture, not by convention. Launch auto-setup turned a
+  forgotten `RITA_HOME` in one window test into real git clones into
+  the developer's home from a background thread; convention already
+  failed twice.
+
 ## 2026-08-28 — Self-setup autonomy
 
 - **Auto-setup is ON by default and downloads without asking** (CERBERUS,

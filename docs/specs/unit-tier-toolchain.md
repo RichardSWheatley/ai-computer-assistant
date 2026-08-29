@@ -59,3 +59,14 @@ The release is DERIVED from the Zephyr SDK's gcc (`{maj}.{min}.rel1` —
 Arm's uniform naming, verified live); an unreadable SDK version is a
 refusal, never a default. Downloads verify TLS via system trust first,
 then RITA's bundled certifi CAs; verification is never disabled.
+
+## Discovery addendum (v0.23.1)
+
+SDK layouts rot like release tables: SDK 1.0 moved GNU toolchains to
+`<sdk>/gnu/` and host tools to `<sdk>/hosttools/`. The SDK's gcc and
+qemu are therefore FOUND by search (known layouts probed first, then a
+bounded two-level glob — never a full tree walk), and the version is
+read with `-dumpfullversion` (prose `--version` parsing regex-trapped
+on SDK 1.0's `(Zephyr SDK 1.0.1)` parenthetical). Every failure carries
+the probe's evidence: the SDK path searched, the gcc found, the raw
+output that failed to parse.

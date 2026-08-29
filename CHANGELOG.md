@@ -3,6 +3,36 @@
 All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/); versions follow semver.
 
+## [0.23.1] - 2026-08-29
+
+### Fixed — find the SDK's gcc, never assume its layout
+Live failure on the owner's machine: the setup check found their
+Zephyr SDK ("1.0.1 at …\zephyr-sdk-1.0.1") yet "gcc version could not
+be read", so the ARM toolchain refused to install. Zephyr SDK 1.0
+restructured the install: GNU toolchains moved under `<sdk>/gnu/` and
+host tools under `<sdk>/hosttools/` — RITA only probed the 0.x paths.
+
+- **Search, don't assume**: `_sdk_arm_gcc` probes the known layouts
+  (0.x root, 1.0 `gnu/`) and then a bounded two-level search, so the
+  next re-shuffle resolves without a release. Same for qemu: the SDK
+  1.0 `hosttools/` locations (per-tool dirs, poky sysroot, macOS opt/)
+  join the 0.x `sysroots/` probe.
+- **Version parsing that survives vendor text**: `-dumpfullversion`
+  first (bare `14.3.0`); the `--version` fallback strips
+  parentheticals — SDK 1.0's line `arm-zephyr-eabi-gcc (Zephyr SDK
+  1.0.1) 14.3.0` used to regex-match the SDK version **1.0** instead
+  of gcc **14.3**. Version probes pin stdin to DEVNULL (windowed
+  frozen apps can hand children an invalid handle on Windows).
+- **Evidence, not guesses**: `zephyr_gcc_probe()` reports what was
+  searched and what was found; the toolchain installer's refusal and
+  the diagnostics check now carry that trail (the SDK path searched,
+  the gcc found, the raw output that failed to parse) instead of
+  "check that your SDK has arm-zephyr-eabi/bin".
+- **Test isolation hardened**: suite-wide private `RITA_HOME`
+  (`tests/conftest.py`) and auto-setup disabled in rendering tests —
+  window tests no longer kick off real background installs into the
+  developer's home.
+
 ## [0.23.0] - 2026-08-28
 
 ### Added — launching RITA IS the setup (the OpenClaw rule)

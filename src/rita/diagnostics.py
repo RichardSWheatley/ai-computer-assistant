@@ -196,12 +196,13 @@ def _arm_toolchain(cfg: RitaConfig) -> Check:
     """Zephyr's compiler family — the one the unit tier compiles with.
     The version must MATCH the Zephyr SDK's gcc (the owner's rule)."""
     from .firmware.toolchain import (detect_arm_gcc, detect_qemu,
-                                     release_for, zephyr_gcc_version)
+                                     release_for, zephyr_gcc_probe)
 
-    want = zephyr_gcc_version()
+    want, evidence = zephyr_gcc_probe()
     sdk_note = (f" Your Zephyr SDK's gcc is {want[0]}.{want[1]} "
                 f"(release {release_for(want)})." if want else
-                " Your Zephyr SDK's gcc version could not be read.")
+                f" Your Zephyr SDK's gcc version could not be read — "
+                f"{evidence}.")
     info = detect_arm_gcc()
     if info is None:
         return Check("ARM toolchain", False,

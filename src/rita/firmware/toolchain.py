@@ -51,28 +51,101 @@ def _rita_toolchain_dir() -> Path:
     return toolchains_dir() / "arm-none-eabi"
 
 
-def _gcc_version(cc: str | Path) -> tuple[int, int] | None:
-    """major.minor from `<cc> --version`; None when it can't run/parse."""
+def _run_cc(cc: str | Path, flag: str):
+    """One version query. stdin is pinned to DEVNULL: windowed frozen
+    apps on Windows can hand children an invalid stdin handle."""
     try:
-        proc = subprocess.run([str(cc), "--version"], capture_output=True,
-                              text=True, timeout=30)
-    except (OSError, subprocess.TimeoutExpired):
-        return None
-    m = _VERSION_RE.search(proc.stdout or "")
-    return (int(m.group(1)), int(m.group(2))) if m else None
+        proc = subprocess.run([str(cc), flag], capture_output=True,
+                              text=True, timeout=30,
+                              stdin=subprocess.DEVNULL)
+    except (OSError, subprocess.TimeoutExpired, ValueError) as exc:
+        return None, f"running `{cc} {flag}` failed: {exc}"
+    return proc, (proc.stdout or "").strip()
+
+
+def _gcc_version_raw(cc: str | Path) -> tuple[tuple[int, int] | None, str]:
+    """(major.minor, raw evidence of the attempt).
+
+    -dumpfullversion first — it prints the bare version (e.g. 14.3.0),
+    immune to vendor text. The --version fallback strips parentheticals
+    before parsing: SDK 1.0's line `arm-zephyr-eabi-gcc (Zephyr SDK
+    1.0.1) 14.3.0` would otherwise match the SDK version 1.0 first."""
+    last = ""
+    for flag in ("-dumpfullversion", "-dumpversion"):
+        proc, out = _run_cc(cc, flag)
+        if proc is None:
+            return None, out
+        if proc.returncode == 0:
+            m = re.match(r"(\d+)\.(\d+)", out)
+            if m:
+                return (int(m.group(1)), int(m.group(2))), out
+        last = out or last
+    proc, out = _run_cc(cc, "--version")
+    if proc is None:
+        return None, out
+    line = (out.splitlines() or [""])[0]
+    m = _VERSION_RE.search(re.sub(r"\([^)]*\)", "", line))
+    if m:
+        return (int(m.group(1)), int(m.group(2))), line
+    return None, f"unparseable version output: {line or last!r}"
+
+
+def _gcc_version(cc: str | Path) -> tuple[int, int] | None:
+    """major.minor of a gcc; None when it can't run/parse."""
+    return _gcc_version_raw(cc)[0]
+
+
+_SDK_GCC_NAMES = ("arm-zephyr-eabi-gcc", "arm-zephyr-eabi-gcc.exe")
 
 
 def _sdk_arm_gcc() -> Path | None:
+    """The SDK's arm gcc, found by SEARCHING the SDK — never one
+    assumed path. Layouts rot: 0.x kept toolchains at the SDK root,
+    1.0 moved them under gnu/; a bounded glob catches whatever comes
+    next without walking a multi-GB tree."""
     from .workspace import read_sdk_info
 
     sdk = read_sdk_info()
     if not sdk:
         return None
-    for name in ("arm-zephyr-eabi-gcc", "arm-zephyr-eabi-gcc.exe"):
-        cand = Path(sdk["path"]) / "arm-zephyr-eabi" / "bin" / name
-        if cand.is_file():
-            return cand
+    root = Path(sdk["path"])
+    for rel in ("arm-zephyr-eabi/bin", "gnu/arm-zephyr-eabi/bin"):
+        for name in _SDK_GCC_NAMES:
+            cand = root / rel / name
+            if cand.is_file():
+                return cand
+    for pattern in ("*/arm-zephyr-eabi/bin", "*/*/arm-zephyr-eabi/bin"):
+        for bindir in sorted(root.glob(pattern)):
+            for name in _SDK_GCC_NAMES:
+                cand = bindir / name
+                if cand.is_file():
+                    return cand
     return None
+
+
+def zephyr_gcc_probe() -> tuple[tuple[int, int] | None, str]:
+    """(the gcc version Zephyr builds with, evidence). The evidence is
+    the trail — which SDK was searched, what was found, why reading it
+    failed — so failure messages never make the owner guess."""
+    from .workspace import read_sdk_info
+
+    sdk = read_sdk_info()
+    if not sdk:
+        return None, ("no Zephyr SDK found (ZEPHYR_SDK_INSTALL_DIR is "
+                      "unset and no zephyr-sdk-* directory is in the "
+                      "standard locations)")
+    cand = _sdk_arm_gcc()
+    if cand is None:
+        return None, (f"the Zephyr SDK at {sdk['path']} has no "
+                      f"arm-zephyr-eabi gcc anywhere under it (searched "
+                      f"arm-zephyr-eabi/bin, gnu/arm-zephyr-eabi/bin, "
+                      f"and up to two directory levels deep) — a "
+                      f"minimal or LLVM-only SDK bundle has no ARM GNU "
+                      f"toolchain")
+    ver, raw = _gcc_version_raw(cand)
+    if ver is None:
+        return None, f"found {cand} but could not read its version: {raw}"
+    return ver, f"{cand} reports gcc {ver[0]}.{ver[1]}"
 
 
 def zephyr_gcc_version() -> tuple[int, int] | None:
@@ -141,9 +214,17 @@ def detect_qemu() -> str | None:
 
     sdk = read_sdk_info()
     if sdk:
-        for cand in Path(sdk["path"]).glob("sysroots/*/usr/bin/qemu-system-arm*"):
-            if cand.is_file() and cand.suffix in ("", ".exe"):
-                return str(cand)
+        # 0.x: sysroots/ at the SDK root. 1.0: hosttools/ — per-tool
+        # dirs on Windows, a poky sysroot on Linux, opt/ on macOS.
+        patterns = ("sysroots/*/usr/bin/qemu-system-arm*",
+                    "hosttools/qemu*/qemu-system-arm*",
+                    "hosttools/qemu*/bin/qemu-system-arm*",
+                    "hosttools/sysroots/*/usr/bin/qemu-system-arm*",
+                    "hosttools/opt/qemu/bin/qemu-system-arm*")
+        for pattern in patterns:
+            for cand in sorted(Path(sdk["path"]).glob(pattern)):
+                if cand.is_file() and cand.suffix in ("", ".exe"):
+                    return str(cand)
     return None
 
 
@@ -284,14 +365,15 @@ def install_arm_gcc(release: str | None = None,
     want = zephyr_gcc_version()
     if release is None:
         if want is None:
+            _, evidence = zephyr_gcc_probe()
             return InstallResult(
                 ok=False, path=str(dest),
-                detail="I can't read your Zephyr SDK's gcc version, so I "
-                       "won't guess a toolchain — the versions must match. "
-                       "Check that your SDK has arm-zephyr-eabi/bin, or "
-                       "install a specific release with "
-                       "`rita toolchain install --release 14.3.rel1` "
-                       "(use your SDK's gcc major.minor).")
+                detail=f"I can't read your Zephyr SDK's gcc version, so "
+                       f"I won't guess a toolchain — the versions must "
+                       f"match. What I found: {evidence}. You can "
+                       f"install a specific release with "
+                       f"`rita toolchain install --release 14.3.rel1` "
+                       f"(use your SDK's gcc major.minor).")
         try:
             release, verified = resolve_release_online(want)
         except OSError:

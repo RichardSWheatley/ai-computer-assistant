@@ -39,7 +39,10 @@ def make_presenter(tmp_path, *, workspace=str(WS), build_seq=("ok",),
         from tests.test_pause_stop import SteppableWest
         gate = SteppableWest(fake)
         runner = gate
-    sup = Supervisor(rita_cfg=RitaConfig(workspace=workspace),
+    # auto_setup off: presenter/window tests exercise routing and
+    # rendering — the launch hook must not start real installs.
+    sup = Supervisor(rita_cfg=RitaConfig(workspace=workspace,
+                                         auto_setup=False),
                      config_path=tmp_path / "config", tts=FakeTTS(),
                      runner=runner, coder=FakeCoder(completions=[blinky_fit()]),
                      workdir=tmp_path / "work")
