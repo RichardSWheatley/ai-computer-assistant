@@ -3,6 +3,27 @@
 All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/); versions follow semver.
 
+## [0.27.0] - 2026-08-29
+
+### Changed — the UI grows up
+The owner's verdict on the old look: functional, not next-gen. Full
+theme redesign, all tokens (`src/rita/gui/theme.py`):
+
+- Deep layered background with a blue cast; cards and panes on raised
+  surfaces with 12px radii.
+- **Buttons with real depth**: hover lifts (lighter fill + accent
+  border), pressed sinks (darker fill + 2px offset), disabled reads
+  disabled. The primary action wears a blue→violet gradient; Pause and
+  Stop keep their semantic colors with proper hover/pressed states.
+- **Pill navigation** in the sidebar (accent-tinted active item),
+  letter-spaced brand.
+- **Underline chat tabs** — no boxes, a 2px accent underline marks the
+  active chat.
+- Inputs get focus rings; combo popups, checkboxes, scrollbars, and
+  the status bar all restyled to match.
+- README screenshots regenerated from the new theme
+  (`packaging/screenshots.py`).
+
 ## [0.26.0] - 2026-08-29
 
 ### Added — chat tabs: several chats open at once, each with its own workspace
