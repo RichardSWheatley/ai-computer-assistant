@@ -23,6 +23,12 @@ from pathlib import Path
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 os.environ["RITA_HOME"] = tempfile.mkdtemp(prefix="rita-walk-")
 
+# Windows consoles are cp1252: printing ▸/✗ must never crash the very
+# harness that exists to catch crashes (the rita CLI does the same).
+for _stream in (sys.stdout, sys.stderr):
+    if hasattr(_stream, "reconfigure"):
+        _stream.reconfigure(errors="replace")
+
 REPO = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(REPO / "src"))
 WS = REPO / "tests" / "fixtures" / "zephyr_ws"

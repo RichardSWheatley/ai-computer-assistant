@@ -3,6 +3,15 @@
 All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/); versions follow semver.
 
+## [0.30.1] - 2026-08-29
+
+### Fixed
+- The GUI walk crashed on the Windows CI runner printing its own step
+  markers (cp1252 console vs ▸/✗) — the harness built to catch crashes
+  must not crash on its first print. All packaging scripts now
+  reconfigure their streams with errors=replace, the same guard the
+  rita CLI has carried since the first cp1252 bite.
+
 ## [0.30.0] - 2026-08-29
 
 ### Added — RITA tests her own GUI before you ever see it
