@@ -3,6 +3,14 @@
 All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/); versions follow semver.
 
+## [0.27.1] - 2026-08-29
+
+### Docs
+- Troubleshooting: the Windows SmartScreen warning on the installer is
+  expected while builds are unsigned — More info → Run anyway (or
+  Properties → Unblock). The permanent fix is a code-signing
+  certificate wired into CI (a purchase, not a code change).
+
 ## [0.27.0] - 2026-08-29
 
 ### Changed — the UI grows up

@@ -200,6 +200,14 @@ the same reason.
 
 ## 8. Troubleshooting
 
+- **"Windows protected your PC" (SmartScreen) when running the
+  installer** — expected for now: the installer is not yet
+  code-signed, and every new build is a file Windows has never seen,
+  so Defender SmartScreen warns by default. Click **More info → Run
+  anyway** (or right-click the .exe → Properties → **Unblock** → OK).
+  This goes away permanently once builds are signed with a code-signing
+  certificate (e.g. Azure Trusted Signing wired into CI) — a purchase,
+  not a code change. Self-signed certificates do not help.
 - **Status bar says "coder not configured"** — enter your coding-agent
   CLI's command on the Settings page ("Coding agent") and make sure that
   executable is installed and on PATH. RITA never assumes a vendor.
