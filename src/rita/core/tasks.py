@@ -18,6 +18,7 @@ from __future__ import annotations
 
 import itertools
 import threading
+import time
 from dataclasses import dataclass, field
 from typing import Any, Callable
 
@@ -36,6 +37,10 @@ class _Record:
     completed_stages: list[str] = field(default_factory=list)
     result: Any = None
     error: str = ""
+    # Monotonic timestamps so status can say HOW LONG a task has been
+    # at it — 0.0 means "hasn't happened yet".
+    started_at: float = 0.0
+    stage_at: float = 0.0
 
 
 @dataclass(frozen=True)
@@ -46,6 +51,8 @@ class TaskReport:
     completed_stages: tuple[str, ...]
     result: Any
     error: str
+    started_at: float = 0.0
+    stage_at: float = 0.0
 
 
 class TaskControl:
@@ -58,6 +65,7 @@ class TaskControl:
     def checkpoint(self, completed_stage: str) -> None:
         with self._cond:
             self._record.completed_stages.append(completed_stage)
+            self._record.stage_at = time.monotonic()
             if self._record.state == "STOPPING":
                 raise TaskStopped(completed_stage)
             if self._record.state == "PAUSING":
@@ -91,6 +99,7 @@ class TaskManager:
     def _run(self, record: _Record, fn, ctl: TaskControl) -> None:
         with self._cond:
             record.state = "RUNNING"
+            record.started_at = time.monotonic()
         try:
             result = fn(ctl)
         except TaskStopped:
@@ -148,7 +157,8 @@ class TaskManager:
             r = self._records[tid]
             return TaskReport(id=r.id, name=r.name, state=r.state,
                               completed_stages=tuple(r.completed_stages),
-                              result=r.result, error=r.error)
+                              result=r.result, error=r.error,
+                              started_at=r.started_at, stage_at=r.stage_at)
 
     def tasks(self) -> list[str]:
         with self._cond:

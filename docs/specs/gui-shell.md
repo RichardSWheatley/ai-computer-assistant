@@ -52,9 +52,12 @@ spacing, system font, monospace code pane):
 - Chat page: transcript (user entries + Rita's speech-channel replies),
   a separate read-only monospace **screen pane** for code/diffs/logs
   (Fix 5's two channels, visibly two panes), prompt bar with Send.
-- **Persistent control bar: PAUSE and RESUME/STOP buttons** — always
+- **Persistent control bar: STATUS, PAUSE, RESUME, STOP** — always
   visible, per Fix 4. Button state reflects the task state machine
-  ("pausing after current step…" → "paused").
+  ("pausing after current step…" → "paused"). Status is one click, the
+  same code path as typing "status", and reports each running task with
+  how long it has been running and when it last completed a stage —
+  nobody presses Pause to find out whether a task is alive.
 - No Workspace page: each chat tab carries its own workspace strip —
   a bind field with a folder picker, "Use for this chat", and **Sync**.
   The default workspace (for unbound chats) and the twister hardware

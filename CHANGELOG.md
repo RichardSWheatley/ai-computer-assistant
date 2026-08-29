@@ -3,6 +3,24 @@
 All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/); versions follow semver.
 
+## [0.33.0] - 2026-08-29
+
+### Added — a Status button, and status that tells the time
+The owner's complaint: "it has been working on something that I could
+have already finished and it isn't done."
+
+- **Status button** in every chat tab's control bar (next to Pause) —
+  one click, no typing, same deterministic path as saying "status".
+- **Status answers with ages now**: each running task reports how long
+  it has been running and how long since it last completed a stage —
+  "build blinky (task-2): running for 14m 05s — done so far: RESOLVE,
+  BUILD (last progress 11m 40s ago)". A task that stopped making
+  progress is visible as such, so you can Stop it and do the thing
+  yourself instead of wondering.
+- The task manager records monotonic start/stage timestamps; the GUI
+  walk clicks the Status button against a live task before any
+  release ships.
+
 ## [0.32.0] - 2026-08-29
 
 ### Changed — the Workspace page is gone; chats own their workspaces

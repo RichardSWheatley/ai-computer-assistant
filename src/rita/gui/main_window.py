@@ -82,6 +82,14 @@ class ChatTab(QWidget):
 
         controls = QHBoxLayout()
         self.task_label = QLabel("", objectName="dim")
+        # One click answers "is it alive, and for how long?" — nobody
+        # should have to type (or press Pause) to find out.
+        self.status_btn = QPushButton("Status")
+        self.status_btn.setToolTip(
+            "What is RITA doing right now — each running task, how long "
+            "it's been at it, and when it last made progress. Same as "
+            "typing 'status'.")
+        self.status_btn.clicked.connect(self._status)
         pause = QPushButton("Pause", objectName="pause")
         resume = QPushButton("Resume")
         stop = QPushButton("Stop", objectName="stop")
@@ -89,6 +97,7 @@ class ChatTab(QWidget):
         resume.clicked.connect(presenter.resume)
         stop.clicked.connect(presenter.stop)
         controls.addWidget(self.task_label, 1)
+        controls.addWidget(self.status_btn)
         controls.addWidget(pause)
         controls.addWidget(resume)
         controls.addWidget(stop)
@@ -136,6 +145,11 @@ class ChatTab(QWidget):
         self.prompt.clear()
         self.presenter.set_active_chat(self.chat_id)
         self.presenter.submit_text(text)
+
+    def _status(self) -> None:
+        # The same deterministic path as typing it: one code path.
+        self.presenter.set_active_chat(self.chat_id)
+        self.presenter.submit_text("status")
 
     def _sync(self) -> None:
         import threading

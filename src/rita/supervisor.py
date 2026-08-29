@@ -27,6 +27,16 @@ from .voice.loop import RouterShell
 from .voice.tts import PausableSpeaker
 
 
+def _age(seconds: float) -> str:
+    """A duration a person reads at a glance: 45s / 5m 00s / 1h 05m."""
+    s = max(0, int(seconds))
+    if s < 60:
+        return f"{s}s"
+    if s < 3600:
+        return f"{s // 60}m {s % 60:02d}s"
+    return f"{s // 3600}h {(s % 3600) // 60:02d}m"
+
+
 class Supervisor:
     def __init__(self, *, rita_cfg: RitaConfig | None = None,
                  config_path: str | Path | None = None,
@@ -651,13 +661,20 @@ class Supervisor:
     def _live_status(self) -> str:
         """What's happening RIGHT NOW — the owner must never have to
         press Pause to find out whether a task is alive."""
+        import time
+
+        now = time.monotonic()
         lines = []
         for tid in self.manager.tasks():
             rep = self.manager.report(tid)
             if rep.state in ("RUNNING", "PAUSING", "PAUSED", "STOPPING"):
                 done = ", ".join(rep.completed_stages) or "just started"
-                lines.append(f"{rep.name} ({tid}): "
-                             f"{rep.state.lower()} — done so far: {done}")
+                running = _age(now - rep.started_at) if rep.started_at else "0s"
+                line = (f"{rep.name} ({tid}): {rep.state.lower()} for "
+                        f"{running} — done so far: {done}")
+                if rep.completed_stages and rep.stage_at:
+                    line += f" (last progress {_age(now - rep.stage_at)} ago)"
+                lines.append(line)
         if lines:
             return "Yes — still on it:\n" + "\n".join(lines)
         msg = "Nothing is running right now."

@@ -252,6 +252,13 @@ def main(out_dir: str | None = None) -> int:
     if not wait_for(app, lambda: "walk task"
                     in tab.transcript.toPlainText()):
         fail("'are you still working' did not report the live task")
+
+    step("the Status button answers with the task's age")
+    before = len(replies)
+    tab.status_btn.click()
+    if not wait_for(app, lambda: any("still on it" in r and "for "
+                                     in r for r in replies[before:])):
+        fail("the Status button did not report the live task with its age")
     gate.set()
     shot("5-progress")
 
