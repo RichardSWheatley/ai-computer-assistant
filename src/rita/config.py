@@ -69,6 +69,10 @@ class RitaConfig:
     # use a subcommand). Unset -> the agent is launched bare, which
     # prompts its own login. Opened by the Settings page's button.
     coder_login_command: str | None = None
+    # How long ONE agent reply may take before RITA cuts it off. It
+    # retries once, then reports the partial output — a real coding
+    # step with tools can legitimately run long (600 was too short).
+    coder_timeout_seconds: int = 1800
     # Unit-tier compiler override. Unset -> arm-none-eabi-gcc resolved to
     # match the Zephyr SDK's gcc (RITA downloads it when missing).
     host_cc: str | None = None

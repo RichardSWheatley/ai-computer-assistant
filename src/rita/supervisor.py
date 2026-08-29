@@ -94,7 +94,8 @@ class Supervisor:
         mcp = mcp_config_path()
         cli = CoderCli(self.cfg.workspace,
                        command=tuple(split_command(self.cfg.coder_command)),
-                       mcp_config=mcp if mcp.exists() else None)
+                       mcp_config=mcp if mcp.exists() else None,
+                       timeout=float(self.cfg.coder_timeout_seconds))
         # Narrate agent activity into the GUI's screen pane when a
         # presenter has subscribed (self.on_activity set by the GUI).
         cli.on_activity = lambda msg: (self.on_activity(msg)

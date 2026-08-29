@@ -65,6 +65,14 @@ class SettingsPage(QWidget):
         self.budget.setRange(1, 10)
         self.budget.setValue(cfg.max_patch_cycles)
         form.addRow("Patch cycles per stage", self.budget)
+        self.coder_timeout = QSpinBox()
+        self.coder_timeout.setRange(120, 7200)
+        self.coder_timeout.setValue(cfg.coder_timeout_seconds)
+        self.coder_timeout.setToolTip(
+            "How long ONE agent reply may take before RITA cuts it off. "
+            "She retries once, then reports the partial output. Raise "
+            "this if big coding steps get cut off mid-work.")
+        form.addRow("Agent reply ceiling (s)", self.coder_timeout)
         self.cerberus_edit = QLineEdit(cfg.cerberus_command or "")
         self.cerberus_edit.setPlaceholderText(
             "custom CERBERUS command — empty = use the installed clone")
@@ -153,6 +161,7 @@ class SettingsPage(QWidget):
         sup.cfg.hardware_map = self.map_edit.text().strip() or None
         sup.cfg.coder_command = self.coder_edit.text().strip() or None
         sup.cfg.max_patch_cycles = self.budget.value()
+        sup.cfg.coder_timeout_seconds = self.coder_timeout.value()
         sup.cfg.cerberus_command = self.cerberus_edit.text().strip() or None
         sup.cfg.cerberus_deep = self.cerberus_deep.isChecked()
         sup.cfg.host_cc = self.host_cc_edit.text().strip() or None

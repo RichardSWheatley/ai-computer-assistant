@@ -175,10 +175,15 @@ class CoderCli:
 
         self._note("→ asking the coding agent…")
         t0 = _time.monotonic()
-        proc = subprocess.run(args, cwd=cwd, capture_output=True,
-                              encoding="utf-8", errors="replace",
-                              input=stdin_payload,
-                              timeout=self.timeout)
+        try:
+            proc = subprocess.run(args, cwd=cwd, capture_output=True,
+                                  encoding="utf-8", errors="replace",
+                                  input=stdin_payload,
+                                  timeout=self.timeout)
+        except subprocess.TimeoutExpired:
+            self._note(f"✗ no reply within {self.timeout:.0f}s — "
+                       "the agent was cut off")
+            raise
         dt = _time.monotonic() - t0
         self._note(f"← the coding agent replied in {dt:.0f}s "
                    f"(exit {proc.returncode}, "
@@ -189,7 +194,16 @@ class CoderCli:
                 allow_edits: bool) -> subprocess.CompletedProcess:
         args, payload = self._args(prompt, allow_edits=allow_edits,
                                    with_mcp=True)
-        proc = self._run(args, payload, cwd)
+        try:
+            proc = self._run(args, payload, cwd)
+        except subprocess.TimeoutExpired:
+            # A hang is often transient (a wedged tool, a network
+            # stall). One more try before giving up with evidence.
+            self._note("→ retrying once — a hang is often transient…")
+            try:
+                proc = self._run(args, payload, cwd)
+            except subprocess.TimeoutExpired as second:
+                raise RuntimeError(self._timeout_text(second)) from None
         self.last_args = args
         if proc.returncode == 0 or not self.mcp_config:
             return proc
@@ -211,6 +225,29 @@ class CoderCli:
         if proc.returncode != 0 or not out:
             raise RuntimeError(self._failure_text(proc))
         return proc.stdout
+
+    @staticmethod
+    def _tail(stream) -> str:
+        """Last 600 chars of a possibly-bytes, possibly-None stream."""
+        if isinstance(stream, bytes):
+            stream = stream.decode("utf-8", "replace")
+        text = (stream or "").strip()
+        return text[-600:] or "(nothing)"
+
+    def _timeout_text(self, exc: subprocess.TimeoutExpired) -> str:
+        """A double timeout, with the evidence: what the agent had said
+        before the cutoff, and what to do about it."""
+        cmd = exc.cmd if isinstance(exc.cmd, (list, tuple)) else [exc.cmd]
+        argv = " ".join(str(a) for a in list(cmd)[:2])
+        return (f"the coding agent ({argv}) produced no reply within "
+                f"{self.timeout:.0f}s, twice in a row, and was cut off. "
+                f"Partial output before the cutoff — "
+                f"stdout: {self._tail(exc.stdout)} | "
+                f"stderr: {self._tail(exc.stderr)}. "
+                "If this step is genuinely that big, raise the agent "
+                "reply ceiling in Settings. If it keeps happening, the "
+                "agent may be stuck waiting for something interactive — "
+                "run 'check setup' and log it in again from Settings.")
 
     def _failure_text(self, proc) -> str:
         """Quote what actually happened: argv, exit code, both streams."""

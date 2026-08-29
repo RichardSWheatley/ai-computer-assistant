@@ -3,6 +3,24 @@
 All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/); versions follow semver.
 
+## [0.33.1] - 2026-08-29
+
+### Fixed — a hung agent no longer kills the task with a raw traceback
+Your paste: "Task task-2 failed: TimeoutExpired ... timed out after
+600.0 seconds" — after two good replies, the third hung and everything
+died with no evidence and no second chance.
+
+- **The reply ceiling is yours now**: "Agent reply ceiling (s)" in
+  Settings, default 30 minutes (600s was too short for a real coding
+  step that runs tools).
+- **One automatic retry** — a hang is often transient. The cutoff and
+  the retry are narrated live in the screen pane.
+- **A double timeout reports evidence, not a traceback**: the partial
+  output the agent produced before it was cut off, plus what to do
+  (raise the ceiling for genuinely big steps; re-run 'check setup' /
+  log in if it keeps happening — a stuck agent is usually waiting on
+  something interactive).
+
 ## [0.33.0] - 2026-08-29
 
 ### Added — a Status button, and status that tells the time
