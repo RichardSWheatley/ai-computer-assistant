@@ -3,6 +3,17 @@
 All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/); versions follow semver.
 
+## [0.34.3] - 2026-08-31
+
+### Added — check setup reports your agent CLI's own config warnings
+Your agent prints "Permission allow rule … has a wildcard …" on stderr
+of EVERY call, and the first anyone saw of it was inside a timeout's
+evidence dump.
+
+- The live-transport check now quotes any warnings the agent CLI
+  emits about its own configuration, so 'check setup' names them (and
+  where to fix them) instead of letting them hide in failure output.
+
 ## [0.34.2] - 2026-08-31
 
 ### Fixed — a researching agent can't sink the task any more

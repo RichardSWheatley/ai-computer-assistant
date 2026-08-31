@@ -172,6 +172,9 @@ class CoderCli:
         self.mcp_fallback = False
         # Progress narration sink: "asking the agent… / replied in Ns".
         self.on_activity = None
+        # The newest call's stderr — the agent CLI reports its own
+        # configuration problems there; diagnostics surfaces them.
+        self.last_stderr = ""
 
     def _note(self, msg: str) -> None:
         if self.on_activity is not None:
@@ -218,6 +221,7 @@ class CoderCli:
                        "the agent was cut off")
             raise
         dt = _time.monotonic() - t0
+        self.last_stderr = proc.stderr or ""
         self._note(f"← the coding agent replied in {dt:.0f}s "
                    f"(exit {proc.returncode}, "
                    f"{len(proc.stdout or '')} chars)")

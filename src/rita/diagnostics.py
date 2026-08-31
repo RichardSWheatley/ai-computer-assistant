@@ -118,9 +118,19 @@ def _coder_live(cfg: RitaConfig) -> Check:
                      f"shim — update RITA (v0.29+ sends prompts via "
                      f"stdin), or configure the agent's real executable.")
     if "INTACT" in upper and "LANTERN" in upper:
-        return Check(name, True,
-                     "replied correctly — multi-line prompt transport "
-                     "verified end to end.")
+        detail = ("replied correctly — multi-line prompt transport "
+                  "verified end to end.")
+        stderr = cli.last_stderr.strip()
+        if stderr:
+            # The agent CLI reporting its own config problems (e.g.
+            # malformed permission rules) — it repeats this noise on
+            # EVERY call, so name it here instead of letting it hide
+            # until it pollutes a failure dump.
+            detail += (f" NOTE — your agent CLI printed warnings about "
+                       f"its own configuration (it repeats these on "
+                       f"every call; fix them where the message says): "
+                       f"{stderr[:300]}")
+        return Check(name, True, detail)
     return Check(name, False,
                  f"the agent replied, but not to the question asked — "
                  f"transport is suspect. It said: {out[:160]!r}")
