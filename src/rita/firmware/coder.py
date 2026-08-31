@@ -109,6 +109,11 @@ Do not run tests, do not judge success — the orchestrator re-runs the gates.
 
 {artifact}"""
 
+class PlanRefused(ValueError):
+    """A plan RITA must not act on (e.g. paths outside the app dir) —
+    a hard refusal, never a candidate for the deterministic fallback."""
+
+
 # Scaffold is DECOMPOSED (the owner's rule: smaller tasks that return
 # quickly, so the timeout stays short): one fast plan call, then one
 # bounded call per file.
@@ -122,7 +127,11 @@ Answer ONLY JSON, no prose:
 
 List every file the application needs (CMakeLists.txt, prj.conf, sources).
 If this directory already contains files (a copy being modified), list ONLY
-the files to change or add. Keep the list minimal."""
+the files to change or add. Keep the list minimal.
+
+Decide from this directory's files and what you already know — do NOT
+search the wider workspace. When a choice is ambiguous, pick the simplest
+option that works. You have minutes, not hours."""
 
 _WRITE_PROMPT = """Write exactly ONE file and nothing else: {path}
 Purpose: {purpose}
@@ -138,6 +147,11 @@ before executing (guard clauses that reject invalid input). Every function
 will be unit-tested for its input/output parameters and statically checked;
 unguarded parameters are a defect. The application must build with
 `west build -b {board}` unmodified.
+
+Work from this directory and what you already know — do NOT survey the
+wider workspace. If a design choice is ambiguous, implement the simplest
+working option and note the choice in a code comment; the orchestrator's
+gates will catch anything wrong. You have minutes, not hours.
 
 Create or update {path} in this directory now, then stop; the orchestrator
 checks and tests it."""
@@ -257,7 +271,11 @@ class CoderCli:
         """A double timeout, with the evidence: what the agent had said
         before the cutoff, and what to do about it."""
         cmd = exc.cmd if isinstance(exc.cmd, (list, tuple)) else [exc.cmd]
-        argv = " ".join(str(a) for a in list(cmd)[:2])
+        cmd = [str(a) for a in cmd]
+        # argv[1] is the PROMPT for non-shim commands — never quote it
+        # as if it were part of the command line.
+        argv = cmd[0] if len(cmd) < 2 or not cmd[1].startswith("-") \
+            else " ".join(cmd[:2])
         return (f"the coding agent ({argv}) produced no reply within "
                 f"{self.timeout:.0f}s, twice in a row, and was cut off. "
                 f"Partial output before the cutoff — "
@@ -317,7 +335,7 @@ class CoderCli:
                 continue
             full = (dest / path).resolve()
             if root != full and root not in full.parents:
-                raise ValueError(
+                raise PlanRefused(
                     f"the plan tried to reach outside the app "
                     f"directory: {path}")
             purpose = (str(item.get("purpose", "")).strip()
@@ -335,15 +353,39 @@ class CoderCli:
             entries.append(("src/main.c", "application entry point"))
         return entries
 
+    @staticmethod
+    def _fallback_plan(dest: Path) -> list[tuple[str, str]]:
+        """The plan RITA derives herself when the agent's doesn't
+        arrive: a copy being modified is its own source files; a fresh
+        app is the standard trio. Deterministic, always inside dest."""
+        sources = sorted(
+            str(p.relative_to(dest)).replace("\\", "/")
+            for p in dest.rglob("*.c")
+            if not any(part.startswith("build") for part in p.parts))
+        if sources:
+            return [(s, "apply the goal to this file") for s in sources]
+        return [("CMakeLists.txt", "build definition"),
+                ("prj.conf", "Kconfig for this application"),
+                ("src/main.c", "application entry point")]
+
     def scaffold(self, goal: str, board: str, dest: Path) -> ScaffoldResult:
         """Plan, then ONE file per bounded agent call — never a single
         'write the whole app' call that outlives any sane timeout."""
         dest.mkdir(parents=True, exist_ok=True)
+        plan_note = ""
         try:
             entries = self._plan_files(goal, board, dest)
-        except (RuntimeError, ValueError) as exc:
+        except PlanRefused as exc:            # unsafe plan: hard stop
             return ScaffoldResult(ok=False, app_dir=str(dest),
                                   detail=str(exc))
+        except (RuntimeError, ValueError) as exc:
+            # The agent's plan hung or didn't parse — RITA plans
+            # conservatively herself rather than sinking the task.
+            entries = self._fallback_plan(dest)
+            self._note("→ the agent's plan didn't arrive — using the "
+                       "standard layout")
+            plan_note = (f" (RITA planned the files herself after the "
+                         f"agent's plan failed: {str(exc)[:200]})")
         manifest = "\n".join(f"- {p}: {why}" for p, why in entries)
         written = []
         for i, (path, purpose) in enumerate(entries, 1):
@@ -373,7 +415,7 @@ class CoderCli:
         return ScaffoldResult(
             ok=True, app_dir=str(dest),
             detail=f"planned and wrote {len(written)} files, one bounded "
-                   f"step each: {', '.join(written)}")
+                   f"step each: {', '.join(written)}{plan_note}")
 
 
 class FakeCoder:

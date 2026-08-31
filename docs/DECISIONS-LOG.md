@@ -3,6 +3,18 @@
 Compromises, proxies, and deferred decisions — with the reason and what would
 remove them. Newest first. (Required by the working rules in `docs/WORKING-RULES.md`.)
 
+## 2026-08-31 — The plan fallback (bounded steps stay bounded)
+
+- **A bounded step must be bounded by construction, not by hope**: the
+  live double-timeout showed the agent researching the tree inside a
+  "one step" call. The prompts now forbid broad research and demand
+  the simplest working choice; the deterministic gates remain the
+  safety net for a wrong simple choice.
+- **RITA can plan without the agent** — a modify's plan is the copy's
+  own sources; a fresh app's is the standard trio. The agent's plan is
+  an optimization, not a dependency. Unsafe plans (paths outside the
+  app dir) are refused outright, never "fixed" by the fallback.
+
 ## 2026-08-29 — Small steps over long timeouts (the owner's rule)
 
 - **Every agent call is one bounded step** — a plan, one file, one

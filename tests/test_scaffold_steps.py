@@ -110,21 +110,26 @@ class TestDecomposedScaffold:
         assert "outside" in res.detail
         assert not (tmp_path / "evil.c").exists()
 
-    def test_unparseable_plan_fails_with_the_reply_quoted(self, tmp_path,
-                                                          monkeypatch):
+    def test_unparseable_plan_falls_back_and_says_so(self, tmp_path,
+                                                     monkeypatch):
+        # Prose instead of a JSON plan no longer sinks the task: RITA
+        # plans the standard layout herself and the detail says why.
         cli = make_cli()
         dest = tmp_path / "app"
+        script = Script(dest)
 
-        def prose(args, **kwargs):
-            return subprocess.CompletedProcess(args, 0,
-                                               stdout="Sure! Here's my "
-                                                      "thinking about it",
-                                               stderr="")
+        def run(args, **kwargs):
+            if "--permission-mode" not in args:       # the plan call
+                return subprocess.CompletedProcess(
+                    args, 0, stdout="Sure! Here's my thinking about it",
+                    stderr="")
+            return script(args, **kwargs)
 
-        monkeypatch.setattr("rita.firmware.coder.subprocess.run", prose)
+        monkeypatch.setattr("rita.firmware.coder.subprocess.run", run)
         res = cli.scaffold("blink the LED", "qemu_x86", dest)
-        assert not res.ok
-        assert "thinking about it" in res.detail  # evidence, not mystery
+        assert res.ok, res.detail
+        assert "planned the files herself" in res.detail
+        assert (dest / "src" / "main.c").exists()
 
 
 class TestShorterCeiling:

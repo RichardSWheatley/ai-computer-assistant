@@ -3,6 +3,25 @@
 All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/); versions follow semver.
 
+## [0.34.2] - 2026-08-31
+
+### Fixed — a researching agent can't sink the task any more
+Your live double-timeout, decoded by its own evidence: the agent burned
+both 300s windows grepping the workspace over where a vendor string
+comes from, instead of doing its one bounded step.
+
+- **The prompts now enforce the step's size**: work from this
+  directory and what you already know, do NOT search the wider
+  workspace, pick the simplest working option and note it in a code
+  comment — the gates catch anything wrong.
+- **A failed plan call no longer fails the task**: RITA plans the
+  files herself — a copy being modified is its own source files; a
+  fresh app is the standard trio — narrates the takeover, and the
+  per-file writes proceed. A plan reaching outside the app directory
+  is still a hard refusal.
+- Timeout errors no longer quote prompt text as if it were the
+  command line.
+
 ## [0.34.1] - 2026-08-29
 
 ### Fixed — status answers mid-step, not just between stages
